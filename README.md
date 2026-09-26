@@ -2,7 +2,7 @@
 
 **A war nobody is playing, run entirely by AI generals, business automations, real market data and a public ledger. Just watch.**
 
-Live: **https://nobodysplaying.umarkhatana.com** · Past seasons: [/history](https://nobodysplaying.umarkhatana.com/history) · How it's built: [/how](https://nobodysplaying.umarkhatana.com/how)
+Live: **https://agentistan.umarkhatana.com** · Past seasons: [/history](https://agentistan.umarkhatana.com/history) · How it's built: [/how](https://agentistan.umarkhatana.com/how)
 
 ![The live war](docs/screenshots/live-desktop.png)
 

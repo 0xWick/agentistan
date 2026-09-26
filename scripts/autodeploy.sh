@@ -6,7 +6,8 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 BRANCH="${DEPLOY_BRANCH:-main}"
 alive() { [ -f "data/$1.pid" ] && kill -0 "$(cat "data/$1.pid")" 2>/dev/null; }
-while sleep "${DEPLOY_POLL_SECONDS:-60}"; do
+tick=0
+while sleep 10; do # supervise every 10 s, check GitHub every DEPLOY_POLL_SECONDS (default 60)
   for n in world n8n tunnel; do
     if [ -f "data/$n.pid" ] && ! alive "$n"; then
       echo "$(date -Is) $n was down; starting it again"
@@ -14,6 +15,7 @@ while sleep "${DEPLOY_POLL_SECONDS:-60}"; do
       break
     fi
   done
+  (( tick++ % (${DEPLOY_POLL_SECONDS:-60} / 10) )) && continue
   git fetch -q origin "$BRANCH" || continue
   [ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$BRANCH")" ] && continue
   changed=$(git diff --name-only HEAD "origin/$BRANCH")

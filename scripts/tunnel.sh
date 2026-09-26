@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # Put the world on your own Cloudflare domain with a named tunnel (free). Only the world server is published;
-# the n8n editor stays on localhost.   Usage: bash scripts/tunnel.sh [subdomain]   (default: nobodysplaying)
+# the n8n editor stays on localhost.   Usage: bash scripts/tunnel.sh [subdomain]   (default: agentistan)
 # The domain is the one you pick in the browser during `cloudflared tunnel login`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.local/bin:$PATH"
-SUB="${1:-nobodysplaying}"
+SUB="${1:-agentistan}"
 NAME="${TUNNEL_NAME:-nobodys-playing}"
 CERT="$HOME/.cloudflared/cert.pem"
 
 [ -f "$CERT" ] || cloudflared tunnel login # prints a link: open it, pick your domain, then this continues
 
-cloudflared tunnel list -o json | grep -q "\"name\":\"$NAME\"" || cloudflared tunnel create "$NAME"
-ID=$(cloudflared tunnel list -o json | python3 -c "import json,sys; print(next(t['id'] for t in json.load(sys.stdin) if t['name'] == '$NAME'))")
+tunnel_id() { cloudflared tunnel list -o json | python3 -c "import json,sys; print(next((t['id'] for t in json.load(sys.stdin) if t['name'] == '$NAME'), ''))"; }
+[ -n "$(tunnel_id)" ] || cloudflared tunnel create "$NAME"
+ID=$(tunnel_id)
 
 # A bare label gets the login domain appended by Cloudflare; the output tells us the full hostname.
 OUT=$(cloudflared tunnel route dns "$NAME" "$SUB" 2>&1) || { echo "$OUT"; exit 1; }
@@ -27,7 +28,8 @@ credentials-file: $HOME/.cloudflared/$ID.json
 ingress:
   - hostname: $HOST
     service: http://127.0.0.1:${PORT:-8080}
-  - service: http_status:404
+  # Any other hostname routed to this tunnel (an earlier subdomain, say) serves the site too.
+  - service: http://127.0.0.1:${PORT:-8080}
 EOF
 grep -q '^TUNNEL_NAME=' .env || printf '\nTUNNEL_NAME=%s\n' "$NAME" >> .env
 mkdir -p data && echo "https://$HOST" > data/public-url
