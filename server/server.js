@@ -474,3 +474,4 @@ else schedule(Math.max(3000, (W.nextTurnAt ?? 0) - Date.now()));
 setInterval(pump, 5000);
 setInterval(() => clients.forEach((c) => c.write(': ping\n\n')), 25_000);
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { save(); process.exit(0); });
+process.on('unhandledRejection', (err) => console.error('unhandled rejection:', err)); // log it, keep the world running

@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
 # Deploy on push: every minute, fast-forward to origin/main and restart only what changed.
 # web/ is served straight from disk, so page changes go live without a restart.
+# Also a supervisor: any service that died is started again.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 BRANCH="${DEPLOY_BRANCH:-main}"
+alive() { [ -f "data/$1.pid" ] && kill -0 "$(cat "data/$1.pid")" 2>/dev/null; }
 while sleep "${DEPLOY_POLL_SECONDS:-60}"; do
+  for n in world n8n tunnel; do
+    if [ -f "data/$n.pid" ] && ! alive "$n"; then
+      echo "$(date -Is) $n was down; starting it again"
+      bash scripts/dev.sh start >/dev/null 2>&1
+      break
+    fi
+  done
   git fetch -q origin "$BRANCH" || continue
   [ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$BRANCH")" ] && continue
   changed=$(git diff --name-only HEAD "origin/$BRANCH")
