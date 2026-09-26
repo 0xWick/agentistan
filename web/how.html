@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How it's built · Nobody's Playing</title>
+  <meta name="description" content="Architecture of Nobody's Playing: AI agents, n8n automations, a Chainlink oracle and an on-chain ledger.">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .page { max-width: 960px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+    .page h1 { font-size: 1.6rem; }
+    .page h2 { font-size: .8rem; }
+    .page section p, .page section li { max-width: 75ch; }
+    .arch { width: 100%; height: auto; }
+    .arch rect { rx: 10; stroke-width: 1.5; }
+    .arch text { font: 13px ui-sans-serif, system-ui, sans-serif; fill: #1f2328; }
+    .arch .small { font-size: 11px; fill: #676b72; }
+    .arch path { fill: none; stroke: #868e96; stroke-width: 1.6; marker-end: url(#arrow); }
+    .verify { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+    .verify label { display: grid; font-size: .8rem; color: var(--muted); gap: 2px; }
+    .verify input { font: inherit; width: 90px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+    pre { background: #212529; color: #e9ecef; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: .8rem; white-space: pre-wrap; word-break: break-all; }
+    ol.steps li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <p><a href="/">← Back to the live war</a></p>
+    <h1>How it's built</h1>
+    <p class="thesis">One small server owns the game. An automation platform runs every turn. Two AI agents make the decisions. A Chainlink oracle brings in the real ETH price, and a smart contract keeps a public, tamper-proof record. Every piece runs on free tiers or a test network.</p>
+
+    <section class="panel">
+      <h2>Architecture</h2>
+      <svg class="arch" viewBox="0 0 900 380" role="img" aria-label="Architecture diagram">
+        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#868e96" stroke="none"/></marker></defs>
+        <rect x="330" y="140" width="240" height="110" fill="#fff9db" stroke="#fcc419"/>
+        <text x="450" y="168" text-anchor="middle" font-weight="700">World server (Node.js)</text>
+        <text x="450" y="190" text-anchor="middle" class="small">game rules · turn clock · AI agent runtime</text>
+        <text x="450" y="208" text-anchor="middle" class="small">receipt outbox · live stream (SSE)</text>
+        <text x="450" y="226" text-anchor="middle" class="small">JSON snapshot, restart-safe</text>
+
+        <rect x="20" y="130" width="220" height="130" fill="#fff0f6" stroke="#c2255c"/>
+        <text x="130" y="158" text-anchor="middle" font-weight="700">n8n (self-hosted)</text>
+        <text x="130" y="182" text-anchor="middle" class="small">Turn Router: stores → food alert</text>
+        <text x="130" y="198" text-anchor="middle" class="small">→ ask the general → deliver order</text>
+        <text x="130" y="222" text-anchor="middle" class="small">Market Sync: every 10 min, read</text>
+        <text x="130" y="238" text-anchor="middle" class="small">Chainlink via JSON-RPC → world</text>
+
+        <rect x="330" y="10" width="240" height="70" fill="#f3f0ff" stroke="#6741d9"/>
+        <text x="450" y="38" text-anchor="middle" font-weight="700">Free-tier LLM (Groq)</text>
+        <text x="450" y="58" text-anchor="middle" class="small">tool calling · rule-based fallback</text>
+
+        <rect x="660" y="40" width="220" height="80" fill="#e3fafc" stroke="#0b7285"/>
+        <text x="770" y="70" text-anchor="middle" font-weight="700">Chainlink ETH/USD</text>
+        <text x="770" y="90" text-anchor="middle" class="small">price feed on Base Sepolia</text>
+
+        <rect x="660" y="250" width="220" height="80" fill="#ebfbee" stroke="#2b8a3e"/>
+        <text x="770" y="280" text-anchor="middle" font-weight="700">RealmLedger contract</text>
+        <text x="770" y="300" text-anchor="middle" class="small">captures + season results</text>
+
+        <rect x="330" y="300" width="240" height="60" fill="#f8f9fa" stroke="#495057"/>
+        <text x="450" y="327" text-anchor="middle" font-weight="700">Spectators' browsers</text>
+        <text x="450" y="345" text-anchor="middle" class="small">read-only live stream</text>
+
+        <path d="M330 180H240"/><text x="252" y="172" class="small">turn webhook</text>
+        <path d="M240 215H330"/><text x="250" y="232" class="small">orders, food, price</text>
+        <path d="M450 140V80"/><text x="458" y="115" class="small">decide (tools)</text>
+        <path d="M570 230L660 280"/><text x="585" y="275" class="small">recordCapture()</text>
+        <path d="M770 250V120"/><text x="778" y="190" class="small">latestRoundData()</text>
+        <path d="M130 130Q130 60 660 70"/><text x="200" y="88" class="small">eth_call (Market Sync)</text>
+        <path d="M450 250V300"/>
+      </svg>
+    </section>
+
+    <section class="panel">
+      <h2>The Generals: AI agents</h2>
+      <p>Each turn the general gets its personality, a rules summary, its journal (memory) and past-season lessons. It calls read-only tools (<code>get_battlefield</code>, <code>get_enemy_position</code>, <code>get_market</code>) and then exactly one order tool. The server dry-runs every order through the same rules engine the game uses; an illegal order goes back to the model with the reason, and it corrects itself. The model never touches the game state directly.</p>
+      <p>Limits per decision: 5 model calls, 45 seconds, a daily call cap below the free quota. If the AI is unavailable, a rule-based bot takes over and the page says so ("standing orders"). Spectators can't send any text, so nothing typed by the public ever reaches a prompt.</p>
+    </section>
+
+    <section class="panel">
+      <h2>The Automations: n8n</h2>
+      <p><b>Turn Router</b> (event-driven orchestration). Built only from standard nodes:</p>
+      <ol class="steps">
+        <li><b>Webhook</b> receives "new turn" from the world and replies at once.</li>
+        <li><b>HTTP Request</b> reads the kingdom's gold and food.</li>
+        <li><b>IF</b> food is below 20%, then <b>HTTP Request</b> reorders food automatically (threshold alert → reorder).</li>
+        <li><b>HTTP Request</b> asks the AI general for an order (60-second timeout).</li>
+        <li><b>HTTP Request</b> delivers the order to the game.</li>
+      </ol>
+      <p><b>Market Sync</b> (scheduled data sync): every 10 minutes it calls the Chainlink feed with a raw JSON-RPC <code>eth_call</code> and posts the result to the world, which logs it whenever Chainlink has published a new price.</p>
+      <p>If n8n is down, the world notices, runs the turn itself, and logs that it did. The n8n editor is bound to localhost and never exposed publicly.</p>
+    </section>
+
+    <section class="panel">
+      <h2>The Oracle and the Ledger: Chainlink + blockchain</h2>
+      <p>The <b>RealmLedger</b> contract reads Chainlink's ETH/USD feed itself on every capture and stamps that price into the permanent record, alongside a hash of the full battle record. Only the game's operator wallet can write; anyone can read.</p>
+      <p id="addresses" class="muted">Loading contract details…</p>
+      <p>Receipts go through an outbox: one sender, strict order, retries with backoff. If the chain is unreachable, the game keeps going and the receipts are sent when it comes back.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Verify a battle</h2>
+      <p>Every battle is settled by fixed rules and a dice roll seeded from <code>sha256(season:turn:battle)</code>, so anyone can recompute it. The hash of the battle record below is the <code>battleHash</code> written on-chain with a capture.</p>
+      <form id="verify" class="verify">
+        <label>Season <input id="v-season" type="number" min="1" value="1" required></label>
+        <label>Turn <input id="v-turn" type="number" min="1" value="3" required></label>
+        <button class="btn">Show battle</button>
+      </form>
+      <pre id="v-out" hidden></pre>
+    </section>
+
+    <section class="panel">
+      <h2>What it costs to run: $0</h2>
+      <ul>
+        <li>AI: free tier of an OpenAI-compatible provider (Groq by default). Any OpenAI-compatible model can be dropped in.</li>
+        <li>Automation: n8n Community Edition, self-hosted.</li>
+        <li>Chain: Base Sepolia test network, with gas from a free faucet. Only captures and season results are written.</li>
+        <li>Pacing: one turn every 30 minutes, around the clock. That's 48 AI decisions a day at about 2,700 tokens each, roughly 130,000 of the 200,000 free daily tokens, with a hard stop at 180,000. The slow pace also gives the real ETH price time to move between turns.</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>Tests</h2>
+      <ul>
+        <li>Game rules: map symmetry, deterministic battles, illegal-order rejection, economy and starvation, fog of war, season endings, full simulated seasons, and a check that every event type has Tech Lens copy (<code>npm test</code>).</li>
+        <li>AI loop: intel → rejected order → corrected order, link and markup stripping, and fallback on API failure (with a scripted fake model).</li>
+        <li>Contract (Foundry): price stamping, access control, bad-price rejection, events, and a fork test against the real Chainlink feed.</li>
+        <li>End to end: n8n → AI → game → receipt confirmed on a local fork of Base Sepolia, then on Base Sepolia itself.</li>
+      </ul>
+    </section>
+
+    <footer class="foot"><p><a href="/">Back to the live war</a> · <a id="repo" href="#" hidden>Source code</a> · <a id="hire" href="#">Hire me</a></p></footer>
+  </main>
+  <script type="module">
+    const $ = (s) => document.querySelector(s);
+    const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    const safe = (u) => (/^(https?:|mailto:)/i.test(u ?? '') ? u : '');
+    fetch('/api/state').then((r) => r.json()).then(({ meta }) => {
+      const c = meta.chain, link = (kind, a) => (c.explorer ? `<a href="${esc(c.explorer)}/${kind}/${esc(a)}" target="_blank" rel="noopener">${esc(a)}</a>` : `<code>${esc(a)}</code>`);
+      $('#addresses').innerHTML = `${c.explorer ? 'Base Sepolia' : 'Local test chain (a fork of Base Sepolia)'} · RealmLedger: ${c.ledger ? link('address', c.ledger) : 'not deployed yet'} · Chainlink ETH/USD feed: ${link('address', c.feed)}`;
+      if (safe(meta.public.repoUrl)) Object.assign($('#repo'), { href: meta.public.repoUrl, hidden: false });
+      $('#hire').href = safe(meta.public.hireUrl) || (meta.public.email ? `mailto:${meta.public.email}` : '#');
+    });
+    $('#verify').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const r = await fetch(`/api/battles/${+$('#v-season').value}/${+$('#v-turn').value}`);
+      const d = await r.json();
+      $('#v-out').hidden = false;
+      $('#v-out').textContent = r.ok ? `keccak256 = ${d.keccak256}\n\n${JSON.stringify(d.battle, null, 2)}` : d.error;
+    });
+  </script>
+</body>
+</html>

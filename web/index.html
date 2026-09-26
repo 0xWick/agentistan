@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nobody's Playing</title>
+  <meta name="description" content="A war nobody is playing, run entirely by AI generals, business automations, real market data and a public ledger. Just watch.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 28V10h4V5h5v5h6V5h5v5h4v18z' fill='%23e8590c'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>Nobody's Playing</h1>
+      <p class="thesis">A war nobody is playing, run entirely by AI generals, business automations, real market data and a public ledger. Just watch.</p>
+    </div>
+    <div class="status">
+      <span id="live" class="pill">Connecting…</span>
+      <span id="clock" class="pill"></span>
+      <span id="next" class="pill"></span>
+      <span class="pill tag">Testnet</span>
+      <span id="ai-mode" class="pill"></span>
+      <button id="intro-open" class="btn">What am I looking at?</button>
+    </div>
+    <dl id="counters" class="counters"></dl>
+  </header>
+
+  <main class="grid">
+    <section class="panel board" aria-label="Battle map">
+      <svg id="map" viewBox="0 0 500 500" role="img" aria-label="10 by 10 battle map">
+        <defs>
+          <radialGradient id="burst"><stop offset="0" stop-color="#fff7d6"/><stop offset=".5" stop-color="#ffb347"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+        </defs>
+        <g id="terrain"></g><g id="owners"></g><g id="strongholds"></g><g id="armies"></g><g id="fx"></g>
+      </svg>
+      <ul class="legend">
+        <li><i class="sw sw-red"></i>Emberreach land</li>
+        <li><i class="sw sw-blue"></i>Frostmere land</li>
+        <li><i class="sw sw-forest"></i>Forest</li>
+        <li><i class="sw sw-mountain"></i>Mountain</li>
+        <li><i class="sw sw-river"></i>River</li>
+      </ul>
+    </section>
+
+    <section class="panel theater" aria-live="polite">
+      <div class="theater-head"><h2>Decision theater</h2><button id="replay" class="btn">Replay last turn</button></div>
+      <p id="theater-who" class="who">Waiting for the next turn…</p>
+      <ol id="theater" class="theater-log"></ol>
+    </section>
+
+    <section class="panel pipeline" aria-label="Pipeline for the current turn">
+      <ol id="pipeline"></ol>
+    </section>
+
+    <section class="panel log">
+      <div class="log-head">
+        <h2>Live event log</h2>
+        <div id="filters" class="filters" role="group" aria-label="Filter by technology"></div>
+      </div>
+      <ol id="events" class="events"></ol>
+    </section>
+
+    <section class="panel lens" aria-live="polite">
+      <h2>Tech Lens</h2>
+      <div id="lens"></div>
+    </section>
+
+    <section class="panel kingdoms" id="kingdoms"></section>
+
+    <section class="panel proof">
+      <div class="proof-head">
+        <h2>Proof: on-chain receipts</h2>
+        <p id="contract" class="muted"></p>
+      </div>
+      <ol id="proofs" class="proofs"></ol>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Built by <strong id="owner">the builder</strong> · <a id="hire" href="#">Hire me</a> · <a href="/how">How it's built</a><span id="repo-wrap" hidden> · <a id="repo" href="#">Source code</a></span></p>
+    <p class="muted">Test network only. No real money. Not financial advice. Market effect on the game is amplified 10× so you can see it.</p>
+  </footer>
+
+  <dialog id="intro" aria-labelledby="intro-title">
+    <h2 id="intro-title">Meet the cast</h2>
+    <p class="muted">Nobody is playing this game. Four technologies run it on their own, one turn every 30 minutes, around the clock:</p>
+    <div class="cast">
+      <article><h3><span class="badge b-agent">AI</span> The Generals</h3><p>Two AI agents with their own personalities read the battlefield through tools, give one order per turn and keep a journal.</p><p class="biz">In your business: an assistant that checks your data before it acts, and remembers what happened last time.</p></article>
+      <article><h3><span class="badge b-n8n">n8n</span> The Automations</h3><p>Workflows run every turn: they ask the general for orders, deliver them to the game, and reorder food when it runs low.</p><p class="biz">In your business: form → CRM → invoice → welcome email, with nobody clicking.</p></article>
+      <article><h3><span class="badge b-oracle">Oracle</span> The Oracle</h3><p>The real ETH price comes in from Chainlink. Emberreach keeps its treasury in ETH, so the market moves its income.</p><p class="biz">In your business: prices, payouts or budgets that follow live market data.</p></article>
+      <article><h3><span class="badge b-chain">Chain</span> The Ledger</h3><p>Every capture is written to a public blockchain, stamped with the ETH price at that moment. Nobody, including the builder, can edit it.</p><p class="biz">In your business: tamper-proof certificates, supply-chain records or payouts.</p></article>
+    </div>
+    <form method="dialog"><button class="btn primary">Start watching</button></form>
+  </dialog>
+
+  <div id="results" class="results" hidden></div>
+</body>
+</html>

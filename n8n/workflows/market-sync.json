@@ -1,0 +1,59 @@
+{
+  "id": "nbpMarketSync001",
+  "name": "Market Sync",
+  "active": true,
+  "versionId": "5b0e6a86-1f1d-4c2a-9f55-0d7a3c1e0002",
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {},
+  "tags": [],
+  "nodes": [
+    {
+      "id": "1c8f6b4f-0001-4b62-9e2f-6d3c4a2b0001",
+      "name": "Every 10 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300],
+      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 10 }] } }
+    },
+    {
+      "id": "1c8f6b4f-0002-4b62-9e2f-6d3c4a2b0002",
+      "name": "Read Chainlink ETH/USD",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ORACLE_RPC_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: $env.FEED_ADDRESS, data: '0xfeaf968c' }, 'latest'] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "1c8f6b4f-0003-4b62-9e2f-6d3c4a2b0003",
+      "name": "Send price to the world",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WORLD_URL }}/internal/oracle/price",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Realm-Secret", "value": "={{ $env.REALM_SECRET }}" },
+          { "name": "X-N8N-Execution", "value": "={{ $execution.id }}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ raw: $json.result, source: 'n8n' }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Every 10 minutes": { "main": [[{ "node": "Read Chainlink ETH/USD", "type": "main", "index": 0 }]] },
+    "Read Chainlink ETH/USD": { "main": [[{ "node": "Send price to the world", "type": "main", "index": 0 }]] }
+  }
+}
