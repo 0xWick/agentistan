@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>How it's built · Nobody's Playing</title>
   <meta name="description" content="Architecture of Nobody's Playing: AI agents, n8n automations, a Chainlink oracle and an on-chain ledger.">
+  <script>try { const t = localStorage.getItem('np-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
   <link rel="stylesheet" href="/style.css">
   <style>
     .page { max-width: 960px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
@@ -12,20 +13,21 @@
     .page h2 { font-size: .8rem; }
     .page section p, .page section li { max-width: 75ch; }
     .arch { width: 100%; height: auto; }
-    .arch rect { rx: 10; stroke-width: 1.5; }
-    .arch text { font: 13px ui-sans-serif, system-ui, sans-serif; fill: #1f2328; }
-    .arch .small { font-size: 11px; fill: #676b72; }
+    .arch rect { rx: 10; stroke-width: 1.5; fill-opacity: .14; }
+    .arch text { font: 13px ui-sans-serif, system-ui, sans-serif; fill: var(--ink); }
+    .arch .small { font-size: 11px; fill: var(--muted); }
     .arch path { fill: none; stroke: #868e96; stroke-width: 1.6; marker-end: url(#arrow); }
     .verify { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
     .verify label { display: grid; font-size: .8rem; color: var(--muted); gap: 2px; }
-    .verify input { font: inherit; width: 90px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+    .verify input { font: inherit; width: 90px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+    .page-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     pre { background: #212529; color: #e9ecef; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: .8rem; white-space: pre-wrap; word-break: break-all; }
     ol.steps li { margin: 4px 0; }
   </style>
 </head>
 <body>
   <main class="page">
-    <p><a href="/">← Back to the live war</a></p>
+    <div class="page-top"><a href="/">← Back to the live war</a><button id="theme" class="btn" aria-pressed="false">Dark mode</button></div>
     <h1>How it's built</h1>
     <p class="thesis">One small server owns the game. An automation platform runs every turn. Two AI agents make the decisions. A Chainlink oracle brings in the real ETH price, and a smart contract keeps a public, tamper-proof record. Every piece runs on free tiers or a test network.</p>
 
@@ -33,32 +35,32 @@
       <h2>Architecture</h2>
       <svg class="arch" viewBox="0 0 900 380" role="img" aria-label="Architecture diagram">
         <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#868e96" stroke="none"/></marker></defs>
-        <rect x="330" y="140" width="240" height="110" fill="#fff9db" stroke="#fcc419"/>
+        <rect x="330" y="140" width="240" height="110" fill="#fcc419" stroke="#fcc419"/>
         <text x="450" y="168" text-anchor="middle" font-weight="700">World server (Node.js)</text>
         <text x="450" y="190" text-anchor="middle" class="small">game rules · turn clock · AI agent runtime</text>
         <text x="450" y="208" text-anchor="middle" class="small">receipt outbox · live stream (SSE)</text>
         <text x="450" y="226" text-anchor="middle" class="small">JSON snapshot, restart-safe</text>
 
-        <rect x="20" y="130" width="220" height="130" fill="#fff0f6" stroke="#c2255c"/>
+        <rect x="20" y="130" width="220" height="130" fill="#c2255c" stroke="#c2255c"/>
         <text x="130" y="158" text-anchor="middle" font-weight="700">n8n (self-hosted)</text>
         <text x="130" y="182" text-anchor="middle" class="small">Turn Router: stores → food alert</text>
         <text x="130" y="198" text-anchor="middle" class="small">→ ask the general → deliver order</text>
         <text x="130" y="222" text-anchor="middle" class="small">Market Sync: every 10 min, read</text>
         <text x="130" y="238" text-anchor="middle" class="small">Chainlink via JSON-RPC → world</text>
 
-        <rect x="330" y="10" width="240" height="70" fill="#f3f0ff" stroke="#6741d9"/>
+        <rect x="330" y="10" width="240" height="70" fill="#6741d9" stroke="#6741d9"/>
         <text x="450" y="38" text-anchor="middle" font-weight="700">Free-tier LLM (Groq)</text>
         <text x="450" y="58" text-anchor="middle" class="small">tool calling · rule-based fallback</text>
 
-        <rect x="660" y="40" width="220" height="80" fill="#e3fafc" stroke="#0b7285"/>
+        <rect x="660" y="40" width="220" height="80" fill="#0b7285" stroke="#0b7285"/>
         <text x="770" y="70" text-anchor="middle" font-weight="700">Chainlink ETH/USD</text>
         <text x="770" y="90" text-anchor="middle" class="small">price feed on Base Sepolia</text>
 
-        <rect x="660" y="250" width="220" height="80" fill="#ebfbee" stroke="#2b8a3e"/>
+        <rect x="660" y="250" width="220" height="80" fill="#2b8a3e" stroke="#2b8a3e"/>
         <text x="770" y="280" text-anchor="middle" font-weight="700">RealmLedger contract</text>
         <text x="770" y="300" text-anchor="middle" class="small">captures + season results</text>
 
-        <rect x="330" y="300" width="240" height="60" fill="#f8f9fa" stroke="#495057"/>
+        <rect x="330" y="300" width="240" height="60" fill="#495057" stroke="#495057"/>
         <text x="450" y="327" text-anchor="middle" font-weight="700">Spectators' browsers</text>
         <text x="450" y="345" text-anchor="middle" class="small">read-only live stream</text>
 
@@ -132,6 +134,7 @@
 
     <footer class="foot"><p><a href="/">Back to the live war</a> · <a href="/history">Past seasons</a> · <a id="hire" href="#">Hire me</a><span id="repo-wrap" hidden> · <a id="repo" href="#">Source code</a></span></p></footer>
   </main>
+  <script type="module" src="/theme.js"></script>
   <script type="module">
     const $ = (s) => document.querySelector(s);
     const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

@@ -17,7 +17,7 @@ Two kingdoms fight over seven strongholds. Nobody plays: four technologies run t
 | **Chainlink oracle** | The real ETH/USD price comes in from Chainlink. Emberreach keeps its treasury in ETH, so the market moves its income (amplified 10× so you can see it). | Contracts and apps that react to live exchange rates, weather or shipping data. |
 | **Blockchain ledger** | Every capture is written to the `RealmLedger` contract on Base Sepolia. The contract reads Chainlink itself and stamps the price into the record, with a hash of the full battle. | Tamper-proof certificates, supply-chain records or payouts. |
 
-The **Tech Lens** panel translates every event into plain English plus a business analogy. **Past seasons** replays any finished season as a timelapse.
+The **Tech Lens** panel translates every event into plain English plus a business analogy. The **timeline** slider moves through the whole season event by event (drag, arrow keys, or scroll over it; Shift + arrow jumps a turn): the map, log, AI reasoning and cards all rewind and replay, and **Live** snaps back to real time. **Past seasons** replays any finished season the same way. Light and dark themes follow the system, with a toggle.
 
 ## Proof it's real
 

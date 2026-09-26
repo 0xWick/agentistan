@@ -3,6 +3,7 @@ import http from 'node:http';
 import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
+import { createGzip } from 'node:zlib';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { keccak256, stringToHex } from 'viem';
@@ -123,6 +124,7 @@ async function beginTurn() {
     W.state = r.state;
     W.startedTurn = traceId;
     r.events.forEach((e) => emit(e.type, e.kingdom, e.summary, e.data, traceId));
+    record({ k: 's', s: snapshot() });
     save();
   }
   const k = W.state.active;
@@ -171,11 +173,10 @@ function applyGeneral(k, d, via, executionId) {
   clearTimeout(pending.timer);
   pending = null;
   W.state = r.state;
+  if (d.memory_note) W.memory.journal[k] = [...W.memory.journal[k], { turn, note: d.memory_note }].slice(-20);
   r.events.forEach((e) => emit(e.type, e.kingdom, e.summary, e.data, traceId));
-  if (d.memory_note) {
-    W.memory.journal[k] = [...W.memory.journal[k], { turn, note: d.memory_note }].slice(-20);
-    emit('agent.memory_written', k, `${CAST[k].general}'s journal: "${d.memory_note}"`, { note: d.memory_note }, traceId);
-  }
+  record({ k: 's', s: snapshot() }); // the map changes right where the move appears in the recording
+  if (d.memory_note) emit('agent.memory_written', k, `${CAST[k].general}'s journal: "${d.memory_note}"`, { note: d.memory_note }, traceId);
   if (via === 'n8n') emit('n8n.workflow_finished', k, `Turn Router delivered ${CAST[k].general}'s order to the game (execution #${executionId})`, { executionId }, traceId);
   if (r.battle) {
     const json = JSON.stringify(r.battle); // canonical battle record; its hash goes on-chain with any capture
@@ -184,7 +185,6 @@ function applyGeneral(k, d, via, executionId) {
   for (const e of r.events.filter((x) => x.type === 'stronghold.captured')) {
     enqueue('capture', [W.state.season, turn, e.data.strongholdId, KINGDOM_ID[e.kingdom], W.battles.at(-1).hash], `Turn ${turn} · ${CAST[e.kingdom].realm} captured ${e.data.name}`, traceId);
   }
-  record({ k: 's', s: snapshot() });
   save();
   pushState();
   if (W.state.status === 'ended') endSeason();
@@ -434,8 +434,10 @@ const server = http.createServer(async (req, res) => {
     const sf = p.match(/^\/api\/seasons\/(\d+)$/);
     if (sf) {
       if (!existsSync(seasonFile(+sf[1]))) return send(res, 404, { error: 'no recording for that season' });
-      res.writeHead(200, { ...HEADERS, 'content-type': 'application/x-ndjson', 'cache-control': 'no-cache' });
-      return createReadStream(seasonFile(+sf[1])).pipe(res);
+      const gzip = /\bgzip\b/.test(req.headers['accept-encoding'] ?? '');
+      res.writeHead(200, { ...HEADERS, 'content-type': 'application/x-ndjson', 'cache-control': 'no-cache', ...(gzip && { 'content-encoding': 'gzip' }) });
+      const file = createReadStream(seasonFile(+sf[1]));
+      return gzip ? file.pipe(createGzip()).pipe(res) : file.pipe(res);
     }
     if (p === '/api/events') {
       const q = new URL(req.url, 'http://x').searchParams, limit = Math.min(200, +q.get('limit') || 100);

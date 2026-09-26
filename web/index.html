@@ -12,6 +12,7 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 28V10h4V5h5v5h6V5h5v5h4v18z' fill='%23e8590c'/%3E%3C/svg%3E">
+  <script>try { const t = localStorage.getItem('np-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
@@ -29,16 +30,21 @@
       <span id="ai-mode" class="pill"></span>
       <button id="intro-open" class="btn">What am I looking at?</button>
       <a class="btn" href="/history">Past seasons</a>
-    </div>
-    <div id="tl-bar" class="tl-bar" hidden>
-      <b id="tl-title">Timelapse</b>
-      <span id="tl-progress" class="muted"></span>
-      <button id="tl-pause" class="btn">Pause</button>
-      <span class="tl-speed" role="group" aria-label="Playback speed"><button class="btn" data-speed="1">1×</button><button class="btn" data-speed="4">4×</button><button class="btn" data-speed="16">16×</button></span>
-      <a class="btn primary" href="/">Back to live</a>
+      <button id="theme" class="btn" aria-pressed="false">Dark mode</button>
     </div>
     <dl id="counters" class="counters"></dl>
   </header>
+
+  <div id="timeline" class="timeline" role="group" aria-label="Timeline of the season">
+    <div>
+      <button id="tl-play" class="btn">Play</button>
+      <span class="tl-speed" role="group" aria-label="Playback speed"><button class="btn" data-speed="1">1×</button><button class="btn" data-speed="4">4×</button><button class="btn" data-speed="16">16×</button></span>
+      <input id="tl-range" type="range" min="0" max="0" value="0" step="1" list="tl-turns" aria-label="Move through the season: drag, use the arrow keys, or scroll here (Shift + arrow jumps a turn)">
+      <datalist id="tl-turns"></datalist>
+      <span id="tl-label" class="tl-label">Loading the season…</span>
+      <button id="tl-live" class="btn">Live</button>
+    </div>
+  </div>
 
   <main class="grid">
     <section class="panel board" aria-label="Battle map">
@@ -69,7 +75,7 @@
 
     <section class="panel log">
       <div class="log-head">
-        <h2>Live event log</h2>
+        <h2>Event log</h2>
         <div id="filters" class="filters" role="group" aria-label="Filter by technology"></div>
       </div>
       <ol id="events" class="events"></ol>
@@ -98,7 +104,7 @@
 
   <dialog id="intro" aria-labelledby="intro-title">
     <h2 id="intro-title">Meet the cast</h2>
-    <p class="muted">Nobody is playing this game. Four technologies run it on their own, one turn every 30 minutes, around the clock:</p>
+    <p class="muted">Nobody is playing this game. Four technologies run it on their own, one turn every 30 minutes, around the clock. Drag the timeline to look back through the season; press Live to catch up.</p>
     <div class="cast">
       <article><h3><span class="badge b-agent">AI</span> The Generals</h3><p>Two AI agents with their own personalities read the battlefield through tools, give one order per turn and keep a journal.</p><p class="biz">In your business: an assistant that checks your data before it acts, and remembers what happened last time.</p></article>
       <article><h3><span class="badge b-n8n">n8n</span> The Automations</h3><p>Workflows run every turn: they ask the general for orders, deliver them to the game, and reorder food when it runs low.</p><p class="biz">In your business: form → CRM → invoice → welcome email, with nobody clicking.</p></article>
