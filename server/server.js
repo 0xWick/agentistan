@@ -1,6 +1,6 @@
 // World server: owns the truth. Turn clock, hand-off to n8n, agent runtime, chain outbox, public API and live stream.
 import http from 'node:http';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
 import { extname, join, normalize } from 'node:path';
@@ -25,6 +25,7 @@ const SCENARIO = env.SCENARIO || 'standard';
 const WEB = fileURLToPath(new URL('../web/', import.meta.url));
 const DATA_DIR = fileURLToPath(new URL('../data/', import.meta.url));
 const DATA = join(DATA_DIR, 'world.json');
+const seasonFile = (n) => join(DATA_DIR, 'seasons', `season-${n}.jsonl`);
 const PUBLIC = { owner: env.PUBLIC_OWNER_NAME || 'the builder', hireUrl: env.PUBLIC_HIRE_URL || '', repoUrl: env.PUBLIC_REPO_URL || '', email: env.PUBLIC_CONTACT_EMAIL || '' };
 
 const chain = makeChain(env);
@@ -44,6 +45,18 @@ function save() {
   renameSync(`${DATA}.tmp`, DATA);
 }
 
+// ---------- season history: every event plus a snapshot per turn, append-only, one file per season ----------
+// The UI replays these as timelapses (/?season=N), so past seasons stay watchable.
+const snapshot = () => {
+  const { meta, ...s } = publicState();
+  return { at: new Date().toISOString(), ...s };
+};
+function record(line) {
+  mkdirSync(join(DATA_DIR, 'seasons'), { recursive: true });
+  appendFileSync(seasonFile(W.state.season), `${JSON.stringify(line)}\n`);
+}
+const seasonInfo = (n) => W.history.find((h) => h.season === n);
+
 // ---------- events + live stream ----------
 const clients = new Set();
 let paused = false, lastViewerAt = Date.now(), lastN8nAt = 0, stateTimer = null;
@@ -55,6 +68,7 @@ function emit(type, kingdom, summary, data = {}, traceId = trace()) {
   if (COUNT[type]) W.counters[COUNT[type]]++;
   W.events.push(e);
   if (W.events.length > 400) W.events.splice(0, W.events.length - 400);
+  record({ k: 'e', e });
   broadcast('event', e);
   return e;
 }
@@ -170,6 +184,7 @@ function applyGeneral(k, d, via, executionId) {
   for (const e of r.events.filter((x) => x.type === 'stronghold.captured')) {
     enqueue('capture', [W.state.season, turn, e.data.strongholdId, KINGDOM_ID[e.kingdom], W.battles.at(-1).hash], `Turn ${turn} · ${CAST[e.kingdom].realm} captured ${e.data.name}`, traceId);
   }
+  record({ k: 's', s: snapshot() });
   save();
   pushState();
   if (W.state.status === 'ended') endSeason();
@@ -186,12 +201,14 @@ function watchdog(traceId) {
 
 async function endSeason() {
   const s = W.state;
+  Object.assign(seasonInfo(s.season) ?? {}, { endedAt: new Date().toISOString(), winner: s.winner, reason: s.endReason, rounds: E.roundOf(s), turns: s.turn });
   enqueue('season', [s.season, KINGDOM_ID[s.winner], E.roundOf(s), keccak256(stringToHex(JSON.stringify(s)))], `Season ${s.season} · ${CAST[s.winner].realm} won`, trace());
   for (const k of ['red', 'blue']) {
     const l = await lesson({ s, k, llm });
     W.memory.lessons[k] = [...W.memory.lessons[k], l].slice(-10);
     emit('agent.lesson', k, `${CAST[k].general}'s lesson: "${l}"`, { lesson: l });
   }
+  record({ k: 's', s: snapshot() }); // the recording ends with the lessons
   save();
   pushState();
   nextTimer = setTimeout(startSeason, RESULTS_MS);
@@ -201,6 +218,8 @@ function startSeason() {
   W.state = E.newSeason(W.state.season + 1, SCENARIO, W.price?.usd ?? null);
   W.memory.journal = { red: [], blue: [] };
   W.startedTurn = null;
+  W.history.push({ season: W.state.season, scenario: SCENARIO, startedAt: new Date().toISOString() });
+  record({ k: 's', s: snapshot() });
   emit('season.started', null, `Season ${W.state.season} begins. The generals remember last season's lessons.`);
   save();
   pushState();
@@ -411,6 +430,13 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/state') return send(res, 200, publicState());
     if (p === '/api/health') return send(res, 200, health());
     if (p === '/api/proof') return send(res, 200, publicState().proofs);
+    if (p === '/api/seasons') return send(res, 200, W.history.map((h) => ({ ...h, live: h.season === W.state.season && W.state.status === 'running' })));
+    const sf = p.match(/^\/api\/seasons\/(\d+)$/);
+    if (sf) {
+      if (!existsSync(seasonFile(+sf[1]))) return send(res, 404, { error: 'no recording for that season' });
+      res.writeHead(200, { ...HEADERS, 'content-type': 'application/x-ndjson', 'cache-control': 'no-cache' });
+      return createReadStream(seasonFile(+sf[1])).pipe(res);
+    }
     if (p === '/api/events') {
       const q = new URL(req.url, 'http://x').searchParams, limit = Math.min(200, +q.get('limit') || 100);
       return send(res, 200, q.has('since') ? W.events.filter((e) => e.id > +q.get('since')).slice(0, limit) : W.events.slice(-limit)); // no since: latest
@@ -420,7 +446,7 @@ const server = http.createServer(async (req, res) => {
       const hit = W.battles.find((x) => x.season === +b[1] && x.turn === +b[2]);
       return hit ? send(res, 200, { battle: JSON.parse(hit.json), canonicalJson: hit.json, keccak256: hit.hash }) : send(res, 404, { error: 'no battle on that turn' });
     }
-    return await serveStatic(res, p === '/' ? 'index.html' : p === '/how' ? 'how.html' : p.slice(1));
+    return await serveStatic(res, p === '/' ? 'index.html' : p === '/how' ? 'how.html' : p === '/history' ? 'history.html' : p.slice(1));
   } catch (err) {
     console.error(err);
     if (!res.headersSent) send(res, 500, { error: 'internal error' });
@@ -431,6 +457,15 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, env.HOST || '127.0.0.1', () => { // behind a tunnel or proxy; set HOST=0.0.0.0 to expose directly
   console.log(`Nobody's Playing on http://localhost:${PORT} | n8n: ${N8N_TURN_URL || 'off'} | chain: ${chain.enabled ? `${chain.name} ${chain.ledger}` : 'off'} | AI: ${llm.status().mode} (${llm.model})`);
 });
+W.history ??= [];
+if (!existsSync(seasonFile(W.state.season))) {
+  // Recording starts now; keep whatever of this season the snapshot still holds.
+  const first = W.events.find((e) => e.season === W.state.season);
+  W.history = [...W.history.filter((h) => h.season !== W.state.season), { season: W.state.season, scenario: SCENARIO, startedAt: first?.ts ?? new Date().toISOString(), partial: W.state.turn > 1 }];
+  record({ k: 's', s: snapshot() });
+  W.events.filter((e) => e.season === W.state.season).forEach((e) => record({ k: 'e', e }));
+  save();
+}
 if (!W.events.length) emit('season.started', null, `Season ${W.state.season} begins.`);
 if (!W.price || !N8N_TURN_URL) refreshPrice().catch((err) => console.error('oracle read failed:', err.shortMessage ?? err.message));
 if (!N8N_TURN_URL) setInterval(() => refreshPrice().catch(() => {}), +(env.MARKET_POLL_MS || 600_000)); // n8n Market Sync does this otherwise

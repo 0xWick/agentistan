@@ -37,6 +37,13 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monosp
 .pipeline, .kingdoms, .proof { grid-column: 1 / -1; }
 @media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 
+.tl-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; border-radius: var(--radius); background: #fff3bf; border: 1px solid #ffe066; }
+.tl-bar[hidden] { display: none; }
+.tl-speed { display: inline-flex; gap: 4px; }
+.tl-speed .btn[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+a.btn { text-decoration: none; color: inherit; display: inline-block; }
+a.btn.primary { color: #fff; }
+
 /* map */
 .board svg { width: 100%; height: auto; display: block; border-radius: 6px; }
 .t { stroke: rgba(0, 0, 0, .06); stroke-width: 1; }

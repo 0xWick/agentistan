@@ -14,6 +14,7 @@ const STAGES = [
 ];
 const pipeStage = (e) => (e.type === 'turn.started' ? 'event' : ['n8n', 'agent', 'chain', 'game'].includes(e.stage) ? e.stage : null);
 
+const TIMELAPSE = +new URLSearchParams(location.search).get('season') || 0; // /?season=N replays a recorded season
 let S = null; // latest public state from the server
 let events = [];
 let pinned = null;
@@ -40,7 +41,7 @@ function connect() {
     renderTheater();
     renderPipeline();
     renderLens(true);
-    if (!autoplayed) { // a turn comes every 30 minutes, so show newcomers the last one straight away
+    if (!autoplayed && !TIMELAPSE) { // a turn comes every 30 minutes, so show newcomers the last one straight away
       autoplayed = true;
       if ($('#intro').open) $('#intro').addEventListener('close', replay, { once: true });
       else setTimeout(replay, 600);
@@ -90,7 +91,7 @@ async function replay() {
 }
 
 function renderNext() {
-  if (!S) return;
+  if (!S || TIMELAPSE) return;
   const s = S.state, at = S.meta.nextTurnAt, mins = Math.round(S.meta.turnIntervalMs / 60000);
   const left = Math.max(0, Math.round((at - Date.now()) / 1000));
   $('#next').textContent = s.status !== 'running' ? 'New season starting…'
@@ -214,7 +215,7 @@ function renderResults() {
   if (el.hidden) return;
   const lessons = ['red', 'blue'].map((k) => (S.lessons[k]?.length ? `<p><b>${S.meta.cast[k].general}:</b> “${esc(S.lessons[k].at(-1))}”</p>` : '')).join('');
   el.innerHTML = `<div class="card" role="dialog" aria-label="Season results"><p class="muted">Season ${s.season} is over</p><h2>${S.meta.cast[s.winner].realm} wins</h2><p>${esc(s.endReason)}.</p>
-    <p class="muted">The result is being written on-chain and each general has written a lesson into its memory. A new season starts in about a minute.</p>
+    <p class="muted">${TIMELAPSE ? 'End of the recording. The result was written on-chain and each general wrote a lesson into its memory.' : 'The result is being written on-chain and each general has written a lesson into its memory. A new season starts in about a minute.'}</p>
     ${lessons}<button class="btn" id="results-close">Keep watching</button></div>`;
 }
 
@@ -301,5 +302,57 @@ try {
 }
 setInterval(() => renderLens(), 3000);
 setInterval(renderNext, 1000);
+
+// ---------- timelapse: replay a recorded season (events + one snapshot per turn) through the same panels ----------
+let speed = 4;
+let tlPaused = false;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function timelapse(n) {
+  $('#tl-bar').hidden = false;
+  $('#tl-title').textContent = `Timelapse · Season ${n}`;
+  $('#live').textContent = 'Recording';
+  $('#live').className = 'pill tag';
+  $('#next').hidden = true;
+  const setSpeed = (v) => {
+    speed = v;
+    document.querySelectorAll('.tl-speed .btn').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.speed === v)));
+  };
+  setSpeed(speed);
+  document.querySelector('.tl-speed').addEventListener('click', (ev) => ev.target.dataset.speed && setSpeed(+ev.target.dataset.speed));
+  $('#tl-pause').addEventListener('click', () => {
+    tlPaused = !tlPaused;
+    $('#tl-pause').textContent = tlPaused ? 'Play' : 'Pause';
+  });
+  const [live, res] = await Promise.all([fetch('/api/state').then((r) => r.json()), fetch(`/api/seasons/${n}`)]);
+  const lines = res.ok ? (await res.text()).split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [];
+  const first = lines.find((l) => l.k === 's');
+  if (!first) {
+    $('#theater-who').textContent = `There is no recording of season ${n} yet.`;
+    return;
+  }
+  S = { ...live, ...first.s };
+  events = [];
+  drawBoard();
+  renderState();
+  renderLog();
+  const turns = lines.filter((l) => l.k === 's').length;
+  let seen = 0;
+  for (const line of lines) {
+    while (tlPaused) await sleep(200);
+    if (line.k === 's') {
+      Object.assign(S, line.s);
+      renderState();
+      $('#tl-progress').textContent = `Turn ${S.state.turn} · snapshot ${++seen} of ${turns} · ${new Date(line.s.at).toLocaleString()}`;
+      await sleep(1200 / speed);
+    } else {
+      onEvent(line.e);
+      await sleep(line.e.stage === 'agent' ? 260 / speed : 90 / speed);
+    }
+  }
+  $('#tl-progress').textContent += ' · end of recording';
+}
+
 renderFilters();
-connect();
+if (TIMELAPSE) timelapse(TIMELAPSE); // after the declarations above, which it uses
+else connect();

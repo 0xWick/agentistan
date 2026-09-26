@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Past seasons · Nobody's Playing</title>
+  <meta name="description" content="Every season of Nobody's Playing, recorded turn by turn. Watch any of them as a timelapse.">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .page { max-width: 960px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+    .page h1 { font-size: 1.6rem; }
+    .seasons { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    .seasons li { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 12px 14px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); }
+    .seasons .name { font-weight: 700; min-width: 90px; }
+    .seasons .what { flex: 1 1 260px; }
+    .win-red { color: var(--red); font-weight: 700; } .win-blue { color: var(--blue); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <p><a href="/">← Back to the live war</a></p>
+    <h1>Past seasons</h1>
+    <p class="thesis">Every season is recorded turn by turn: each AI decision, automation run, oracle price and on-chain receipt. Pick one to watch it again as a timelapse.</p>
+    <ol id="seasons" class="seasons"><li class="muted">Loading…</li></ol>
+  </main>
+  <script type="module">
+    const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    const realm = { red: 'Emberreach', blue: 'Frostmere' };
+    const day = (t) => (t ? new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
+    const list = await fetch('/api/seasons').then((r) => r.json());
+    document.querySelector('#seasons').innerHTML = list.slice().reverse().map((h) => `<li>
+      <span class="name">Season ${h.season}</span>
+      <span class="what">${h.live ? '<b>In progress</b>' : h.winner ? `<span class="win-${h.winner}">${realm[h.winner]} won</span>: ${esc(h.reason)}` : 'Ended'}
+        <br><span class="muted">${day(h.startedAt)}${h.endedAt ? ` → ${day(h.endedAt)}` : ''}${h.turns ? ` · ${h.turns} turns` : ''}${h.partial ? ' · recording began mid-season' : ''}</span></span>
+      <a class="btn" href="/?season=${h.season}">${h.live ? 'Watch from the start' : 'Watch timelapse'}</a>
+    </li>`).join('') || '<li class="muted">No seasons recorded yet.</li>';
+  </script>
+</body>
+</html>

@@ -130,7 +130,7 @@
       </ul>
     </section>
 
-    <footer class="foot"><p><a href="/">Back to the live war</a> · <a id="repo" href="#" hidden>Source code</a> · <a id="hire" href="#">Hire me</a></p></footer>
+    <footer class="foot"><p><a href="/">Back to the live war</a> · <a href="/history">Past seasons</a> · <a id="hire" href="#">Hire me</a><span id="repo-wrap" hidden> · <a id="repo" href="#">Source code</a></span></p></footer>
   </main>
   <script type="module">
     const $ = (s) => document.querySelector(s);
@@ -139,7 +139,10 @@
     fetch('/api/state').then((r) => r.json()).then(({ meta }) => {
       const c = meta.chain, link = (kind, a) => (c.explorer ? `<a href="${esc(c.explorer)}/${kind}/${esc(a)}" target="_blank" rel="noopener">${esc(a)}</a>` : `<code>${esc(a)}</code>`);
       $('#addresses').innerHTML = `${c.explorer ? 'Base Sepolia' : 'Local test chain (a fork of Base Sepolia)'} · RealmLedger: ${c.ledger ? link('address', c.ledger) : 'not deployed yet'} · Chainlink ETH/USD feed: ${link('address', c.feed)}`;
-      if (safe(meta.public.repoUrl)) Object.assign($('#repo'), { href: meta.public.repoUrl, hidden: false });
+      if (safe(meta.public.repoUrl)) {
+        $('#repo').href = meta.public.repoUrl;
+        $('#repo-wrap').hidden = false;
+      }
       $('#hire').href = safe(meta.public.hireUrl) || (meta.public.email ? `mailto:${meta.public.email}` : '#');
     });
     $('#verify').addEventListener('submit', async (ev) => {
