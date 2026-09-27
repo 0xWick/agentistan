@@ -40,7 +40,8 @@
     "PUBLIC_URL": "https://agentistan.umarkhatana.com",
     "PUBLIC_OWNER_NAME": "Umar Khatana",
     "PUBLIC_HIRE_URL": "https://umarkhatana.com",
-    "PUBLIC_BOOKING_URL": "https://calendly.com/realumargujjar/30min"
+    // utm_source shows on each Calendly booking, so you can see which meetings came from the game
+    "PUBLIC_BOOKING_URL": "https://calendly.com/realumargujjar/30min?utm_source=nobodys-playing&utm_medium=book-button"
   }
   // Secrets, set with `npx wrangler secret put NAME`: REALM_SECRET, LLM_API_KEY, DEPLOYER_PRIVATE_KEY
 }
