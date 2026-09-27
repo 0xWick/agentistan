@@ -112,6 +112,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .side dt { font-size: .75rem; color: var(--muted); }
 .side dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .side .low { color: var(--bad); font-size: .75rem; text-transform: uppercase; }
+.side .up { color: var(--good); } .side .down { color: var(--bad); }
 .side .bar { display: block; }
 
 #flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
@@ -165,6 +166,20 @@ a.btn { text-decoration: none; display: inline-block; }
 .stale .stale-note { display: block; }
 .stale .board svg, .stale .score, .stale .kingdoms { opacity: .35; filter: grayscale(.7); }
 .sh-name { font-size: 8.5px; font-weight: 700; text-anchor: middle; fill: var(--ink); stroke: var(--plains); stroke-width: 3px; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
+/* weather overlays: one per region of the map */
+.wx { pointer-events: auto; }
+.wx-clear { fill: transparent; }
+.wx-rain { fill: url(#p-rain); } .wx-tint-rain { fill: rgba(28, 126, 214, .10); }
+.wx-snow { fill: url(#p-snow); } .wx-tint-snow { fill: rgba(255, 255, 255, .28); } .wx-dot { fill: #fff; opacity: .9; }
+.wx-wind { fill: url(#p-wind); }
+.wx-line { stroke: #1c7ed6; stroke-width: 1.3; opacity: .45; }
+.wx-storm { fill: rgba(40, 44, 80, .30); }
+.wx-fog { fill: rgba(210, 214, 220, .55); }
+.wx-heat { fill: rgba(255, 212, 59, .28); } /* yellow, so it isn't mistaken for Emberreach's land */
+.wx-cold { fill: url(#p-cold); } .wx-frost { stroke: #74c0fc; stroke-width: 1; opacity: .55; } /* frost hatching, not Frostmere's blue */
+.wx-edge { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 5 5; opacity: .6; pointer-events: none; }
+.wx-label { font-size: 11px; font-weight: 700; fill: var(--ink); stroke: var(--plains); stroke-width: 3.5px; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
+.sw-weather { background: repeating-linear-gradient(110deg, rgba(28, 126, 214, .35) 0 2px, transparent 2px 5px); }
 .sw-castle { background: var(--neutral); border-color: var(--fort-line); }
 .sw-army { background: var(--red); border-radius: 50%; border-color: #fff; }
 .sw-red { background: var(--red-soft); } .sw-blue { background: var(--blue-soft); } .sw-forest { background: var(--forest); } .sw-mountain { background: var(--mountain); } .sw-river { background: var(--river); }

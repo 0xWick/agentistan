@@ -40,7 +40,7 @@ export const LENS = {
   'agent.lesson': ['agent', 'At season end each general wrote down one lesson to carry into the next season.', "A system that learns from last month's results and adjusts next month's plan."],
 
   'oracle.price_update': ['oracle', 'Real ETH, BTC and LINK prices were brought in from outside the game by Chainlink.', 'Your contracts or apps react to live exchange rates, weather or shipping data.'],
-  'market.shift': ['oracle', "A real price moved enough to matter. Each kingdom's gold income and fighting spirit follow its coin (Emberreach: ETH, Frostmere: BTC), and LINK sets the price of soldiers for both.", 'Prices, payouts or budgets that adjust themselves to a live market rate.'],
+  'market.shift': ['oracle', "A real price's trend this season moved enough to matter. Each kingdom's fighting spirit follows its coin (Emberreach: ETH, Frostmere: BTC), its treasury gains or loses gold with every move, and LINK sets the price of soldiers for both.", 'Prices, payouts or budgets that adjust themselves to a live market rate.'],
   'weather.changed': ['weather', "The real weather over this season's city changed, and the battlefield changed with it: rain turns roads to mud, fog blinds scouts, storms blunt attacks, snow and heat make armies hungrier.", 'Operations that adapt to live conditions: delivery routes around storms, staffing that follows the forecast.'],
 
   'chain.tx_queued': ['chain', 'A record is waiting in the outbox to be written to the blockchain. If the network is slow it retries, so nothing is lost.', 'A reliable outbox: every invoice or certificate is guaranteed to go out, even if a service blips.'],

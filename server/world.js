@@ -3,11 +3,11 @@
 import { DurableObject } from 'cloudflare:workers';
 import { keccak256, stringToHex } from 'viem';
 import * as E from './engine.js';
-import { CFG, CAST, MAP, PLACES } from './config.js';
+import { CFG, CAST, MAP, REGIONS, cityNamed } from './config.js';
 import { makeLLM, decide, lesson, clean, seasonStats } from './agent.js';
 import { makeChain, decodeRoundData, KINGDOM_ID } from './chain.js';
 import { LENS } from '../web/lens.js';
-import { headline, momentText, isMoment } from '../web/story.js';
+import { headline, momentText, isMoment, turnStory, WEATHER } from '../web/story.js';
 
 const COINS = ['ETH', 'BTC', 'LINK'];
 const COUNT = { 'agent.decision': 'decisions', 'agent.tool_called': 'toolCalls', 'n8n.workflow_started': 'automations', 'oracle.price_update': 'oracleReads', 'chain.tx_confirmed': 'receipts' };
@@ -16,13 +16,14 @@ const json = (status, body) => new Response(JSON.stringify(body), { status, head
 const pickArgs = (a) => Object.fromEntries(['x', 'y', 'n'].filter((f) => a?.[f] != null && Number.isFinite(+a[f])).map((f) => [f, Math.trunc(+a[f])]));
 const isKingdom = (k) => k === 'red' || k === 'blue';
 const COLOR = { red: 0xd9480f, blue: 0x1864ab, null: 0x495057 };
+const SKY_ICON = { clear: '☀️', rain: '🌧️', snow: '❄️', storm: '⛈️', wind: '💨', fog: '🌫️', heat: '🔥', cold: '🥶' };
 
 // What each snapshot carries besides the raw state, so recordings replay the market and weather effects too.
 export const effectsOf = (s) => ({
-  red: { coin: E.coinOf('red'), pct: E.marketPct(s, E.coinOf('red')), income: E.incomeMult(s, 'red'), mood: E.mood(s, 'red') },
-  blue: { coin: E.coinOf('blue'), pct: E.marketPct(s, E.coinOf('blue')), income: E.incomeMult(s, 'blue'), mood: E.mood(s, 'blue') },
+  red: { coin: E.coinOf('red'), pct: E.marketPct(s, E.coinOf('red')), mood: E.mood(s, 'red'), dividend: s.kingdoms.red.dividend ?? null },
+  blue: { coin: E.coinOf('blue'), pct: E.marketPct(s, E.coinOf('blue')), mood: E.mood(s, 'blue'), dividend: s.kingdoms.blue.dividend ?? null },
   LINK: { pct: E.marketPct(s, 'LINK'), cost: E.recruitCost(s) },
-  weather: E.weatherKind(s),
+  weather: Object.fromEntries(Object.entries(s.weather?.regions ?? {}).map(([id, w]) => [id, w.kind])),
 });
 
 export class World extends DurableObject {
@@ -55,7 +56,9 @@ export class World extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS battles (season INTEGER, turn INTEGER, json TEXT, hash TEXT, PRIMARY KEY (season, turn))');
     const row = this.sql.exec("SELECT v FROM kv WHERE k = 'world'").toArray()[0];
     this.W = row ? JSON.parse(row.v) : null; // null until /internal/import starts or migrates a world
-    if (this.W) this.llm = makeLLM(this.env, (this.W.llmUsage ??= {})); // usage is saved, so the daily cap survives restarts
+    if (!this.W) return;
+    this.W.state = E.upgrade(this.W.state); // a save from an older version of the rules (e.g. one sky for the whole map)
+    this.llm = makeLLM(this.env, (this.W.llmUsage ??= {})); // usage is saved, so the daily cap survives restarts
   }
 
   save() {
@@ -240,7 +243,10 @@ export class World extends DurableObject {
       this.enqueue('capture', [W.state.season, turn, e.data.strongholdId, KINGDOM_ID[e.kingdom], hash], `Turn ${turn} · ${CAST[e.kingdom].realm} captured ${e.data.name}`, traceId);
     }
     if (W.state.status === 'ended') this.at('seasonEnd', 0);
-    else this.schedule();
+    else {
+      this.schedule();
+      if (k === 'blue') this.roundReport(turn); // both generals have moved
+    }
     this.save();
     this.pushState();
     return { status: 200, body: { ok: true } };
@@ -274,11 +280,12 @@ export class World extends DurableObject {
     W.state = E.newSeason(W.state.season + 1, this.cfg.scenario, Object.fromEntries(COINS.map((c) => [c, W.prices[c]?.usd ?? null])));
     W.memory.journal = { red: [], blue: [] };
     W.startedTurn = null;
-    W.history.push({ season: W.state.season, scenario: this.cfg.scenario, place: W.state.weather.place, startedAt: new Date().toISOString() });
+    const places = this.places().map((p) => p.place);
+    W.history.push({ season: W.state.season, scenario: this.cfg.scenario, places, startedAt: new Date().toISOString() });
     this.record({ k: 's', s: this.snapshot() });
-    this.emit('season.started', null, `Season ${W.state.season} begins under the real sky over ${W.state.weather.place}. The generals remember last season's lessons.`, { place: W.state.weather.place });
+    await this.refreshWeather().catch((err) => console.error('weather read failed:', err.message)); // the new skies, right away
+    this.emit('season.started', null, `Season ${W.state.season} begins under real skies over ${places.map((n) => n.split(',')[0]).join(', ')}. The generals remember last season's lessons.`, { places });
     this.schedule(3000);
-    await this.refreshWeather().catch((err) => console.error('weather read failed:', err.message)); // the new battlefield's sky, right away
     this.pushState();
   }
 
@@ -354,8 +361,8 @@ export class World extends DurableObject {
       const a = after[k];
       if (Math.abs(a.pct - (said[a.coin] ?? 0)) < 0.5) continue;
       said[a.coin] = a.pct;
-      this.emit('market.shift', k, `${a.coin} is ${a.pct >= 0 ? 'up' : 'down'} ${Math.abs(a.pct).toFixed(2)}% this season: ${CAST[k].realm} now earns x${a.income} gold and fights ${a.mood >= 0 ? '+' : ''}${Math.round(a.mood * 100)}%`,
-        { coin: a.coin, pct: a.pct, before: before[k].income, after: a.income, mood: a.mood });
+      this.emit('market.shift', k, `${a.coin} is ${a.pct >= 0 ? 'up' : 'down'} ${Math.abs(a.pct).toFixed(2)}% this season: ${CAST[k].realm} now fights ${a.mood >= 0 ? '+' : ''}${Math.round(a.mood * 100)}%`,
+        { coin: a.coin, pct: a.pct, before: before[k].mood, mood: a.mood });
     }
     if (Math.abs(after.LINK.pct - (said.LINK ?? 0)) >= 1) {
       said.LINK = after.LINK.pct;
@@ -372,49 +379,76 @@ export class World extends DurableObject {
     this.onPrices(rounds, 'world');
   }
 
-  // ---------- weather: Open-Meteo over this season's city, from n8n Weather Sync (or read directly) ----------
-  onWeather(cur, source, executionId) {
-    const W = this.W, place = PLACES.find((p) => p.name === W.state.weather.place);
-    const w = { code: +cur.weather_code, tempC: +cur.temperature_2m, windKmh: +cur.wind_speed_10m };
-    if (![w.code, w.tempC, w.windKmh].every(Number.isFinite)) return { status: 400, body: { reason: 'need weather_code, temperature_2m and wind_speed_10m' } };
-    const was = E.weatherKind(W.state);
-    W.state = E.setWeather(W.state, w);
+  // ---------- weather: four regions, each under a real city's sky (Open-Meteo, from n8n Weather Sync or read directly) ----------
+  places() { // the city each region was dealt this season, in REGIONS order (what /api/weather tells n8n)
+    return REGIONS.map((r) => { const c = cityNamed(this.W.state.weather.regions[r.id].place); return { id: r.id, name: r.name, place: c.name, lat: c.lat, lon: c.lon }; });
+  }
+
+  // readings: Open-Meteo `current` objects, one per region in places() order.
+  onWeather(readings, source, executionId) {
+    const W = this.W, places = this.places();
+    if (!Array.isArray(readings) || readings.length !== places.length) return { status: 400, body: { reason: `current must be an array of ${places.length} Open-Meteo readings, one per region` } };
+    const changed = [];
+    places.forEach((p, i) => {
+      const cur = readings[i] ?? {}, w = { code: +cur.weather_code, tempC: +cur.temperature_2m, windKmh: +cur.wind_speed_10m, place: p.place };
+      if (![w.code, w.tempC, w.windKmh].every(Number.isFinite)) return;
+      const was = W.state.weather.regions[p.id]?.kind ?? 'clear';
+      W.state = E.setWeather(W.state, p.id, w);
+      const now = W.state.weather.regions[p.id].kind;
+      if (now !== was) changed.push({ ...p, ...w, kind: now, was });
+    });
     W.weatherAt = Date.now();
-    const now = E.weatherKind(W.state);
-    if (now === was && executionId) W.counters.automations++; // a change is counted by its n8n event below
-    if (now !== was) {
-      if (executionId) this.emit('n8n.workflow_started', null, `Weather Sync automation (execution #${executionId}) read the sky over ${place?.name} from Open-Meteo`, { executionId, workflow: 'Weather Sync' });
-      const EFFECT = { clear: 'no effect on the war', rain: 'mud: every army moves only 1 step', storm: 'attackers fight at -30%', snow: 'armies eat double', heat: 'armies eat 50% more', fog: 'scouts see only 1 tile' };
-      this.emit('weather.changed', null, `${now[0].toUpperCase()}${now.slice(1)} over ${place?.name}: ${EFFECT[now]} (${Math.round(w.tempC)}°C, wind ${Math.round(w.windKmh)} km/h, via ${source === 'n8n' ? 'n8n' : 'the world server'})`,
-        { kind: now, was, ...w, place: place?.name, source });
+    if (!changed.length && executionId) W.counters.automations++; // otherwise counted by its n8n event below
+    if (changed.length && executionId) this.emit('n8n.workflow_started', null, `Weather Sync automation (execution #${executionId}) read the sky over ${places.map((p) => p.place.split(',')[0]).join(', ')} from Open-Meteo`, { executionId, workflow: 'Weather Sync' });
+    for (const c of changed) {
+      this.emit('weather.changed', null, `${c.kind[0].toUpperCase()}${c.kind.slice(1)} in the ${c.name} (the real sky over ${c.place}, ${Math.round(c.tempC)}°C, wind ${Math.round(c.windKmh)} km/h): ${WEATHER[c.kind]}`,
+        { region: c.id, name: c.name, place: c.place, kind: c.kind, was: c.was, tempC: c.tempC, windKmh: c.windKmh, code: c.code, source });
     }
     this.save();
     this.pushState();
-    return { status: 200, body: { ok: true, kind: now } };
+    return { status: 200, body: { ok: true, regions: Object.fromEntries(places.map((p) => [p.id, W.state.weather.regions[p.id].kind])) } };
   }
 
   async refreshWeather() {
-    const p = PLACES.find((x) => x.name === this.W.state.weather.place);
-    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=temperature_2m,weather_code,wind_speed_10m`, { signal: AbortSignal.timeout(8000) });
+    const ps = this.places(), q = (k) => ps.map((p) => p[k]).join(',');
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${q('lat')}&longitude=${q('lon')}&current=temperature_2m,weather_code,wind_speed_10m`, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
-    this.onWeather((await res.json()).current ?? {}, 'world');
+    const body = await res.json();
+    this.onWeather((Array.isArray(body) ? body : [body]).map((b) => b.current ?? {}), 'world');
   }
 
-  // ---------- news: key moments go to the n8n War Correspondent, which posts them to Discord ----------
-  news(e) {
+  // ---------- news for Discord, via the n8n War Correspondent: big moments at once, and a report after every round ----------
+  post(item) {
     if (!this.cfg.n8n) return;
-    const s = this.W.state, R = (k) => CAST[k]?.realm;
-    const icon = { 'stronghold.captured': '🏰', 'army.routed': '💥', 'battle.resolved': '⚔️', 'season.ended': '🏆', 'season.started': '🚩', 'weather.changed': '🌦️', 'market.shift': '📈' }[e.type];
-    const big = e.type === 'market.shift' ? Math.abs(e.data.pct) >= 1 : e.type === 'weather.changed' || isMoment(e);
-    if (!icon || !big) return;
-    const title = e.type in { 'stronghold.captured': 1, 'army.routed': 1, 'battle.resolved': 1 } ? momentText(e, s, CAST)
-      : e.type === 'season.ended' ? `${R(e.data.winner)} won season ${s.season}` : e.summary;
-    this.W.newsQ = [...(this.W.newsQ ?? []), {
-      title: `${icon} ${title}`.slice(0, 250),
-      text: `${headline(s, CAST, effectsOf(s)).join(' ')}\nRound ${E.roundOf(s)} of ${s.maxRounds} · season ${s.season}`.slice(0, 1000),
-      color: COLOR[e.kingdom ?? e.data?.winner ?? null] ?? COLOR.null, url: this.cfg.site, kind: e.type,
-    }].slice(-20);
+    this.W.newsQ = [...(this.W.newsQ ?? []), { url: this.cfg.site, color: COLOR.null, ...item, title: item.title.slice(0, 250), text: item.text.slice(0, 1800) }].slice(-20);
     this.at('news', 0);
+  }
+
+  skies() {
+    return REGIONS.map((r) => {
+      const w = this.W.state.weather.regions[r.id];
+      return `${SKY_ICON[w.kind]} ${r.name}: ${w.kind}${w.place ? ` (${w.place.split(',')[0]}${Number.isFinite(w.tempC) ? `, ${Math.round(w.tempC)}°C` : ''})` : ''}`;
+    }).join(' · ');
+  }
+
+  news(e) {
+    if (!isMoment(e)) return; // captures, wiped-out armies, battles between armies, season start and end
+    const s = this.W.state, R = (k) => CAST[k]?.realm;
+    const icon = { 'stronghold.captured': '🏰', 'army.routed': '💥', 'battle.resolved': '⚔️', 'season.ended': '🏆', 'season.started': '🚩' }[e.type];
+    const title = e.type === 'season.ended' ? `${R(e.data.winner)} won season ${s.season}` : e.type === 'season.started' ? `Season ${s.season} begins` : momentText(e, s, CAST);
+    this.post({ title: `${icon} ${title}`, text: `${headline(s, CAST, effectsOf(s)).join(' ')}\n\n${this.skies()}\n\nRound ${E.roundOf(s)} of ${s.maxRounds} · season ${s.season}`, color: COLOR[e.kingdom ?? e.data?.winner ?? null] ?? COLOR.null, kind: e.type });
+  }
+
+  // After both generals have moved: the round in plain words, from the narrator.
+  roundReport(blueTurn) {
+    const s = this.W.state, traces = [`s${s.season}-t${blueTurn - 1}`, `s${s.season}-t${blueTurn}`];
+    const evs = this.sql.exec("SELECT json FROM lines WHERE season = ? AND k = 'e' ORDER BY i DESC LIMIT 200", s.season).toArray().map((r) => JSON.parse(r.json).e).reverse();
+    const told = (t) => turnStory(evs.filter((e) => e.traceId === t && e.type !== 'turn.started'), s, CAST).lines.join(' ') || 'Nothing happened.';
+    this.post({
+      title: `📜 Round ${blueTurn / 2} of ${s.maxRounds}: ${headline(s, CAST, effectsOf(s))[0]}`,
+      text: `🔴 **${CAST.red.realm}:** ${told(traces[0])}\n🔵 **${CAST.blue.realm}:** ${told(traces[1])}\n\n${headline(s, CAST, effectsOf(s)).slice(1).join(' ')}\n\n${this.skies()}`,
+      kind: 'round',
+    });
   }
 
   async flushNews() {
@@ -436,7 +470,8 @@ export class World extends DurableObject {
     this.arm();
     if (this.cfg.n8n) await fetch(`${this.cfg.n8n}/healthz`, { signal: AbortSignal.timeout(10_000) }).then((r) => r.ok && (W.n8nAt = Date.now())).catch(() => {});
     if (Date.now() - (W.pricesAt ?? 0) > 20 * 60_000) await this.refreshPrices().catch((err) => console.error('oracle read failed:', err.shortMessage ?? err.message));
-    if (Date.now() - (W.weatherAt ?? 0) > 50 * 60_000) await this.refreshWeather().catch((err) => console.error('weather read failed:', err.message));
+    const unread = Object.values(W.state.weather.regions).some((w) => !Number.isFinite(w.tempC)); // e.g. right after an upgrade
+    if (unread || Date.now() - (W.weatherAt ?? 0) > 50 * 60_000) await this.refreshWeather().catch((err) => console.error('weather read failed:', err.message));
     this.save();
   }
 
@@ -491,9 +526,8 @@ export class World extends DurableObject {
       if (p === '/api/state') return json(200, this.publicState());
       if (p === '/api/health') return json(200, this.health());
       if (p === '/api/proof') return json(200, this.publicState().proofs);
-      if (p === '/api/weather') { // for the n8n Weather Sync workflow: where this season is fought
-        const place = PLACES.find((x) => x.name === this.W.state.weather.place);
-        return json(200, { ...place, now: this.W.state.weather });
+      if (p === '/api/weather') { // for the n8n Weather Sync workflow: this season's city for each region, in order
+        return json(200, { regions: this.places().map((p) => ({ ...p, now: this.W.state.weather.regions[p.id] })) });
       }
       if (p === '/api/seasons') return json(200, this.W.history.map((h) => ({ ...h, live: h.season === this.W.state.season && this.W.state.status === 'running' })));
       const sf = p.match(/^\/api\/seasons\/(\d+)$/);
@@ -564,7 +598,7 @@ export class World extends DurableObject {
       return json(200, { ok: true, prices: W.prices });
     }
     if (p === '/internal/weather') {
-      const r = this.onWeather(body.current ?? {}, body.source === 'n8n' ? 'n8n' : 'api', exec);
+      const r = this.onWeather(body.current, body.source === 'n8n' ? 'n8n' : 'api', exec);
       return json(r.status, r.body);
     }
     if (p === '/internal/news/posted') {
@@ -610,7 +644,8 @@ export class World extends DurableObject {
     this.llm = makeLLM(this.env, (W.llmUsage ??= {}));
     if (!old) {
       this.record({ k: 's', s: this.snapshot() });
-      this.emit('season.started', null, `Season ${W.state.season} begins under the real sky over ${W.state.weather.place}.`, { place: W.state.weather.place });
+      const places = this.places().map((p) => p.place);
+      this.emit('season.started', null, `Season ${W.state.season} begins under real skies over ${places.map((n) => n.split(',')[0]).join(', ')}.`, { places });
     }
     if (W.state.status === 'ended') this.at('season', 5000);
     else this.schedule(Math.max(3000, (W.nextTurnAt ?? 0) - Date.now()));

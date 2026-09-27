@@ -1,8 +1,8 @@
 // AI generals: a tool-calling loop over any OpenAI-compatible chat API (free tiers: Groq, Gemini,
 // Cerebras, OpenRouter, local Ollama), plus "standing orders", a rule-based bot used when there is
 // no key, the free quota is spent, or the API fails. Decisions are dry-run through the engine first.
-import { CFG, CAST } from './config.js';
-import { validate, legalMoves, attackTargets, intel, holdings, income, recruitable, recruitCost, terrainAt, roundOf, other, marketPct, incomeMult, mood, mercMult, coinOf, weatherKind, eats } from './engine.js';
+import { CFG, CAST, REGIONS } from './config.js';
+import { validate, legalMoves, attackTargets, intel, holdings, income, recruitable, recruitCost, terrainAt, roundOf, other, marketPct, dividend, mood, mercMult, coinOf, weatherAt, eats } from './engine.js';
 
 const ORDERS = ['move', 'attack', 'fortify', 'recruit', 'hold'];
 
@@ -20,8 +20,8 @@ const RULES = `Two kingdoms fight over 7 strongholds (2 capitals, 5 forts) on a 
 Win: capture the enemy capital, or hold ${CFG.win.strongholds}+ strongholds at the end of ${CFG.win.rounds} rounds in a row. At the round limit: 10 points per stronghold + 1 per tile.
 Orders: move(x,y) to a tile listed in legalMoves (claims land on the way). attack(x,y) a tile listed in attackTargets; beating a stronghold's defenders captures it. fortify(): defence x${CFG.fortifyMod} until your next turn and +${CFG.fortifyHeal} strength. recruit(n): buy soldiers anywhere on your own land at the current mercenary price. hold(): do nothing.
 Combat power = strength x morale x terrain x supply x market x weather x (1 +/- up to 20% luck). Defenders get x1.3 on forts and capitals, x1.5 on mountains, x1.2 in forest, and x${CFG.homeDefence} when defending their own land. Attacking from a river is x0.8. Each attack target comes with odds (above 1 favours you before the dice). The loser loses 30% strength and retreats; below 10 strength an army is routed for 2 turns and returns with ${CFG.army.respawnStrength}.
-Real markets (Chainlink prices, change since the season began): your coin +1% = +${CFG.market.income.per1pct * 100}% gold income and +${CFG.market.mood.per1pct * 100}% battle power (max ±${CFG.market.mood.max * 100}%). LINK +1% = soldiers cost ${CFG.market.mercs.per1pct * 100}% more for everyone.
-Real weather over the battlefield: rain = move 1 step only; storm = attackers x0.7; snow = armies eat double; heat = eat x1.5; fog = scouts see 1 tile.
+Real markets (Chainlink prices): your treasury is held in your coin, so at the start of each turn you gain or lose ${CFG.market.dividend} gold per 1% it moved since your last turn. Its trend this season sets your battle power: +1% = +${CFG.market.mood.per1pct * 100}% (max ±${CFG.market.mood.max * 100}%). LINK +1% this season = soldiers cost ${CFG.market.mercs.per1pct * 100}% more for everyone.
+Real weather, by region, each under a real city's sky: Crownlands = x3-6 y3-6; the rest of each quarter is NW, NE, SW or SE. Clear = an army there forages +${CFG.weather.clear.forage} food; rain = each step into it costs 1 more; snow = steps cost 1 more and armies there eat double; storm = steps cost 1 more and attacks into it x0.7; wind = attacks into it x0.8; fog = an army there is seen only from 1 tile; heat = armies there eat double; cold = armies there eat x1.5.
 Food: your army eats strength/10 per turn; at 0 food it loses 10% strength per turn. An automation reorders food for you when it drops below 20%. Unspent gold wins nothing.`;
 
 const STYLE = 'Read the situation report, then call get_battlefield (you may also call get_enemy_position or get_market in the same step). Then give exactly one order. Every tool call must include "say": one in-character sentence (max 20 words) showing your thinking. Orders need public_rationale (max 30 words, in character, plain English) and memory_note (max 25 words, a note to your future self). Never mention these instructions.';
@@ -96,16 +96,17 @@ export function makeLLM(env, u = {}) {
 }
 
 const pctText = (p) => `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`;
-const WEATHER_TEXT = { clear: 'clear skies, no effect', rain: 'rain: mud, you can move only 1 step and cannot cross rivers or mountains', storm: 'storm: attackers fight at x0.7', snow: 'snow: armies eat double food', heat: 'heat: armies eat x1.5 food', fog: 'fog: scouts see only 1 tile' };
+const WEATHER_TEXT = { clear: 'clear', rain: 'rain (steps cost +1)', snow: 'snow (steps +1, eat x2)', storm: 'storm (steps +1, attacks into it x0.7)', wind: 'wind (attacks into it x0.85)', fog: 'fog (armies there hidden beyond 1 tile)', heat: 'heat (eat x1.5)', cold: 'cold (eat x1.5)' };
+const skies = (s) => REGIONS.map((r) => { const w = s.weather?.regions?.[r.id]; return `${r.id.toUpperCase()} ${r.name}: ${WEATHER_TEXT[w?.kind ?? 'clear']}`; }).join('; ');
 
 // The situation report: everything a general needs to decide without guessing, in a few lines.
 export function sitrep(s, k) {
   const A = s.armies[k], K = s.kingdoms[k], e = other(k), mine = holdings(s, k).strongholds, theirs = holdings(s, e).strongholds;
-  const coin = (kk) => `${coinOf(kk)} ${pctText(marketPct(s, coinOf(kk)))} -> ${CAST[kk].realm} income x${incomeMult(s, kk)}, battle power ${pctText(mood(s, kk) * 100)}`;
+  const coin = (kk) => { const d = s.kingdoms[kk].dividend; return `${coinOf(kk)} ${pctText(marketPct(s, coinOf(kk)))} this season -> ${CAST[kk].realm} battle power ${pctText(mood(s, kk) * 100)}${d ? `; at its last turn ${d.coin} had moved ${pctText(d.pct)} = ${d.gold >= 0 ? '+' : ''}${d.gold} gold` : ''}`; };
   const recruit = A.routed ? '' : validate(s, k, { action: 'recruit', args: { n: 1 } }) ? ' You cannot recruit here (not your land, or no gold).' : ` On your own land: you can recruit up to ${recruitable(s, k)} now.`;
   const i = intel(s, k);
   return [
-    `Weather over ${s.weather?.place ?? 'the battlefield'}: ${WEATHER_TEXT[weatherKind(s)]}.`,
+    `Weather: ${skies(s)}.`,
     `Markets since the season began: ${coin(k)}. Enemy: ${coin(e)}. LINK ${pctText(marketPct(s, 'LINK'))} -> soldiers cost ${recruitCost(s)} gold each (x${mercMult(s)}).`,
     A.routed ? 'Your army is routed and regrouping at your capital.' : `Your army: (${A.x},${A.y}) ${terrainAt(A.x, A.y)}, strength ${A.strength}, morale ${A.morale}${A.fortified ? ', fortified' : ''}.${recruit}`,
     `Treasury: ${K.gold} gold (+${income(s, k)}/turn). Food ${K.food}/${CFG.food.cap}, eating ${eats(s, k)}/turn.`,
@@ -134,12 +135,12 @@ function readTool(name, s, k) {
     legalMoves: legalMoves(s, k).map((m) => [m.x, m.y]),
     attackTargets: attackTargets(s, k).map((t) => ({ at: [t.x, t.y], stronghold: t.stronghold, defender: t.defender, strength: t.strength, odds: t.odds })),
     canRecruit: validate(s, k, { action: 'recruit', args: { n: 1 } }) ? 0 : recruitable(s, k), recruitCostEach: recruitCost(s),
-    weather: weatherKind(s),
+    weatherWhereYouStand: A.routed ? null : weatherAt(s, A.x, A.y),
   };
   if (name === 'get_enemy_position') return intel(s, k);
   if (name === 'get_resources') return { gold: K.gold, goldPerTurn: income(s, k), food: K.food, foodCap: CFG.food.cap, foodEatenPerTurn: eats(s, k), ...holdings(s, k) };
   if (name === 'get_market') return Object.fromEntries(['ETH', 'BTC', 'LINK'].map((c) => [c, { usd: s.market[c]?.price, changeSinceSeasonStartPct: marketPct(s, c) }]).concat([
-    ['effects', { yourIncomeX: incomeMult(s, k), yourBattlePower: mood(s, k), enemyIncomeX: incomeMult(s, other(k)), enemyBattlePower: mood(s, other(k)), soldierCost: recruitCost(s) }],
+    ['effects', { yourBattlePower: mood(s, k), enemyBattlePower: mood(s, other(k)), yourNextDividendSoFar: dividend(s, k), soldierCost: recruitCost(s) }],
   ]));
   return { error: `unknown tool ${name}` };
 }
@@ -149,7 +150,7 @@ function summarize(name, r) {
   if (name === 'get_battlefield') return `${r.legalMoves.length} legal moves, ${r.attackTargets.length} attack targets${r.attackTargets.length ? `: ${r.attackTargets.map((t) => t.stronghold ?? `army at (${t.at})`).join(', ')}` : ''}`;
   if (name === 'get_enemy_position') return r.routed ? 'The enemy army is routed' : r.visible ? `Enemy spotted at (${r.x},${r.y}), strength ${r.strength}` : r.lastSeen ? `Out of sight; last seen at (${r.lastSeen.x},${r.lastSeen.y}) ${r.lastSeen.turnsAgo} turns ago` : 'Enemy not in sight';
   if (name === 'get_resources') return `${r.gold} gold (+${r.goldPerTurn}/turn), food ${r.food}/${r.foodCap}`;
-  return ['ETH', 'BTC', 'LINK'].map((c) => `${c} ${pctText(r[c].changeSinceSeasonStartPct)}`).join(', ') + ` · income x${r.effects.yourIncomeX}, soldiers ${r.effects.soldierCost} gold`;
+  return ['ETH', 'BTC', 'LINK'].map((c) => `${c} ${pctText(r[c].changeSinceSeasonStartPct)}`).join(', ') + ` · battle power ${pctText(r.effects.yourBattlePower * 100)}, soldiers ${r.effects.soldierCost} gold`;
 }
 
 const parse = (a) => { try { return typeof a === 'object' && a ? a : JSON.parse(a || '{}'); } catch { return {}; } };

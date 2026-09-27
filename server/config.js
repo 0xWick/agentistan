@@ -23,38 +23,48 @@ export const CFG = {
   starveSupply: 0.7,
   garrison: { neutral: 15, captured: 15, regen: 2, max: 30, capital: 40 },
   combat: { roll: 0.2, loserLoss: 0.3 },
-  // Real markets from Chainlink, measured as % change since the season began. Each treasury is a coin;
-  // LINK prices the mercenaries both sides hire. Deliberately heavy so ordinary crypto days show up in the war.
+  // Real markets from Chainlink. Each treasury is held in a coin; LINK prices the soldiers both sides hire.
+  // Deliberately heavy, so an ordinary hour in crypto shows up in the war.
   market: {
     coin: { red: 'ETH', blue: 'BTC' },
-    income: { per1pct: 0.4, min: 0.2, max: 3 }, // coin +1% = +40% gold income
-    mood: { per1pct: 0.1, max: 0.25 }, // coin +1% = +10% battle power, capped at ±25%
-    mercs: { per1pct: 0.2, min: 0.5, max: 2 }, // LINK +1% = soldiers cost 20% more, for both sides
+    dividend: 100, // every turn: gold gained (or lost) per 1% the coin moved since that kingdom's last turn
+    mood: { per1pct: 0.2, max: 0.4 }, // the coin's trend this season: +1% = +20% battle power, capped at ±40%
+    mercs: { per1pct: 0.3, min: 0.5, max: 2.5 }, // LINK this season: +1% = soldiers cost 30% more, for both sides
   },
-  // Real weather over the season's battlefield (Open-Meteo, synced by n8n). Hits both sides.
+  // Real weather, region by region (Open-Meteo, synced by n8n). Every kind does something you can see.
   weather: {
-    clear: {},
-    rain: { moveBudget: 1 }, // mud: one step per turn, rivers and mountains impassable
-    storm: { attack: 0.7 }, // attacking into a storm: -30% power
-    snow: { eat: 2 }, // cold: armies eat twice as much
-    heat: { eat: 1.5 },
-    fog: { vision: 1 }, // scouts see one tile
+    clear: { forage: 4 }, // fair weather: an army there forages 4 food a turn
+    rain: { moveCost: 1 }, // mud: every step into the region costs one more
+    snow: { moveCost: 1, eat: 2 }, // drifts slow armies, and they eat twice as much
+    storm: { moveCost: 1, attack: 0.7 }, // attacking into a storm: -30% power
+    wind: { attack: 0.8 }, // gales: attacks into the region -20%
+    fog: { vision: 1 }, // an enemy in fog is seen only from one tile away
+    heat: { eat: 2 },
+    cold: { eat: 1.5 },
   },
   win: { strongholds: 5, rounds: 3 },
   fogRange: 3,
 };
 
-// Each season is fought under a real city's sky, in turn.
-export const PLACES = [
-  { name: 'Bergen, Norway', lat: 60.39, lon: 5.32 },
-  { name: 'Lahore, Pakistan', lat: 31.55, lon: 74.34 },
-  { name: 'Reykjavík, Iceland', lat: 64.15, lon: -21.94 },
-  { name: 'Mumbai, India', lat: 19.08, lon: 72.88 },
-  { name: 'London, UK', lat: 51.51, lon: -0.13 },
-  { name: 'Chicago, USA', lat: 41.88, lon: -87.63 },
-  { name: 'Cairo, Egypt', lat: 30.04, lon: 31.24 },
-  { name: 'Singapore', lat: 1.35, lon: 103.82 },
+// Five regions: the four corners and the Crownlands in the middle. Each season every region is dealt one real city at random,
+// one from each climate, so the map always mixes hot, cold, wet, tropical and changeable skies.
+export const REGIONS = [
+  { id: 'nw', name: 'Ember Highlands' },
+  { id: 'ne', name: 'Northern Marches' },
+  { id: 'mid', name: 'Crownlands' },
+  { id: 'sw', name: 'Southern Fens' },
+  { id: 'se', name: 'Frost Vale' },
 ];
+export const regionAt = (x, y) => (x >= 3 && x <= 6 && y >= 3 && y <= 6 ? 'mid' : y < 5 ? (x < 5 ? 'nw' : 'ne') : x < 5 ? 'sw' : 'se');
+const city = (name, lat, lon) => ({ name, lat, lon });
+export const CLIMATES = {
+  hot: [city('Lahore, Pakistan', 31.55, 74.34), city('Dubai, UAE', 25.2, 55.27), city('Cairo, Egypt', 30.04, 31.24), city('Phoenix, USA', 33.45, -112.07), city('Riyadh, Saudi Arabia', 24.71, 46.68), city('Karachi, Pakistan', 24.86, 67.0)],
+  cold: [city('Reykjavík, Iceland', 64.15, -21.94), city('Anchorage, USA', 61.22, -149.9), city('Yakutsk, Russia', 62.03, 129.73), city('Oslo, Norway', 59.91, 10.75), city('Moscow, Russia', 55.76, 37.62), city('Ulaanbaatar, Mongolia', 47.89, 106.91)],
+  wet: [city('Bergen, Norway', 60.39, 5.32), city('London, UK', 51.51, -0.13), city('Seattle, USA', 47.61, -122.33), city('Dublin, Ireland', 53.35, -6.26), city('Vancouver, Canada', 49.28, -123.12)],
+  tropical: [city('Mumbai, India', 19.08, 72.88), city('Singapore', 1.35, 103.82), city('Manila, Philippines', 14.6, 120.98), city('Kolkata, India', 22.57, 88.36), city('Jakarta, Indonesia', -6.21, 106.85), city('Bangkok, Thailand', 13.76, 100.5)],
+  changeable: [city('New York, USA', 40.71, -74.01), city('Chicago, USA', 41.88, -87.63), city('Tokyo, Japan', 35.68, 139.69), city('Toronto, Canada', 43.65, -79.38), city('Wellington, New Zealand', -41.29, 174.78), city('Cape Town, South Africa', -33.92, 18.42)],
+};
+export const cityNamed = (name) => Object.values(CLIMATES).flat().find((c) => c.name === name);
 
 // Chainlink data feeds on Base Sepolia (checked on-chain: description() and fresh rounds).
 export const FEEDS = {

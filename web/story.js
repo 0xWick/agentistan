@@ -16,25 +16,37 @@ export function place(s, x, y) {
   return `${dist(h, { x, y }) ? 'near' : 'at'} ${h.name}`;
 }
 
+// What each kind of weather does to the region it's in (the map has five regions, each under a real city's sky).
 export const WEATHER = {
-  clear: 'clear skies, no effect on the war',
-  rain: 'mud: every army moves only 1 step',
-  storm: 'attackers fight 30% weaker',
-  snow: 'armies eat twice as much food',
-  heat: 'armies eat 50% more food',
-  fog: 'scouts can see only 1 tile',
+  clear: 'fair weather, so an army there forages 4 extra food',
+  rain: 'mud, so every step there costs one more',
+  snow: 'drifts slow every step, and armies there eat twice as much',
+  storm: 'every step there costs one more, and attacks into it are 30% weaker',
+  wind: 'attacks into it are 20% weaker',
+  fog: 'an army there can only be seen from one tile away',
+  heat: 'armies there eat twice as much food',
+  cold: 'armies there eat 50% more food',
 };
+// The same, in two or three words, for the map.
+export const WEATHER_SHORT = { clear: 'forage +4', rain: 'steps +1', snow: 'steps +1, eat ×2', storm: 'steps +1, attacks −30%', wind: 'attacks −20%', fog: 'armies hidden', heat: 'eat ×2', cold: 'eat ×1.5' };
+export const SKY = { clear: '☀️', rain: '🌧️', snow: '❄️', storm: '⛈️', wind: '💨', fog: '🌫️', heat: '🔥', cold: '🥶' };
 const signed = (n, digits = 0) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(digits)}`;
+export const regionsOf = (s) => Object.entries(s.weather?.regions ?? {}).map(([id, w]) => ({ id, ...w }));
+// "ETH rose 0.31% since Emberreach's last turn, so its treasury gained 31 gold."
+const dividendText = (d, realm) => `${d.coin} ${d.pct >= 0 ? 'rose' : 'fell'} ${Math.abs(d.pct).toFixed(2)}% since ${realm}'s last turn, so its treasury ${d.gold >= 0 ? 'gained' : 'lost'} ${Math.abs(d.gold)} gold`;
 
 // How real prices and weather are hitting each side right now, in a sentence or two. fx: effectsOf(state), from the server.
 export function forces(s, cast, fx) {
   const out = [];
   if (fx) {
-    const moved = ['red', 'blue'].filter((k) => Math.abs(fx[k].pct) >= 0.1);
-    for (const k of moved) out.push(`${fx[k].coin} is ${fx[k].pct >= 0 ? 'up' : 'down'} ${Math.abs(fx[k].pct).toFixed(2)}% this season, so ${cast[k].realm} earns ×${fx[k].income} gold and fights ${signed(fx[k].mood * 100)}%.`);
+    for (const k of ['red', 'blue']) {
+      const d = fx[k].dividend, mood = Math.round(fx[k].mood * 100);
+      if (d?.gold) out.push(`${dividendText(d, cast[k].realm)}${mood ? ` (and ${fx[k].coin}'s trend this season has it fighting ${signed(mood)}%)` : ''}.`);
+      else if (mood) out.push(`${fx[k].coin} is ${fx[k].pct >= 0 ? 'up' : 'down'} ${Math.abs(fx[k].pct).toFixed(2)}% this season, so ${cast[k].realm} fights ${signed(mood)}%.`);
+    }
   }
-  const w = s.weather;
-  if (w && w.kind !== 'clear') out.push(`${cap(w.kind)} over ${w.place}: ${WEATHER[w.kind]}.`);
+  const bad = regionsOf(s).filter((w) => w.kind !== 'clear');
+  if (bad.length) out.push(`Weather: ${bad.map((w) => `${w.kind} in the ${w.name}`).join(', ')}.`);
   return out;
 }
 
@@ -112,10 +124,20 @@ export function turnStory(evs, s, cast) {
       'army.routed': () => `${R(k)}'s army was wiped out and fled home to regroup.`,
       'army.moved': () => (d.retreat ? `${R(k)}'s army fell back.` : d.respawn ? `${R(k)}'s army has regrouped at home.` : null),
       'army.starving': () => `${R(k)}'s soldiers are starving, so the army is shrinking.`,
+      // The start of a turn: what the markets and the weather just did to this kingdom.
+      'resources.updated': () => {
+        if (d.income === undefined) return null; // a food purchase, told by the automation line
+        const parts = [];
+        if (d.dividend) parts.push(`${dividendText({ coin: d.coin, pct: d.dividendPct, gold: d.dividend }, R(k))}.`);
+        if (d.forage) parts.push(`${R(k)}'s army foraged ${d.forage} extra food in the clear weather.`);
+        if (d.weather && ['heat', 'snow', 'cold'].includes(d.weather)) parts.push(`The ${d.weather} made ${R(k)}'s army eat ${d.eat} food this turn.`);
+        return parts.join(' ') || null;
+      },
       'market.shift': () => (d.coin === 'LINK' ? `LINK moved ${signed(d.pct, 2)}% this season, so soldiers now cost ${d.after} gold each, for both sides.`
-        : d.coin ? `${d.coin} is ${d.pct >= 0 ? 'up' : 'down'} ${Math.abs(d.pct).toFixed(2)}% this season, so ${R(k)} now earns ×${d.after} gold and fights ${signed(d.mood * 100)}%.`
+        : d.coin ? `${d.coin} is ${d.pct >= 0 ? 'up' : 'down'} ${Math.abs(d.pct).toFixed(2)}% this season, so ${R(k)} now fights ${signed(d.mood * 100)}%.`
           : `The real ETH price moved, so Emberreach now earns ${d.after >= d.before ? 'a little more' : 'a little less'} gold.`), // season 1 wording
-      'weather.changed': () => `The sky over ${d.place} turned to ${d.kind}: ${WEATHER[d.kind]}.`,
+      'weather.changed': () => (d.name ? `${cap(d.kind)} in the ${d.name} (${String(d.place).split(',')[0]}): ${WEATHER[d.kind]}.`
+        : `The sky over ${d.place} turned to ${d.kind}: ${WEATHER[d.kind]}.`), // season 2 had one sky for the whole map
       'chain.tx_confirmed': () => 'The result is now recorded on a public blockchain, where nobody can change it.',
       'season.ended': () => `Season over! ${R(d.winner)} wins.`,
     }[e.type]?.();
@@ -185,10 +207,14 @@ export function flow(evs, s, meta, nowStage, proofs, fx) {
     : tx?.type === 'chain.tx_failed' ? 'Failed this time; it shows openly and the game carries on.'
     : `Nothing to record this turn. ${plural(done, 'result')} on record so far.`;
 
-  const coin = (k) => `${fx[k].coin} ${signed(fx[k].pct, 2)}% → ${R(k)} earns ×${fx[k].income}, fights ${signed(fx[k].mood * 100)}%`;
+  const coin = (k) => {
+    const d = fx[k].dividend;
+    return `${d ? `${d.coin} ${signed(d.pct, 2)}% since ${R(k)}'s last turn → ${signed(d.gold)} gold` : `${fx[k].coin}: no reading yet`}; ${signed(fx[k].pct, 2)}% this season → fights ${signed(fx[k].mood * 100)}%`;
+  };
   const priceNow = !fx ? 'Waiting for the first prices.' : `${coin('red')}. ${coin('blue')}. LINK ${signed(fx.LINK.pct, 2)}% → soldiers cost ${fx.LINK.cost} gold.`;
-  const w = s.weather;
-  const weatherNow = !w ? 'Clear skies.' : `${cap(w.kind)} over ${w.place}${Number.isFinite(w.tempC) ? `, ${Math.round(w.tempC)}°C` : ''}: ${WEATHER[w.kind]}.`;
+  const skies = regionsOf(s);
+  const weatherNow = !skies.length ? 'Clear skies.'
+    : skies.map((w) => `${SKY[w.kind]} ${w.name}: ${w.kind}${w.place ? ` (${w.place.split(',')[0]}${Number.isFinite(w.tempC) ? ` ${Math.round(w.tempC)}°C` : ''})` : ''}`).join(' · ');
 
   const stages = [
     { id: 'event', icon: '⏰', name: 'The clock', tech: 'Cloudflare', does: `Starts a new turn every ${every}. Nobody presses a button.`,
@@ -197,8 +223,8 @@ export function flow(evs, s, meta, nowStage, proofs, fx) {
     { id: 'agent', icon: '🧠', name: 'AI general', tech: `${meta.llm.model.split('/').pop()} on Groq`, does: 'Reads the map and picks one move, then explains why.', now: aiNow },
     { id: 'game', icon: '🎲', name: 'Game rules', tech: 'Rules engine', does: 'Blocks illegal moves and settles battles with fair, replayable dice.', now: gameNow },
     { id: 'chain', icon: '🔒', name: 'Blockchain', tech: 'Base Sepolia', does: 'Writes every castle capture to a public record nobody can edit.', now: chainNow },
-    { id: 'oracle', icon: '📈', name: 'Live prices', tech: 'Chainlink', does: 'Real ETH and BTC prices move each side\'s gold and fighting spirit; LINK sets the price of soldiers.', now: priceNow },
-    { id: 'weather', icon: '🌦️', name: 'Live weather', tech: 'Open-Meteo, via n8n', does: 'The real sky over this season\'s city changes the battlefield for both sides.', now: weatherNow },
+    { id: 'oracle', icon: '📈', name: 'Live prices', tech: 'Chainlink', does: 'Each treasury is held in a coin: every 1% ETH or BTC moves = 100 gold won or lost. The season\'s trend sets fighting spirit; LINK sets the price of soldiers.', now: priceNow },
+    { id: 'weather', icon: '🌦️', name: 'Live weather', tech: 'Open-Meteo, via n8n', does: 'Five regions, each dealt a real city\'s sky every season. Every kind of weather changes that ground: movement, food or fighting.', now: weatherNow },
   ];
   const seen = new Set(evs.map((e) => (e.type === 'turn.started' ? 'event' : e.stage)));
   return stages.map((st) => ({ ...st, done: seen.has(st.id), active: st.id === nowStage }));

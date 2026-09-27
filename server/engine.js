@@ -1,6 +1,6 @@
 // Pure game rules: no I/O, no clock. The only randomness is the seeded battle roll.
 import { createHash } from 'node:crypto';
-import { CFG, MAP, STRONGHOLDS, CAST, SCENARIOS, PLACES } from './config.js';
+import { CFG, MAP, STRONGHOLDS, CAST, SCENARIOS, REGIONS, CLIMATES, regionAt } from './config.js';
 
 const N = CFG.size;
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
@@ -21,7 +21,20 @@ const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 const morale = (m) => +clamp(m, CFG.army.moraleMin, CFG.army.moraleMax).toFixed(2);
 
 const COINS = ['ETH', 'BTC', 'LINK'];
-export const placeFor = (season) => PLACES[(season - 1) % PLACES.length];
+// Deal each region a city: shuffle the five climates across the five regions, then pick a city in each.
+// Seeded by the season, so a season always has the same skies (and replays agree).
+export function skiesFor(season) {
+  const h = createHash('sha256').update(`${season}:skies`).digest();
+  const climates = Object.keys(CLIMATES);
+  for (let i = climates.length - 1; i > 0; i--) {
+    const j = h[i] % (i + 1);
+    [climates[i], climates[j]] = [climates[j], climates[i]];
+  }
+  return { regions: Object.fromEntries(REGIONS.map((r, i) => {
+    const pool = CLIMATES[climates[i]];
+    return [r.id, { kind: 'clear', name: r.name, climate: climates[i], place: pool[h[10 + i] % pool.length].name }];
+  })) };
+}
 
 export function newSeason(season, scenario = 'standard', prices = {}) {
   const sc = SCENARIOS[scenario] ?? SCENARIOS.standard;
@@ -39,17 +52,17 @@ export function newSeason(season, scenario = 'standard', prices = {}) {
     armies: { red: army(sc.red), blue: army(sc.blue) },
     kingdoms: { red: realm(), blue: realm() },
     market: Object.fromEntries(COINS.map((c) => [c, { start: prices[c] ?? null, price: prices[c] ?? null }])),
-    weather: { kind: 'clear', place: placeFor(season).name },
+    weather: skiesFor(season),
     status: 'running', winner: null, endReason: null,
   };
 }
 
-// State saved before markets and weather existed: ETH carries over, the rest start from their next reading.
+// Older saves: before markets (ETH carries over, the rest start from their next reading) and before the five weather regions.
 export function upgrade(s0) {
-  if (s0.market?.ETH && s0.weather) return s0;
+  if (s0.market?.ETH && s0.weather?.regions?.mid) return s0;
   const s = structuredClone(s0), old = s.market ?? {};
-  s.market = Object.fromEntries(COINS.map((c) => [c, old[c] ?? (c === 'ETH' ? { start: old.start ?? null, price: old.price ?? null } : { start: null, price: null })]));
-  s.weather ??= { kind: 'clear', place: placeFor(s.season).name };
+  if (!s.market?.ETH) s.market = Object.fromEntries(COINS.map((c) => [c, old[c] ?? (c === 'ETH' ? { start: old.start ?? null, price: old.price ?? null } : { start: null, price: null })]));
+  if (!s.weather?.regions?.mid) s.weather = skiesFor(s.season);
   return s;
 }
 
@@ -59,11 +72,7 @@ export const marketPct = (s, coin) => {
   return m?.start && m?.price ? +((m.price / m.start - 1) * 100).toFixed(3) : 0;
 };
 export const coinOf = (k) => CFG.market.coin[k];
-export const incomeMult = (s, k) => {
-  const c = CFG.market.income;
-  return +clamp(1 + marketPct(s, coinOf(k)) * c.per1pct, c.min, c.max).toFixed(2);
-};
-export const mood = (s, k) => { // battle power bonus (or penalty) from your coin
+export const mood = (s, k) => { // battle power bonus (or penalty) from your coin's trend this season
   const c = CFG.market.mood;
   return +clamp(marketPct(s, coinOf(k)) * c.per1pct, -c.max, c.max).toFixed(3);
 };
@@ -81,21 +90,24 @@ export function setPrice(s0, coin, price) {
   return s;
 }
 
-// Weather from Open-Meteo's current conditions (WMO weather codes).
+// Weather from Open-Meteo's current conditions (WMO weather codes, °C, km/h). Only a mild, calm, dry day counts as clear,
+// so with the regions' cities some kind of weather is nearly always on the map.
 export function classifyWeather({ code, tempC, windKmh }) {
-  if (code >= 95 || windKmh >= 50) return 'storm';
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86 || tempC <= -2) return 'snow';
-  if (code === 45 || code === 48) return 'fog';
+  if (code >= 95 || windKmh >= 40) return 'storm';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
   if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
-  if (tempC >= 35) return 'heat';
+  if (code === 45 || code === 48) return 'fog';
+  if (windKmh >= 18) return 'wind';
+  if (tempC >= 27) return 'heat';
+  if (tempC <= 8) return 'cold';
   return 'clear';
 }
-export const weatherKind = (s) => s.weather?.kind ?? 'clear';
-const sky = (s) => CFG.weather[weatherKind(s)] ?? {};
+export const weatherAt = (s, x, y) => s.weather?.regions?.[regionAt(x, y)]?.kind ?? 'clear';
+const sky = (s, x, y) => CFG.weather[weatherAt(s, x, y)] ?? {};
 
-export function setWeather(s0, w) {
+export function setWeather(s0, region, w) {
   const s = structuredClone(s0);
-  s.weather = { ...s.weather, ...w, kind: classifyWeather(w) };
+  s.weather.regions[region] = { ...s.weather.regions[region], ...w, kind: classifyWeather(w) };
   return s;
 }
 
@@ -109,12 +121,22 @@ export function holdings(s, k) {
 
 export function income(s, k) {
   const { forts, tiles } = holdings(s, k);
-  return Math.round((CFG.gold.base + CFG.gold.perFort * forts + Math.floor(tiles / CFG.gold.tilesPer)) * incomeMult(s, k));
+  return CFG.gold.base + CFG.gold.perFort * forts + Math.floor(tiles / CFG.gold.tilesPer);
+}
+
+// The treasury is held in the kingdom's coin: each turn it gains or loses gold with the coin's move since its last turn.
+export function dividend(s, k) {
+  const m = s.market[coinOf(k)];
+  const pct = m?.price && m?.last ? +((m.price / m.last - 1) * 100).toFixed(3) : 0;
+  return { coin: coinOf(k), pct, gold: Math.round(pct * CFG.market.dividend) };
 }
 
 export const recruitable = (s, k) => Math.max(0, Math.min(Math.floor(s.kingdoms[k].gold / recruitCost(s)), CFG.army.max - s.armies[k].strength));
 const onOwnLand = (s, k) => s.owner[idx(s.armies[k].x, s.armies[k].y)] === k;
-export const eats = (s, k) => (onMap(s.armies[k]) ? Math.ceil((s.armies[k].strength / CFG.food.perStrength) * (sky(s).eat ?? 1)) : 0);
+export const eats = (s, k) => {
+  const A = s.armies[k];
+  return onMap(A) ? Math.ceil((A.strength / CFG.food.perStrength) * (sky(s, A.x, A.y).eat ?? 1)) : 0;
+};
 
 // Economy, garrison regen, fortify expiry and respawn for the kingdom whose turn it is.
 export function startTurn(s0) {
@@ -128,11 +150,16 @@ export function startTurn(s0) {
     Object.assign(A, { x: c.x, y: c.y, strength: CFG.army.respawnStrength, morale: CFG.army.morale });
     emit('army.moved', k, `${CAST[k].realm}'s army regrouped at ${c.name}`, { x: c.x, y: c.y, respawn: true });
   }
-  const gold = income(s, k), eat = eats(s, k), mult = incomeMult(s, k);
-  K.gold += gold;
-  K.food = clamp(K.food + CFG.food.base + CFG.food.perFort * holdings(s, k).forts - eat, 0, CFG.food.cap);
-  emit('resources.updated', k, `${CAST[k].realm} +${gold} gold (${coinOf(k)} x${mult}), ate ${eat} food${weatherKind(s) === 'clear' ? '' : ` in the ${weatherKind(s)}`}, food ${K.food}/${CFG.food.cap}`,
-    { gold: K.gold, income: gold, food: K.food, eat, mult, coin: coinOf(k), weather: weatherKind(s) });
+  const gold = income(s, k), div = dividend(s, k), eat = eats(s, k), wx = onMap(A) ? weatherAt(s, A.x, A.y) : null;
+  const forage = wx ? CFG.weather[wx].forage ?? 0 : 0, m = s.market[div.coin];
+  if (m?.price) m.last = m.price; // the next dividend counts from here
+  K.gold = Math.max(0, K.gold + gold + div.gold);
+  K.food = clamp(K.food + CFG.food.base + CFG.food.perFort * holdings(s, k).forts + forage - eat, 0, CFG.food.cap);
+  K.dividend = div;
+  const coinText = div.gold ? `, ${div.coin} ${div.pct >= 0 ? '+' : ''}${div.pct.toFixed(2)}% since its last turn: ${div.gold >= 0 ? '+' : ''}${div.gold} gold` : '';
+  const foodText = `ate ${eat} food${CFG.weather[wx]?.eat ? ` in the ${wx}` : ''}${forage ? `, foraged ${forage} in the clear weather` : ''}`;
+  emit('resources.updated', k, `${CAST[k].realm} +${gold} gold${coinText}; ${foodText}; food ${K.food}/${CFG.food.cap}`,
+    { gold: K.gold, income: gold, dividend: div.gold, dividendPct: div.pct, coin: div.coin, food: K.food, eat, forage, weather: wx });
   if (K.food === 0 && onMap(A)) {
     A.strength = Math.floor(A.strength * (1 - CFG.starveLoss));
     emit('army.starving', k, `${CAST[k].realm}'s army is starving: strength falls to ${A.strength}`, { strength: A.strength });
@@ -154,8 +181,8 @@ export function legalMoves(s, k) {
       if (!inside(x, y) || armyAt(s, other(k), x, y)) continue;
       const h = strongholdAt(s, x, y);
       if (h && h.owner !== k) continue; // garrisoned: attack it, don't walk in
-      const cost = cur.cost + CFG.terrain[terrainAt(x, y)].cost;
-      if (cost > (sky(s).moveBudget ?? CFG.moveBudget) || seen.get(idx(x, y)) <= cost) continue;
+      const cost = cur.cost + CFG.terrain[terrainAt(x, y)].cost + (sky(s, x, y).moveCost ?? 0); // mud, drifts, storms
+      if (cost > CFG.moveBudget || seen.get(idx(x, y)) <= cost) continue;
       seen.set(idx(x, y), cost);
       const step = { x, y, cost, path: [...cur.path, [x, y]] };
       out.push(step);
@@ -184,7 +211,7 @@ function sides(s, k, x, y) {
   const supply = (kk) => (s.kingdoms[kk].food === 0 ? CFG.starveSupply : 1);
   const market = (kk) => +(1 + mood(s, kk)).toFixed(3);
   const defTerrain = CFG.terrain[terrainAt(x, y)].def * (vsArmy && E.fortified ? CFG.fortifyMod : 1);
-  const atk = { side: k, strength: A.strength, morale: A.morale, terrain: terrainAt(A.x, A.y) === 'river' ? CFG.riverAttackMod : 1, supply: supply(k), market: market(k), weather: sky(s).attack ?? 1 };
+  const atk = { side: k, strength: A.strength, morale: A.morale, terrain: terrainAt(A.x, A.y) === 'river' ? CFG.riverAttackMod : 1, supply: supply(k), market: market(k), weather: sky(s, x, y).attack ?? 1 };
   const def = vsArmy
     ? { side: e, strength: E.strength, morale: E.morale, terrain: defTerrain, supply: supply(e), market: market(e), home: s.owner[idx(x, y)] === e ? CFG.homeDefence : 1 }
     : { side: h.owner ?? 'neutral', garrison: true, strength: h.garrison, morale: 1, terrain: defTerrain, supply: 1, market: h.owner ? market(h.owner) : 1 };
@@ -198,12 +225,13 @@ export function odds(s, k, x, y) {
   return +(basePower(atk) / Math.max(1, basePower(def))).toFixed(2);
 }
 
-// Fog of war: the enemy is visible within Chebyshev distance 3 (1 in fog) of your army or any stronghold you own.
+// Fog of war: the enemy is visible within Chebyshev distance 3 of your army or any stronghold you own
+// (1 if the enemy stands in a foggy region).
 export function intel(s, k) {
   const E = s.armies[other(k)];
   if (!onMap(E)) return { visible: true, routed: true, note: 'enemy army was routed and is regrouping at its capital' };
   const eyes = [...(onMap(s.armies[k]) ? [s.armies[k]] : []), ...s.strongholds.filter((h) => h.owner === k)];
-  if (eyes.some((p) => cheb(p, E) <= (sky(s).vision ?? CFG.fogRange))) return { visible: true, x: E.x, y: E.y, strength: E.strength, morale: E.morale, fortified: E.fortified };
+  if (eyes.some((p) => cheb(p, E) <= (sky(s, E.x, E.y).vision ?? CFG.fogRange))) return { visible: true, x: E.x, y: E.y, strength: E.strength, morale: E.morale, fortified: E.fortified };
   const ls = s.kingdoms[k].lastSeen;
   return { visible: false, lastSeen: ls && { x: ls.x, y: ls.y, turnsAgo: s.turn - ls.turn } };
 }
@@ -307,7 +335,7 @@ function fight(s, k, x, y, emit) {
 
   const where = h?.name ?? `(${x},${y})`;
   const defName = vsArmy ? CAST[e].realm : 'the garrison';
-  const battle = { season: s.season, turn: s.turn, x, y, stronghold: h?.name ?? null, weather: weatherKind(s), seed, attacker: atk, defender: def, winner: won ? k : def.side };
+  const battle = { season: s.season, turn: s.turn, x, y, stronghold: h?.name ?? null, weather: weatherAt(s, x, y), seed, attacker: atk, defender: def, winner: won ? k : def.side };
   emit('battle.resolved', k, `Battle at ${where}: ${CAST[k].realm} ${atk.power} vs ${defName} ${def.power}. ${won ? CAST[k].realm : defName} wins`, battle);
 
   rout(s, k, emit);

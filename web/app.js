@@ -1,5 +1,5 @@
 import { LENS, TECH } from './lens.js';
-import { headline, turnStory, flow, isMoment, momentText, MOMENTS, roundOf, turnOf } from './story.js';
+import { headline, turnStory, flow, isMoment, momentText, MOMENTS, roundOf, turnOf, regionsOf, SKY, WEATHER, WEATHER_SHORT } from './story.js';
 import './theme.js';
 
 const $ = (s) => document.querySelector(s);
@@ -9,6 +9,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const T = 50; // SVG units per tile
 const KIND = { '.': 'plains', f: 'forest', m: 'mountain', '~': 'river', F: 'fort', C: 'capital' };
+const MAP_TILES = Array.from({ length: 100 }, (_, i) => [i % 10, Math.floor(i / 10)]);
+// Mirrors regionAt in server/config.js: the Crownlands in the middle, then the four corners.
+const regionAt = (x, y) => (x >= 3 && x <= 6 && y >= 3 && y <= 6 ? 'mid' : y < 5 ? (x < 5 ? 'nw' : 'ne') : x < 5 ? 'sw' : 'se');
 const STAGES = [
   { id: 'event', name: 'Event', hint: 'the clock starts a turn' },
   { id: 'n8n', name: 'n8n', hint: 'an automation routes it' },
@@ -239,6 +242,17 @@ function drawMap() {
     return `<g transform="translate(${h.x * T + 25} ${h.y * T + 22})"><title>${esc(h.name)}: ${who}, garrison ${h.garrison}</title><path class="fort o-${h.owner ?? 'none'}" d="${shape}"/><text class="garrison" y="22">${h.garrison}</text></g>`;
   }).join('');
   if (!$('#labels').childElementCount) $('#labels').innerHTML = s.strongholds.map((h) => `<text class="sh-name" x="${h.x * T + 25}" y="${h.y * T + 7}">${esc(h.name)}</text>`).join('');
+  // Five regions, each under a real city's sky: every tile takes its region's tint or pattern, and each region gets a label
+  // saying what the weather does there.
+  const sky = Object.fromEntries(regionsOf(s).map((w) => [w.id, w]));
+  const LABEL = { nw: [4, 14, 'start'], ne: [496, 14, 'end'], mid: [250, 164, 'middle'], sw: [4, 493, 'start'], se: [496, 493, 'end'] };
+  $('#weather').innerHTML = !sky.mid ? '' : `${MAP_TILES.map(([x, y]) => {
+    const w = sky[regionAt(x, y)];
+    return w.kind === 'clear' ? '' : `<rect class="wx wx-${esc(w.kind)}" x="${x * T}" y="${y * T}" width="${T}" height="${T}"><title>${esc(w.name)}: ${esc(w.kind)}, the real sky over ${esc(w.place)}. ${esc(WEATHER[w.kind] ?? '')}</title></rect>`;
+  }).join('')}<path class="wx-edge" d="M150 150h200v200h-200zM250 0V150M250 350V500M0 250H150M350 250H500"/>${Object.entries(LABEL).map(([id, [lx, ly, anchor]]) => {
+    const w = sky[id];
+    return w ? `<text class="wx-label" x="${lx}" y="${ly}" text-anchor="${anchor}">${SKY[w.kind] ?? ''} ${esc(w.place.split(',')[0])}${Number.isFinite(w.tempC) ? ` ${Math.round(w.tempC)}°` : ''}: ${esc(WEATHER_SHORT[w.kind] ?? w.kind)}</text>` : '';
+  }).join('')}`;
   for (const k of ['red', 'blue']) {
     const a = s.armies[k];
     let el = document.getElementById(`army-${k}`);
@@ -328,7 +342,9 @@ function renderSimple() {
     const K = s.kingdoms[k], A = s.armies[k];
     const army = A.routed ? 'Wiped out, regrouping' : `${A.strength} soldiers${A.fortified ? ', dug in' : ''}`;
     const fx = S.effects?.[k], sign = (n) => (n >= 0 ? '+' : '−');
-    const coin = fx ? `<div><dt>📈 ${fx.coin} ${sign(fx.pct)}${Math.abs(fx.pct).toFixed(2)}%</dt><dd>×${fx.income} gold, ${sign(fx.mood)}${Math.round(Math.abs(fx.mood) * 100)}% in battle</dd></div>` : '';
+    const d = fx?.dividend, gold = (n) => `<span class="${n >= 0 ? 'up' : 'down'}">${sign(n)}${Math.abs(n)} gold</span>`;
+    const coin = !fx ? '' : `<div><dt>📈 ${fx.coin} since its last turn</dt><dd>${d ? `${sign(d.pct)}${Math.abs(d.pct).toFixed(2)}% → ${gold(d.gold)}` : 'waiting for a reading'}</dd></div>
+        <div><dt>⚔️ ${fx.coin} this season</dt><dd>${sign(fx.pct)}${Math.abs(fx.pct).toFixed(2)}% → fights ${sign(fx.mood)}${Math.round(Math.abs(fx.mood) * 100)}%</dd></div>`;
     return `<article class="side ${k}">
       <h3>${R(k)}${s.active === k && s.status === 'running' ? ' <span class="to-move">to move</span>' : ''}</h3>
       <p class="muted">${cast[k].general}, an AI · paid in ${cast[k].treasury}</p>
@@ -385,7 +401,8 @@ function renderKingdoms() {
     const journal = (S.journals[k] ?? []).slice().reverse().map((j) => `<li>${esc(j.note)} <span class="muted">(turn ${j.turn})</span></li>`).join('') || '<li class="muted">No notes yet.</li>';
     const lessons = (S.lessons[k] ?? []).map((l) => `<li>${esc(l)}</li>`).join('');
     const fx = S.effects?.[k], m = s.market?.[fx?.coin];
-    const market = fx ? `Treasury in ${fx.coin} · ${fx.coin} $${m?.price?.toLocaleString('en-US', { maximumFractionDigits: 2 }) ?? '…'} from Chainlink, ${fx.pct >= 0 ? '+' : ''}${fx.pct.toFixed(2)}% this season · income ×${fx.income} · battle power ${fx.mood >= 0 ? '+' : ''}${Math.round(fx.mood * 100)}% · soldiers ${S.effects.LINK.cost} gold (LINK)`
+    const dv = fx?.dividend;
+    const market = fx ? `Treasury in ${fx.coin} · ${fx.coin} $${m?.price?.toLocaleString('en-US', { maximumFractionDigits: 2 }) ?? '…'} from Chainlink${dv ? ` · last turn ${dv.pct >= 0 ? '+' : ''}${dv.pct.toFixed(2)}% = ${dv.gold >= 0 ? '+' : ''}${dv.gold} gold` : ''} · ${fx.pct >= 0 ? '+' : ''}${fx.pct.toFixed(2)}% this season = battle power ${fx.mood >= 0 ? '+' : ''}${Math.round(fx.mood * 100)}% · soldiers ${S.effects.LINK.cost} gold (LINK)`
       : 'Treasury in gold';
     return `<article class="kcard ${k}">
       <h3>${c.realm}</h3>

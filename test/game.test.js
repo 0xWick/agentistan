@@ -57,39 +57,64 @@ test('economy: starving armies lose 10% strength; buy_food refills without endin
   assert.equal(fed.state.active, 'red');
 });
 
-test('markets: each treasury coin moves income and battle power; LINK prices mercenaries for both', () => {
+test('markets: each treasury gains or loses 100 gold per 1% its coin moves between turns; trends set battle power; LINK prices soldiers', () => {
   let s = E.newSeason(1, 'standard', { ETH: 2000, BTC: 80000, LINK: 10 });
-  assert.deepEqual([E.incomeMult(s, 'red'), E.incomeMult(s, 'blue'), E.mercMult(s), E.recruitCost(s)], [1, 1, 1, 2]);
-  s = E.setPrice(E.setPrice(E.setPrice(s, 'ETH', 2020), 'BTC', 79200), 'LINK', 10.5); // ETH +1%, BTC -1%, LINK +5%
-  assert.deepEqual([E.incomeMult(s, 'red'), E.incomeMult(s, 'blue')], [1.4, 0.6]);
-  assert.deepEqual([E.mood(s, 'red'), E.mood(s, 'blue')], [0.1, -0.1]);
-  assert.deepEqual([E.mercMult(s), E.recruitCost(s)], [2, 4]);
-  s = E.setPrice(s, 'ETH', 3000); // +50%: clamped
-  assert.deepEqual([E.incomeMult(s, 'red'), E.mood(s, 'red')], [3, 0.25]);
-  assert.equal(E.incomeMult(E.newSeason(1), 'red'), 1); // no prices yet
+  assert.deepEqual([E.mood(s, 'red'), E.mercMult(s), E.recruitCost(s)], [0, 1, 2]);
+  let r = E.startTurn(s); // red's first turn: nothing to compare with yet
+  assert.equal(r.events.find((e) => e.type === 'resources.updated').data.dividend, 0);
+  s = E.applyAction(r.state, 'red', { action: 'hold' }).state;
+  s = E.applyAction(E.startTurn(s).state, 'blue', { action: 'hold' }).state;
+  s = E.setPrice(s, 'ETH', 2010); // ETH +0.5% since red's last turn
+  const gold = s.kingdoms.red.gold;
+  r = E.startTurn(s);
+  const ev = r.events.find((e) => e.type === 'resources.updated');
+  assert.deepEqual([ev.data.dividendPct, ev.data.dividend], [0.5, 50]);
+  assert.equal(r.state.kingdoms.red.gold, gold + ev.data.income + 50);
+  assert.match(ev.summary, /ETH \+0\.50% since its last turn: \+50 gold/);
+  s = E.setPrice(E.setPrice(E.setPrice(s, 'ETH', 2020), 'BTC', 79200), 'LINK', 10.5); // this season: ETH +1%, BTC -1%, LINK +5%
+  assert.deepEqual([E.mood(s, 'red'), E.mood(s, 'blue')], [0.2, -0.2]);
+  assert.deepEqual([E.mercMult(s), E.recruitCost(s)], [2.5, 5]);
+  assert.equal(E.mood(E.setPrice(s, 'ETH', 3000), 'red'), 0.4); // capped
+  const crash = E.setPrice(r.state, 'ETH', 1000); // a crash can't take the treasury below zero
+  assert.equal(E.startTurn(E.applyAction(E.startTurn(E.applyAction(crash, 'red', { action: 'hold' }).state).state, 'blue', { action: 'hold' }).state).state.kingdoms.red.gold, 0);
 });
 
-test('weather: rain bogs armies down, fog blinds scouts, storms blunt attacks, snow doubles rations', () => {
-  const s = E.newSeason(1, 'demo');
-  const wet = E.setWeather(s, { code: 63, tempC: 12, windKmh: 10 });
-  assert.equal(wet.weather.kind, 'rain');
-  assert.ok(E.legalMoves(wet, 'red').every((m) => m.cost <= 1) && E.legalMoves(wet, 'red').length < E.legalMoves(s, 'red').length);
-  assert.equal(E.intel(E.setWeather(s, { code: 45, tempC: 5, windKmh: 3 }), 'red').visible, false);
+test('weather: five regions dealt random cities each season (one per climate), and every sky only affects its own ground', () => {
+  const skies = (n) => Object.values(E.skiesFor(n).regions);
+  assert.deepEqual(skies(3), skies(3), 'the same season always gets the same skies');
+  assert.deepEqual(new Set(skies(3).map((w) => w.climate)).size, 5, 'one of each climate');
+  assert.ok([4, 5, 6, 7].some((n) => skies(n).map((w) => w.place).join() !== skies(3).map((w) => w.place).join()), 'seasons differ');
+
+  const s = E.newSeason(1, 'demo'); // both armies start in the Crownlands (the middle)
+  assert.deepEqual(Object.keys(s.weather.regions), ['nw', 'ne', 'mid', 'sw', 'se']);
+  const rain = { code: 63, tempC: 12, windKmh: 10 };
+  const wetHere = E.setWeather(s, 'mid', rain), wetAway = E.setWeather(s, 'se', rain);
+  assert.equal(wetHere.weather.regions.mid.kind, 'rain');
+  assert.ok(E.legalMoves(wetHere, 'red').length < E.legalMoves(s, 'red').length, 'mud where red stands slows it');
+  assert.deepEqual(E.legalMoves(wetAway, 'red').filter((m) => m.x <= 4 && m.y <= 4), E.legalMoves(s, 'red').filter((m) => m.x <= 4 && m.y <= 4), 'rain elsewhere changes nothing here');
+  const fog = { code: 45, tempC: 5, windKmh: 3 };
+  assert.equal(E.intel(E.setWeather(s, 'mid', fog), 'red').visible, false, 'blue hides in the fog');
+  assert.equal(E.intel(E.setWeather(s, 'nw', fog), 'red').visible, true, 'fog elsewhere hides nothing');
   const near = E.newSeason(1, 'demo');
   Object.assign(near.armies.red, { x: 4, y: 4 });
-  const calm = E.odds(near, 'red', 4, 5), stormy = E.odds(E.setWeather(near, { code: 95, tempC: 20, windKmh: 30 }), 'red', 4, 5);
+  const calm = E.odds(near, 'red', 4, 5), stormy = E.odds(E.setWeather(near, 'mid', { code: 95, tempC: 20, windKmh: 30 }), 'red', 4, 5); // Crown Fort is in the Crownlands
   assert.ok(Math.abs(stormy / calm - 0.7) < 0.02, `${stormy} vs ${calm}`);
-  assert.equal(E.eats(E.setWeather(s, { code: 73, tempC: -5, windKmh: 5 }), 'red'), 2 * E.eats(s, 'red'));
-  assert.equal(E.classifyWeather({ code: 0, tempC: 38, windKmh: 5 }), 'heat');
+  const snow = { code: 73, tempC: -5, windKmh: 5 };
+  assert.equal(E.eats(E.setWeather(s, 'mid', snow), 'red'), 2 * E.eats(s, 'red'));
+  assert.equal(E.eats(E.setWeather(s, 'se', snow), 'red'), E.eats(s, 'red'));
+  const fair = { code: 1, tempC: 20, windKmh: 5 };
+  const forage = (st) => E.startTurn(st).events.find((e) => e.type === 'resources.updated').data.forage;
+  assert.deepEqual([forage(E.setWeather(s, 'mid', fair)), forage(wetHere)], [4, 0], 'clear weather feeds an army; rain does not');
+  assert.deepEqual([{ code: 0, tempC: 38, windKmh: 5 }, { code: 2, tempC: 15, windKmh: 30 }, { code: 3, tempC: 1, windKmh: 5 }, fair].map(E.classifyWeather), ['heat', 'wind', 'cold', 'clear']);
 });
 
-test('upgrade: a save from before markets and weather keeps its ETH baseline', () => {
-  const old = { ...E.newSeason(2, 'demo'), market: { start: 2600, price: 2650, mult: 1.19 } };
-  delete old.weather;
+test('upgrade: an old save keeps its ETH baseline and gets the five regions', () => {
+  const old = { ...E.newSeason(2, 'demo'), market: { start: 2600, price: 2650, mult: 1.19 }, weather: { kind: 'rain', place: 'Lahore, Pakistan' } };
   const s = E.upgrade(old);
   assert.deepEqual(s.market.ETH, { start: 2600, price: 2650 });
   assert.deepEqual(s.market.BTC, { start: null, price: null });
-  assert.equal(s.weather.kind, 'clear');
+  assert.deepEqual(Object.values(s.weather.regions).map((w) => w.kind), ['clear', 'clear', 'clear', 'clear', 'clear']);
+  assert.deepEqual([s.weather.regions.mid.name, s.weather.regions.ne.name], ['Crownlands', 'Northern Marches']);
   assert.equal(E.upgrade(s), s);
 });
 
