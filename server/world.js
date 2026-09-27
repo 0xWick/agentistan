@@ -123,7 +123,7 @@ export class World extends DurableObject {
     if (COUNT[type]) W.counters[COUNT[type]]++;
     this.record({ k: 'e', e });
     this.broadcast('event', e);
-    this.news(e);
+    try { this.news(e); } catch (err) { console.error('news not queued:', err); } // a Discord post must never break the game
     return e;
   }
 
@@ -245,7 +245,9 @@ export class World extends DurableObject {
     if (W.state.status === 'ended') this.at('seasonEnd', 0);
     else {
       this.schedule();
-      if (k === 'blue') this.roundReport(turn); // both generals have moved
+      if (k === 'blue') { // both generals have moved
+        try { this.roundReport(turn); } catch (err) { console.error('round report not queued:', err); }
+      }
     }
     this.save();
     this.pushState();
