@@ -12,31 +12,37 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 28V10h4V5h5v5h6V5h5v5h4v18z' fill='%23e8590c'/%3E%3C/svg%3E">
-  <script>try { const t = localStorage.getItem('np-theme'); if (t) document.documentElement.dataset.theme = t; if (localStorage.getItem('np-view') === 'nerd') document.documentElement.dataset.view = 'nerd'; } catch {}</script>
+  <script>try { const t = localStorage.getItem('np-theme'); if (t) document.documentElement.dataset.theme = t; if (localStorage.getItem('np-view') === 'nerd') document.documentElement.dataset.view = 'nerd'; if (localStorage.getItem('np-lens') === 'biz') document.documentElement.dataset.lens = 'biz'; } catch {}</script>
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body>
   <header class="top">
-    <div class="brand">
+    <div class="brand" data-relabel>
       <h1>Nobody's Playing</h1>
-      <p class="thesis">Two AI generals are fighting a war on their own. No human is playing. Just watch.</p>
+      <p class="thesis">Two AI generals fight a war on their own, day and night. Nobody is playing: six technologies run it all.</p>
     </div>
     <div class="status">
       <span id="live" class="pill">Connecting…</span>
-      <span id="next" class="pill"></span>
+      <button id="next" class="pill" disabled></button>
       <span id="clock" class="pill nerd-only"></span>
       <span class="pill tag nerd-only">Testnet</span>
       <span id="ai-mode" class="pill nerd-only"></span>
       <button id="intro-open" class="btn nerd-only">What am I looking at?</button>
-      <a class="btn" href="/history">Past seasons</a>
+      <span class="see-as simple-only" role="group" aria-label="See it as"><button class="btn" data-lens="war">⚔️ War</button><button class="btn" data-lens="biz">💼 As a business</button></span>
+      <a class="btn" href="/history">History</a>
       <button id="view" class="btn" aria-pressed="false">Nerd view</button>
-      <button id="theme" class="btn" aria-pressed="false">Dark mode</button>
+      <button id="theme" class="btn icon" aria-pressed="false" aria-label="Dark mode">🌙</button>
+      <a id="site" class="btn" href="https://umarkhatana.com" target="_blank" rel="noopener">By Umar Khatana ↗</a>
     </div>
     <dl id="counters" class="counters nerd-only"></dl>
   </header>
 
-  <div id="timeline" class="timeline" role="group" aria-label="Timeline of the season">
+  <section class="tech simple-only" aria-label="What's running the show" data-relabel>
+    <ol id="flow"></ol>
+  </section>
+
+  <div id="timeline" class="timeline nerd-only" role="group" aria-label="Timeline of the season">
     <div>
       <button id="tl-play" class="btn">Play</button>
       <span class="tl-speed" role="group" aria-label="Playback speed"><button class="btn" data-speed="1">1×</button><button class="btn" data-speed="4">4×</button><button class="btn" data-speed="16">16×</button></span>
@@ -47,14 +53,22 @@
     </div>
   </div>
 
-  <main id="simple" class="simple simple-only">
-    <section class="panel narrator" aria-live="polite">
-      <div class="panel-head"><h2>🎙️ The narrator</h2><button class="btn replay">Replay last turn</button></div>
-      <p id="n-big" class="n-big">Loading the war…</p>
-      <h3 id="n-when" class="n-when"></h3>
-      <p id="n-lines" class="n-lines"></p>
-      <blockquote id="n-quote" class="n-quote" hidden></blockquote>
-      <p id="n-next" class="n-next"></p>
+  <main id="simple" class="simple simple-only" data-relabel>
+    <section class="panel narrator">
+      <div class="panel-head"><h2>🎙️ What's happening</h2><button class="btn replay">Replay last turn</button></div>
+      <div aria-live="polite">
+        <p id="n-big" class="n-big">Loading the war…</p>
+        <h3 id="n-when" class="n-when"></h3>
+        <p id="n-lines" class="n-lines"></p>
+        <blockquote id="n-quote" class="n-quote" hidden></blockquote>
+        <p id="n-next" class="n-next"></p>
+      </div>
+      <form id="ask" class="ask">
+        <div class="ask-who" role="group" aria-labelledby="ask-title"><h3 id="ask-title">💬 Ask a general</h3><button type="button" class="btn" data-k="red"></button><button type="button" class="btn" data-k="blue"></button></div>
+        <div class="ask-chips"><button type="button" class="chip" data-q="Why did you make your last move?">Why that move?</button><button type="button" class="chip" data-q="What is your plan for the next few turns?">What's your plan?</button><button type="button" class="chip" data-q="How are the real prices and weather affecting you right now?">Prices and weather?</button></div>
+        <div class="ask-row"><input id="ask-q" maxlength="200" autocomplete="off" aria-label="Your question"><button class="btn primary">Ask</button></div>
+        <p id="ask-out" class="ask-out" aria-live="polite" data-keep hidden></p>
+      </form>
     </section>
 
     <section class="panel score" aria-label="Score">
@@ -65,14 +79,8 @@
       <div id="sides" class="sides"></div>
     </section>
 
-    <section class="panel flow">
-      <h2>What's running the show</h2>
-      <ol id="flow"></ol>
-      <p id="biz-line" class="biz-line"></p>
-    </section>
-
     <section class="panel moments">
-      <div class="panel-head"><h2>Key moments this season</h2><span class="muted hint">Click one to jump there, or drag the bar at the top.</span></div>
+      <h2>Key moments this season</h2>
       <ol id="moments"></ol>
     </section>
   </main>
@@ -93,12 +101,12 @@
       <ul class="legend">
         <li><i class="sw sw-castle"></i>Castle (number: defenders)</li>
         <li><i class="sw sw-army"></i>Army (number: soldiers)</li>
-        <li><i class="sw sw-weather"></i>Weather: five regions, each under a real city's sky</li>
+        <li><i class="sw sw-weather"></i>Weather (5 real cities)</li>
         <li><i class="sw sw-red"></i>Emberreach land</li>
         <li><i class="sw sw-blue"></i>Frostmere land</li>
-        <li><i class="sw sw-forest"></i>Forest</li>
-        <li><i class="sw sw-mountain"></i>Mountain</li>
-        <li><i class="sw sw-river"></i>River</li>
+        <li class="nerd-only"><i class="sw sw-forest"></i>Forest</li>
+        <li class="nerd-only"><i class="sw sw-mountain"></i>Mountain</li>
+        <li class="nerd-only"><i class="sw sw-river"></i>River</li>
       </ul>
     </section>
 
@@ -137,9 +145,11 @@
   </main>
 
   <footer class="foot">
-    <p>Built by <strong id="owner">the builder</strong> · <a id="hire" href="#">Hire me</a> · <a href="/how">How it's built</a> · <a href="/history">Past seasons</a><span id="repo-wrap" hidden> · <a id="repo" href="#">Source code</a></span></p>
+    <p>Built by <a id="hire" href="#"><strong id="owner">the builder</strong></a> · <a class="book-link" href="#" target="_blank" rel="noopener">Book a meeting</a> · <a href="/how">How it's built</a> · <a href="/history">Past seasons</a><span id="repo-wrap" hidden> · <a id="repo" href="#">Source code</a></span></p>
     <p class="muted">Test network only. No real money. Not financial advice. Real prices and weather hit the game hard on purpose, so you can see them.</p>
   </footer>
+
+  <a class="book book-link" href="#" target="_blank" rel="noopener" hidden>📅 Book a meeting</a>
 
   <dialog id="intro" aria-labelledby="intro-title">
     <h2 id="intro-title">Meet the cast</h2>

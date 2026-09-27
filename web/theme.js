@@ -7,7 +7,9 @@ const btn = document.querySelector('#theme');
 
 function label() {
   if (!btn) return;
-  btn.textContent = dark() ? 'Light mode' : 'Dark mode';
+  const next = dark() ? 'Light mode' : 'Dark mode';
+  btn.textContent = btn.classList.contains('icon') ? (dark() ? '☀️' : '🌙') : next; // the live page's header is tight: icon only
+  btn.title = next;
   btn.setAttribute('aria-pressed', String(dark()));
 }
 

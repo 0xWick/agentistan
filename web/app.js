@@ -1,5 +1,5 @@
 import { LENS, TECH } from './lens.js';
-import { headline, turnStory, flow, isMoment, momentText, MOMENTS, roundOf, turnOf, regionsOf, SKY, WEATHER, WEATHER_SHORT } from './story.js';
+import { headline, turnStory, flow, isMoment, momentText, MOMENTS, roundOf, turnOf, regionsOf, SKY, WEATHER, WEATHER_SHORT, asBusiness } from './story.js';
 import './theme.js';
 
 const $ = (s) => document.querySelector(s);
@@ -83,6 +83,21 @@ function show(p, step = false) {
   renderPipeline();
   renderLens(!(TL.live || TL.playing));
   renderTimeline();
+  relabel();
+}
+
+// "See it as your business": rewrites the simple view's words (castles → clients, gold → cash…) in place.
+// Each text node remembers its original, so switching back restores it; fresh renders start from war words.
+const original = new WeakMap();
+const biz = () => document.documentElement.dataset.lens === 'biz' && document.documentElement.dataset.view !== 'nerd'; // the nerd view has no switch
+function relabel(roots = document.querySelectorAll('[data-relabel]')) {
+  for (const root of roots) {
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('[data-keep]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+    for (let n; (n = walk.nextNode());) {
+      if (!original.has(n)) original.set(n, n.nodeValue);
+      n.nodeValue = biz() ? asBusiness(original.get(n)) : original.get(n);
+    }
+  }
 }
 
 async function play(from) {
@@ -303,31 +318,37 @@ function renderNext() {
   if (!meta || !S) return;
   const el = $('#next'), up = $('#n-next');
   up.textContent = '';
-  if (TL.past) return void (el.textContent = 'Watching a recording');
-  if (!TL.live) return void (el.textContent = 'Looking back · press Live to catch up');
-  const at = meta.nextTurnAt, left = Math.max(0, Math.round((at - Date.now()) / 1000));
-  const every = meta.turnIntervalMs >= 60_000 ? `${Math.round(meta.turnIntervalMs / 60_000)} min` : `${Math.round(meta.turnIntervalMs / 1000)} s`;
-  const clock = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
-  el.textContent = S.state.status !== 'running' ? 'New season starting…'
-    : !at ? 'Turn in progress…'
-    : `Next turn in ${clock} · one every ${every}`;
-  const k = S.state.active;
-  if (S.state.status === 'running' && at) up.textContent = `Up next: ${meta.cast[k].general} (${meta.cast[k].realm}) moves in ${clock}.`;
+  el.disabled = TL.past || TL.live; // looking back: the pill is the way back to live
+  if (TL.past) el.textContent = 'Watching a recording';
+  else if (!TL.live) el.textContent = TL.playing ? '▶ Replaying · skip to live' : '⏪ Looking back · go live';
+  else {
+    const at = meta.nextTurnAt, left = Math.max(0, Math.round((at - Date.now()) / 1000));
+    const every = meta.turnIntervalMs >= 60_000 ? `${Math.round(meta.turnIntervalMs / 60_000)} min` : `${Math.round(meta.turnIntervalMs / 1000)} s`;
+    const clock = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    el.textContent = S.state.status !== 'running' ? 'New season starting…'
+      : !at ? 'Turn in progress…'
+      : `Next turn in ${clock}`;
+    el.title = `One turn every ${every}`;
+    const k = S.state.active;
+    if (S.state.status === 'running' && at) up.textContent = `Up next: ${meta.cast[k].general} (${meta.cast[k].realm}) moves in ${clock}.`;
+  }
+  relabel([up]);
 }
 
-// ---------- simple view: narrator, score, the tech strip, key moments ----------
+// ---------- simple view: the tech strip on top, then narrator, score and key moments ----------
 function renderSimple() {
   const s = S.state, cast = meta.cast, R = (k) => cast[k].realm;
   const tr = events.findLast((e) => e.type === 'turn.started')?.traceId;
   const inTurn = tr ? events.filter((e) => e.traceId === tr) : [];
   const start = inTurn.find((e) => e.type === 'turn.started');
 
+  // The narrator tells the story; what prices and weather are doing lives in the tech strip above, so it's left out here.
   const [first, ...rest] = document.documentElement.classList.contains('stale')
     ? [`Replaying round ${roundOf(turnOf(events.at(-1)))}.`, 'This part of the season was recorded before the map was, so the map and score catch up later in the timeline.']
-    : headline(s, cast, S.effects);
+    : headline(s, cast);
   $('#n-big').innerHTML = `<strong>${esc(first)}</strong> ${esc(rest.join(' '))}`;
   $('#n-when').textContent = start ? `Round ${roundOf(turnOf(start))} · ${R(start.kingdom)}'s move` : '';
-  const { lines, quote } = turnStory(inTurn.filter((e) => e.type !== 'turn.started'), s, cast);
+  const { lines, quote } = turnStory(inTurn.filter((e) => !['turn.started', 'market.shift', 'weather.changed'].includes(e.type)), s, cast);
   $('#n-lines').textContent = lines.join(' ') || (start ? `${cast[start.kingdom].general} is about to decide…` : 'Waiting for the first move…');
   $('#n-quote').hidden = !quote;
   if (quote) $('#n-quote').innerHTML = `<p>“${esc(quote.text)}”</p><cite>${esc(quote.who)}${quote.thinking ? ', thinking out loud' : ', explaining the order'}</cite>`;
@@ -341,18 +362,15 @@ function renderSimple() {
   $('#sides').innerHTML = ['red', 'blue'].map((k) => {
     const K = s.kingdoms[k], A = s.armies[k];
     const army = A.routed ? 'Wiped out, regrouping' : `${A.strength} soldiers${A.fortified ? ', dug in' : ''}`;
-    const fx = S.effects?.[k], sign = (n) => (n >= 0 ? '+' : '−');
-    const d = fx?.dividend, gold = (n) => `<span class="${n >= 0 ? 'up' : 'down'}">${sign(n)}${Math.abs(n)} gold</span>`;
-    const coin = !fx ? '' : `<div><dt>📈 ${fx.coin} since its last turn</dt><dd>${d ? `${sign(d.pct)}${Math.abs(d.pct).toFixed(2)}% → ${gold(d.gold)}` : 'waiting for a reading'}</dd></div>
-        <div><dt>⚔️ ${fx.coin} this season</dt><dd>${sign(fx.pct)}${Math.abs(fx.pct).toFixed(2)}% → fights ${sign(fx.mood)}${Math.round(Math.abs(fx.mood) * 100)}%</dd></div>`;
+    const d = S.effects?.[k]?.dividend, sign = (n) => (n >= 0 ? '+' : '−');
+    const paid = d?.gold ? ` <span class="${d.gold >= 0 ? 'up' : 'down'}" title="${d.coin} moved ${sign(d.pct)}${Math.abs(d.pct).toFixed(2)}% since its last turn">${sign(d.gold)}${Math.abs(d.gold)} from ${d.coin}</span>` : '';
     return `<article class="side ${k}">
       <h3>${R(k)}${s.active === k && s.status === 'running' ? ' <span class="to-move">to move</span>' : ''}</h3>
-      <p class="muted">${cast[k].general}, an AI · paid in ${cast[k].treasury}</p>
+      <p class="muted">${cast[k].general} (AI) · gold held in ${cast[k].treasury}</p>
       <dl>
         <div><dt>⚔️ Army</dt><dd>${army}</dd></div>
         <div><dt>🍞 Food</dt><dd>${K.food}%${K.food < 20 ? ' <span class="low">low</span>' : ''}<span class="bar${K.food < 20 ? ' low' : ''}"><i style="width:${K.food}%"></i></span></dd></div>
-        <div><dt>💰 Gold</dt><dd>${K.gold}</dd></div>
-        ${coin}
+        <div><dt>💰 Gold</dt><dd>${K.gold}${paid}</dd></div>
       </dl>
     </article>`;
   }).join('');
@@ -360,17 +378,50 @@ function renderSimple() {
   const at = TL.lines[TL.pos];
   const now = at?.k === 'e' ? (at.e.type === 'turn.started' ? 'event' : at.e.stage) : null;
   $('#flow').innerHTML = flow(inTurn, s, meta, now, S.proofs, S.effects).map((st) => `<li class="st-${st.id}${st.done ? ' done' : ''}${st.active ? ' now' : ''}">
-    <span class="ic" aria-hidden="true">${st.icon}</span><b>${st.name}</b><span class="tech">${esc(st.tech)}</span>
-    <span class="does">${esc(st.does)}</span><span class="now-txt">${esc(st.now)}</span></li>`).join('');
-  const e = at?.k === 'e' && LENS[at.e.lensKey]?.[2] ? at.e : events.findLast((x) => LENS[x.lensKey] && !['turn.started', 'resources.updated', 'agent.tool_result'].includes(x.type));
-  $('#biz-line').innerHTML = e ? `<b>💼 In a real business, this is like:</b> ${esc(LENS[e.lensKey][2])}` : '';
+    <span class="head"><span class="ic" aria-hidden="true">${st.icon}</span><b>${st.name}</b></span><span class="tech">${esc(st.tech)}</span>
+    <span class="does">${esc(st.does)}</span><span class="for-you">${esc(st.biz)}</span><span class="now-txt" title="${esc(st.now)}">${esc(st.now)}</span></li>`).join('');
 
   const c = countUpTo(TL.keys, TL.pos), keys = TL.keys.slice(0, c);
-  $('#moments').innerHTML = keys.slice(-8).reverse().map((i) => {
+  $('#moments').innerHTML = keys.slice(-4).reverse().map((i) => {
     const m = TL.lines[i].e;
     return `<li><button data-line="${i}"><span class="when">Round ${roundOf(turnOf(m)) || 1}</span><span aria-hidden="true">${MOMENTS[m.type]}</span><span>${esc(momentText(m, s, cast))}</span></button></li>`;
-  }).join('') + (keys.length > 8 ? `<li class="muted more">…and ${keys.length - 8} earlier. Drag the bar at the top to go further back.</li>` : '')
-    || '<li class="muted">Nothing big has happened yet.</li>';
+  }).join('') || '<li class="muted">Nothing big has happened yet.</li>';
+  renderAskWho();
+  fit();
+}
+
+// The map takes the height left under the header and tech strip (which wrap differently at each width),
+// so on a laptop the whole first screen needs no scrolling.
+function fit() {
+  document.documentElement.style.setProperty('--game-top', `${Math.round($('#simple').getBoundingClientRect().top + scrollY)}px`);
+}
+addEventListener('resize', fit);
+
+// ---------- "Ask a general": a viewer's question, answered by the AI from the live game ----------
+let askK = 'red';
+function renderAskWho() {
+  document.querySelectorAll('.ask-who button').forEach((b) => {
+    b.textContent = `${meta.cast[b.dataset.k].general.split(' ').pop()} (${meta.cast[b.dataset.k].realm})`;
+    b.setAttribute('aria-pressed', String(b.dataset.k === askK));
+  });
+  $('#ask-q').placeholder = `Ask ${biz() ? `${meta.cast[askK].realm}'s AI manager` : meta.cast[askK].general} anything…`;
+}
+
+async function ask(question) {
+  const q = question.trim(), out = $('#ask-out'), btn = $('#ask .primary');
+  if (q.length < 3 || btn.disabled) return;
+  out.hidden = false;
+  out.textContent = `${meta.cast[askK].general.split(' ').pop()} is thinking…`;
+  btn.disabled = true;
+  try {
+    const d = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kingdom: askK, question: q, view: biz() ? 'business' : 'war' }) }).then((r) => r.json());
+    out.innerHTML = !d.answer ? esc(d.error ?? 'No answer this time. Try again in a minute.')
+      : `<b>${esc(biz() ? asBusiness(d.who) : d.who)}:</b> “${esc(d.answer)}”<small>${d.mode === 'live' ? `Answered just now by ${esc(d.model.split('/').pop())} (AI on Groq) from the live game's data.` : 'The AI is resting to stay on the free tier.'}</small>`;
+  } catch {
+    out.textContent = 'Couldn’t reach the general. Try again in a minute.';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function renderState() {
@@ -388,7 +439,9 @@ function renderState() {
   renderResults();
   const p = meta.public;
   $('#owner').textContent = p.owner;
-  $('#hire').href = safeUrl(p.hireUrl) || (p.email ? `mailto:${p.email}` : '#');
+  $('#hire').href = $('#site').href = safeUrl(p.hireUrl) || (p.email ? `mailto:${p.email}` : '#');
+  $('#site').textContent = `By ${p.owner} ↗`;
+  document.querySelectorAll('.book-link').forEach((a) => { a.href = safeUrl(p.bookingUrl) || '#'; a.hidden = !safeUrl(p.bookingUrl); });
   $('#repo').href = safeUrl(p.repoUrl) || '#';
   $('#repo-wrap').hidden = !safeUrl(p.repoUrl);
 }
@@ -537,6 +590,33 @@ $('#moments').addEventListener('click', (ev) => {
   const b = ev.target.closest('button[data-line]');
   if (b) scrub(+b.dataset.line, true);
 });
+$('#next').addEventListener('click', goLive);
+function setLens(v) {
+  if (v === 'biz') document.documentElement.dataset.lens = 'biz';
+  else delete document.documentElement.dataset.lens;
+  document.querySelectorAll('.see-as button').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.lens === 'biz') === biz())));
+  if (meta) renderAskWho();
+  relabel();
+}
+document.querySelector('.see-as').addEventListener('click', (ev) => {
+  const v = ev.target.closest('button')?.dataset.lens;
+  if (!v) return;
+  setLens(v);
+  try { localStorage.setItem('np-lens', v); } catch { /* private browsing: lasts until the tab closes */ }
+});
+setLens(document.documentElement.dataset.lens);
+$('#ask').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[type="button"]');
+  if (!b || !meta) return;
+  if (b.dataset.k) {
+    askK = b.dataset.k;
+    renderAskWho();
+  } else ask(b.dataset.q);
+});
+$('#ask').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  if (meta) ask($('#ask-q').value);
+});
 
 // Simple view by default; the full dashboard lives in the nerd view. Both share one map.
 function setView(v) {
@@ -547,6 +627,8 @@ function setView(v) {
   else $('#simple').prepend($('.board'));
   $('#view').textContent = nerd ? 'Simple view' : 'Nerd view';
   $('#view').setAttribute('aria-pressed', String(nerd));
+  relabel();
+  if (!nerd) fit();
 }
 $('#view').addEventListener('click', () => {
   const v = document.documentElement.dataset.view === 'nerd' ? 'simple' : 'nerd';

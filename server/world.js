@@ -4,7 +4,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { keccak256, stringToHex } from 'viem';
 import * as E from './engine.js';
 import { CFG, CAST, MAP, REGIONS, cityNamed } from './config.js';
-import { makeLLM, decide, lesson, clean, seasonStats } from './agent.js';
+import { makeLLM, decide, lesson, clean, seasonStats, answer } from './agent.js';
 import { makeChain, decodeRoundData, KINGDOM_ID } from './chain.js';
 import { LENS } from '../web/lens.js';
 import { headline, momentText, isMoment, turnStory, WEATHER } from '../web/story.js';
@@ -17,6 +17,8 @@ const pickArgs = (a) => Object.fromEntries(['x', 'y', 'n'].filter((f) => a?.[f] 
 const isKingdom = (k) => k === 'red' || k === 'blue';
 const COLOR = { red: 0xd9480f, blue: 0x1864ab, null: 0x495057 };
 const SKY_ICON = { clear: '☀️', rain: '🌧️', snow: '❄️', storm: '⛈️', wind: '💨', fog: '🌫️', heat: '🔥', cold: '🥶' };
+// "Ask the general" budget: ~1k tokens a question, so 40 a day stays well inside the free tier the turns rely on.
+const ASK = { perIp: 4, perDay: 40, windowMs: 600_000 };
 
 // What each snapshot carries besides the raw state, so recordings replay the market and weather effects too.
 export const effectsOf = (s) => ({
@@ -38,11 +40,13 @@ export class World extends DurableObject {
       results: +(env.RESULTS_MS || 60_000),
       scenario: env.SCENARIO || 'standard',
       site: env.PUBLIC_URL || 'https://agentistan.umarkhatana.com',
-      public: { owner: env.PUBLIC_OWNER_NAME || 'the builder', hireUrl: env.PUBLIC_HIRE_URL || '', repoUrl: env.PUBLIC_REPO_URL || '', email: env.PUBLIC_CONTACT_EMAIL || '' },
+      public: { owner: env.PUBLIC_OWNER_NAME || 'the builder', hireUrl: env.PUBLIC_HIRE_URL || '', bookingUrl: env.PUBLIC_BOOKING_URL || '', repoUrl: env.PUBLIC_REPO_URL || '', email: env.PUBLIC_CONTACT_EMAIL || '' },
     };
     this.chain = makeChain(env);
     this.sql = ctx.storage.sql;
     this.hits = new Map();
+    this.askHits = new Map(); // ip -> times of recent questions
+    this.answers = new Map(); // the same question in the same turn gets the same answer, free
     this.stateTimer = null;
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong')); // keep-alives never wake the object
     ctx.blockConcurrencyWhile(async () => this.load());
@@ -507,6 +511,39 @@ export class World extends DurableObject {
     try { ws.close(code === 1005 ? 1000 : code, 'bye'); } catch { /* already closed */ }
   }
 
+  // "Ask the general": a viewer's question, answered in character from the live game. It has its own small budget and
+  // stops at 80% of the daily tokens, so the turns always have the AI; past that, the general's latest journal note answers.
+  async ask(req, ip) {
+    if (req.method !== 'POST') return json(405, { error: 'POST a question' });
+    const body = await req.json().catch(() => ({}));
+    const k = body.kingdom, q = typeof body.question === 'string' ? clean(body.question, 40).slice(0, 200) : '', business = body.view === 'business';
+    if (!isKingdom(k) || q.length < 3) return json(400, { error: 'Pick a general and ask a question.' });
+    const s = this.W.state, who = CAST[k].general, key = `${s.season}:${s.turn}:${k}:${business}:${q.toLowerCase()}`;
+    if (this.answers.has(key)) return json(200, this.answers.get(key));
+    const now = Date.now(), mine = (this.askHits.get(ip) ?? []).filter((t) => now - t < ASK.windowMs);
+    if (mine.length >= ASK.perIp) return json(429, { error: `${who} answers ${ASK.perIp} questions per visitor every 10 minutes. Try again soon.` });
+    const day = new Date().toISOString().slice(0, 10), A = (this.W.asks ??= { day, n: 0 });
+    if (A.day !== day) Object.assign(A, { day, n: 0 });
+    if (this.llm.status().mode !== 'live' || A.n >= ASK.perDay || this.llm.usage.tokens >= this.llm.tokenCap * 0.8) {
+      const note = this.W.memory.journal[k].at(-1)?.note;
+      return json(200, { who, mode: 'resting', answer: note ? `I'm resting to stay on the free AI tier. My latest journal note: "${note}"` : 'I\'m resting to stay on the free AI tier. Ask me again tomorrow.' });
+    }
+    this.askHits.set(ip, [...mine, now]);
+    if (this.askHits.size > 5000) this.askHits.clear(); // ponytail: crude cap, like the request limiter
+    A.n++;
+    try {
+      const out = { who, mode: 'live', model: this.llm.model, answer: (await answer({ s, k, mem: this.W.memory, llm: this.llm, question: q, business })) || 'No comment.' };
+      if (this.answers.size > 200) this.answers.clear();
+      this.answers.set(key, out);
+      return json(200, out);
+    } catch (err) {
+      console.error('ask failed:', err);
+      return json(503, { error: `${who} couldn't answer just now. Try again in a minute.` });
+    } finally {
+      this.save(); // keeps the AI usage and the daily question count
+    }
+  }
+
   health() {
     const W = this.W;
     return {
@@ -525,6 +562,7 @@ export class World extends DurableObject {
       if (!this.allow(ip)) return json(429, { error: 'slow down' });
       if (!this.W) return json(503, { error: 'the world has not started yet' });
       if (p === '/api/live') return this.live(req, ip);
+      if (p === '/api/ask') return await this.ask(req, ip);
       if (p === '/api/state') return json(200, this.publicState());
       if (p === '/api/health') return json(200, this.health());
       if (p === '/api/proof') return json(200, this.publicState().proofs);

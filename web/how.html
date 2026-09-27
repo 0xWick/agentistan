@@ -86,7 +86,8 @@
       <h2>The Generals: AI agents</h2>
       <p>Each turn the general gets its personality, a rules summary, a <b>situation report</b> (weather, what the markets are doing to both sides, whether it can recruit, castles held, where the enemy was last seen), its journal (memory) and past-season lessons. It calls read-only tools (<code>get_battlefield</code>, which includes the odds of every possible attack, <code>get_enemy_position</code>, <code>get_market</code>) and then exactly one order tool. The server dry-runs every order through the same rules engine the game uses; an illegal order goes back to the model with the reason, and it corrects itself. The model never touches the game state directly.</p>
       <p>At the end of a season each general writes one lesson, and it's given its real numbers first (battles won and lost, castles taken, gold left unspent), so the lesson is about what actually happened.</p>
-      <p>Limits per decision: 5 model calls, 45 seconds, a daily cap below the free quota. If the AI is unavailable, a rule-based bot takes over and the page says so ("standing orders"). Spectators can't send any text, so nothing typed by the public ever reaches a prompt.</p>
+      <p>Limits per decision: 5 model calls, 45 seconds, a daily cap below the free quota. If the AI is unavailable, a rule-based bot takes over and the page says so ("standing orders"). Nothing typed by the public ever reaches a general's decision.</p>
+      <p><b>Ask a general.</b> Visitors can ask either general a question. It goes to a separate call with no tools: the general's personality, the same situation report and its recent journal, answering in at most three sentences (in business terms when "See it as your business" is on). It can't touch the game, its answer is shown only to the person who asked, and the question is treated as untrusted text. It has its own budget (4 questions per visitor per 10 minutes, 40 a day, and none once the day's AI tokens pass 80%), so the turns always keep the free tier; repeat questions in the same turn come from a cache.</p>
     </section>
 
     <section class="panel">
@@ -99,7 +100,7 @@
         <li><b>HTTP Request</b> asks the AI general for an order (60-second timeout).</li>
         <li><b>HTTP Request</b> delivers the order to the game.</li>
       </ol>
-      <p><b>Market Sync</b> (scheduled data sync): every 10 minutes it reads three Chainlink feeds with raw JSON-RPC <code>eth_call</code>s and posts them to the world. <b>Weather Sync</b>: every 15 minutes it asks the world which city each region follows this season, reads all four skies from Open-Meteo in one call and reports back. <b>War Correspondent</b>: the world sends it a report after every round (both moves, the score, the weather in each region) and big moments as they happen (captures, wiped-out armies, battles, season results), and it posts them to Discord.</p>
+      <p><b>Market Sync</b> (scheduled data sync): every 10 minutes it reads three Chainlink feeds with raw JSON-RPC <code>eth_call</code>s and posts them to the world. <b>Weather Sync</b>: every 15 minutes it asks the world which city each region follows this season, reads all five skies from Open-Meteo in one call and reports back. <b>War Correspondent</b>: the world sends it a report after every round (both moves, the score, the weather in each region) and big moments as they happen (captures, wiped-out armies, battles, season results), and it posts them to Discord.</p>
       <p>n8n runs on Render's free tier with its editor switched off. The world pings it every 10 minutes so it never falls asleep; if it's down anyway, the world runs the turn itself, reads prices and weather directly, and logs that it did.</p>
     </section>
 

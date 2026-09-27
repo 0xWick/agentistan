@@ -199,10 +199,12 @@ test('clean() strips links and markup and caps length', () => {
 });
 
 test('narrator: whole seasons read as plain sentences, with no coordinates or blanks', async () => {
-  const { headline, turnStory, momentText, isMoment, flow } = await import('../web/story.js');
+  const { headline, turnStory, momentText, isMoment, flow, asBusiness } = await import('../web/story.js');
   const { CAST } = await import('../server/config.js');
   const meta = { cast: CAST, turnIntervalMs: 1_800_000, llm: { mode: 'live', model: 'openai/gpt-oss-120b' } };
   const bad = /\(\d+,\d+\)|undefined|NaN|null/;
+  // "See it as your business" must leave no war words behind, and no "an team" style grammar.
+  const war = /\b(armies|army|soldiers?|castles?|strongholds?|battles?|attacks?|gold|food|generals?|marshal|war|kingdoms?|enemy|season|rounds?)\b|\ban (team|bid|staff)\b/i;
   let s = E.newSeason(3, 'demo', { ETH: 2500, BTC: 80000, LINK: 12 }), texts = 0;
   for (let i = 0; i < 400 && s.status === 'running'; i++) {
     const started = E.startTurn(s), k = started.state.active, o = pickOrder(started.state, k);
@@ -210,7 +212,10 @@ test('narrator: whole seasons read as plain sentences, with no coordinates or bl
     const evs = [...started.events, { type: 'agent.decision', kingdom: k, stage: 'agent', data: { ...o, public_rationale: 'Why not.' } }, ...r.events];
     const out = [...headline(r.state, CAST), ...turnStory(evs, r.state, CAST).lines, ...evs.filter(isMoment).map((e) => momentText(e, r.state, CAST)),
       ...flow(evs, r.state, meta, 'agent', []).map((f) => f.now)];
-    for (const t of out) assert.doesNotMatch(t, bad, t);
+    for (const t of out) {
+      assert.doesNotMatch(t, bad, t);
+      assert.doesNotMatch(asBusiness(t), war, asBusiness(t));
+    }
     texts += out.length;
     s = r.state;
   }

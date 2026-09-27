@@ -1,4 +1,4 @@
-// The narrator and the plain-English "who's doing what" strip for the simple view.
+// The narrator and the plain-English tech strip for the simple view, and the business wording for "See it as your business".
 // Templated like the Tech Lens: instant, free, works when scrubbing backwards, and never makes anything up.
 export const WIN = { castles: 5, rounds: 3 }; // mirrors CFG.win in server/config.js
 
@@ -71,11 +71,30 @@ export function headline(s, cast, fx) {
   const big = A.red.strength >= A.blue.strength * 1.5 ? 'red' : A.blue.strength >= A.red.strength * 1.5 ? 'blue' : null;
   if (down) out.push(`${R(down)}'s army was wiped out and is regrouping at home.`);
   else if (big) out.push(`${R(big)}'s army is much bigger: ${A[big].strength} soldiers to ${A[other(big)].strength}.`);
-  out.push(...forces(s, cast, fx));
+  if (fx) out.push(...forces(s, cast, fx)); // the page shows prices and weather in its tech strip, so it leaves fx out
   const left = s.maxRounds - roundOf(s.turn);
   out.push(left > 0 ? `${plural(left, 'round')} to go.` : 'Final round! If nobody wins outright, whoever holds more castles (then land) wins.');
   return out;
 }
+
+// "See it as your business": the same live story in a company's words. Castles are clients, the army is the team,
+// food is stock, gold is cash, a season is a quarter. Whole words only, longest first, capitals kept.
+const VOCAB = {
+  'fight a war': 'compete for clients', 'to attack': 'to bid for', 'an attack': 'a bid', 'an army': 'a team',
+  'the defenders of': 'the incumbent at', 'dig in and defend': 'lock in its clients', 'dug in': 'locked in', 'dug': 'locked',
+  'battle power': 'competitive edge', 'wiped out': 'burned out', war: 'market',
+  armies: 'teams', army: 'team', soldiers: 'staff', soldier: 'staff', generals: 'managers', general: 'manager', marshal: 'manager',
+  strongholds: 'clients', stronghold: 'client', castles: 'clients', castle: 'client', captured: 'won', captures: 'wins', capture: 'win',
+  attacks: 'bids', attack: 'bid', battles: 'showdowns', battle: 'showdown', fights: 'competes', fighting: 'competing', fight: 'compete',
+  defenders: 'incumbents', kingdoms: 'companies', kingdom: 'company', enemy: 'rival', gold: 'cash', treasury: 'cash reserve',
+  food: 'stock', foraged: 'gathered', forages: 'gathers', forage: 'gather', capitals: 'headquarters', capital: 'headquarters', eat: 'use', eats: 'uses', starving: 'out of stock',
+  regrouping: 'rebuilding', regrouped: 'rebuilt', regroup: 'rebuild', trained: 'hired', train: 'hire', recruit: 'hire',
+  seasons: 'quarters', season: 'quarter', rounds: 'weeks', round: 'week',
+};
+const WORDS = new RegExp(`\\b(${Object.keys(VOCAB).sort((a, b) => b.length - a.length).join('|')})\\b`, 'gi');
+export const asBusiness = (t) => String(t)
+  .replace(/(\d[\d,]*) gold\b/g, '$$$1') // "31 gold" → "$31"
+  .replace(WORDS, (w) => { const r = VOCAB[w.toLowerCase()]; return w[0] === w[0].toUpperCase() ? cap(r) : r; });
 
 function order({ action, args = {} }, s, k, cast) {
   if (action === 'move') return `move the army ${place(s, args.x, args.y)}`;
@@ -159,8 +178,7 @@ export function momentText(e, s, cast) {
   return 'The season began';
 }
 
-// The turn pipeline in plain words: what each piece of tech does, and what it did this turn.
-// The first five run in order every turn; the last two bring the real world in (prices and weather).
+// The tech strip in plain words: what each piece of tech does, and what it did this turn.
 export function flow(evs, s, meta, nowStage, proofs, fx) {
   const R = (k) => meta.cast[k]?.realm, G = (k) => meta.cast[k]?.general;
   const last = (pred) => evs.findLast(pred);
@@ -185,20 +203,6 @@ export function flow(evs, s, meta, nowStage, proofs, fx) {
     : ai.type === 'agent.tool_called' || ai.type === 'agent.tool_result' ? `${G(ai.kingdom)} is studying the map…`
     : `${G(ai.kingdom)} is thinking…`;
 
-  const g = last((e) => e.type === 'stronghold.captured') ?? last((e) => e.type === 'battle.resolved')
-    ?? last((e) => e.stage === 'game' && !['turn.started', 'resources.updated', 'season.started'].includes(e.type))
-    ?? last((e) => e.type === 'resources.updated');
-  const gameNow = !g ? 'Waiting for an order.'
-    : g.type === 'stronghold.captured' ? `${R(g.kingdom)} took ${g.data.name}.`
-    : g.type === 'battle.resolved' ? `Rolled the dice: ${battle(g.data, s, meta.cast)}`
-    : g.type === 'resources.updated' ? `Paid ${R(g.kingdom)} its gold and food.`
-    : g.type === 'army.moved' ? `Moved ${R(g.kingdom)}'s army ${place(s, g.data.x, g.data.y)}.`
-    : g.type === 'army.held' ? `Kept ${R(g.kingdom)}'s army where it was.`
-    : g.type === 'army.fortified' ? `Dug ${R(g.kingdom)}'s army in.`
-    : g.type === 'army.recruited' ? `Trained ${g.data.n} soldiers for ${R(g.kingdom)}.`
-    : g.type === 'army.routed' ? `${R(g.kingdom)}'s army broke and fled.`
-    : 'Carried out the order.';
-
   const tx = last((e) => e.stage === 'chain');
   const done = proofs.filter((p) => p.status === 'confirmed').length;
   const chainNow = tx?.type === 'chain.tx_queued' ? 'Writing the capture to the blockchain…'
@@ -207,24 +211,34 @@ export function flow(evs, s, meta, nowStage, proofs, fx) {
     : tx?.type === 'chain.tx_failed' ? 'Failed this time; it shows openly and the game carries on.'
     : `Nothing to record this turn. ${plural(done, 'result')} on record so far.`;
 
+  // The latest payout if there is one, otherwise the season's trend: "ETH +0.31% → Emberreach +31 gold".
   const coin = (k) => {
     const d = fx[k].dividend;
-    return `${d ? `${d.coin} ${signed(d.pct, 2)}% since ${R(k)}'s last turn → ${signed(d.gold)} gold` : `${fx[k].coin}: no reading yet`}; ${signed(fx[k].pct, 2)}% this season → fights ${signed(fx[k].mood * 100)}%`;
+    return d?.gold ? `${d.coin} ${signed(d.pct, 2)}% → ${R(k)} ${signed(d.gold)} gold` : `${fx[k].coin} ${signed(fx[k].pct, 2)}% → ${R(k)} fights ${signed(fx[k].mood * 100)}%`;
   };
-  const priceNow = !fx ? 'Waiting for the first prices.' : `${coin('red')}. ${coin('blue')}. LINK ${signed(fx.LINK.pct, 2)}% → soldiers cost ${fx.LINK.cost} gold.`;
-  const skies = regionsOf(s);
-  const weatherNow = !skies.length ? 'Clear skies.'
-    : skies.map((w) => `${SKY[w.kind]} ${w.name}: ${w.kind}${w.place ? ` (${w.place.split(',')[0]}${Number.isFinite(w.tempC) ? ` ${Math.round(w.tempC)}°C` : ''})` : ''}`).join(' · ');
+  const priceNow = !fx ? 'Waiting for the first prices.' : `${coin('red')} · ${coin('blue')} · LINK → soldiers ${fx.LINK.cost} gold`;
+  // The unusual weather first, by city; clear skies last, as a count.
+  const byKind = {};
+  for (const w of regionsOf(s)) (byKind[w.kind] ??= []).push(String(w.place ?? w.name).split(',')[0]);
+  const { clear = [], ...rough } = byKind;
+  const weatherNow = [...Object.entries(rough).map(([kind, cities]) => `${SKY[kind] ?? ''} ${cities.join(', ')}: ${WEATHER_SHORT[kind] ?? kind}`),
+    ...(clear.length ? [`☀️ ${clear.length > 1 ? `${clear.length} clear` : clear[0]}: ${WEATHER_SHORT.clear}`] : [])].join(' · ') || 'Clear skies.';
 
+  // Six pieces of tech, in the order a turn uses them. `does` says what each does here, `biz` what it would do for a business.
   const stages = [
-    { id: 'event', icon: '⏰', name: 'The clock', tech: 'Cloudflare', does: `Starts a new turn every ${every}. Nobody presses a button.`,
+    { id: 'event', icon: '⏰', name: 'Always on', tech: 'Cloudflare', does: `Runs the world day and night and starts a turn every ${every}.`,
+      biz: 'Runs 24/7 on a free server: reports, billing and follow-ups on time, with no staff.',
       now: start ? `Round ${roundOf(turnOf(start))}: ${R(start.kingdom)}'s turn.` : 'Waiting for the first turn.' },
-    { id: 'n8n', icon: '⚙️', name: 'Automation', tech: 'n8n', does: 'Runs each turn, reorders food, syncs prices and weather, posts news to Discord.', now: n8nNow },
-    { id: 'agent', icon: '🧠', name: 'AI general', tech: `${meta.llm.model.split('/').pop()} on Groq`, does: 'Reads the map and picks one move, then explains why.', now: aiNow },
-    { id: 'game', icon: '🎲', name: 'Game rules', tech: 'Rules engine', does: 'Blocks illegal moves and settles battles with fair, replayable dice.', now: gameNow },
-    { id: 'chain', icon: '🔒', name: 'Blockchain', tech: 'Base Sepolia', does: 'Writes every castle capture to a public record nobody can edit.', now: chainNow },
-    { id: 'oracle', icon: '📈', name: 'Live prices', tech: 'Chainlink', does: 'Each treasury is held in a coin: every 1% ETH or BTC moves = 100 gold won or lost. The season\'s trend sets fighting spirit; LINK sets the price of soldiers.', now: priceNow },
-    { id: 'weather', icon: '🌦️', name: 'Live weather', tech: 'Open-Meteo, via n8n', does: 'Five regions, each dealt a real city\'s sky every season. Every kind of weather changes that ground: movement, food or fighting.', now: weatherNow },
+    { id: 'n8n', icon: '⚙️', name: 'Automations', tech: 'n8n', does: 'Delivers orders, reorders food, fetches prices and weather, posts to Discord.',
+      biz: 'Orders, invoices, restocking and team alerts that happen on their own.', now: n8nNow },
+    { id: 'agent', icon: '🧠', name: 'AI generals', tech: `${meta.llm.model.split('/').pop()} on Groq`, does: 'Read the map, decide every move, then explain why.',
+      biz: 'An AI assistant that makes routine calls from your real data, and explains each one.', now: aiNow },
+    { id: 'oracle', icon: '📈', name: 'Live prices', tech: 'Chainlink', does: 'Real ETH, BTC and LINK prices win or lose gold and make armies stronger or weaker.',
+      biz: 'Prices, payouts and budgets that follow live market rates.', now: priceNow },
+    { id: 'weather', icon: '🌦️', name: 'Live weather', tech: 'Open-Meteo · 5 cities', does: 'Real weather in five cities slows, starves or shields the armies.',
+      biz: 'Plans that adjust to real conditions: weather, traffic, demand.', now: weatherNow },
+    { id: 'chain', icon: '🔒', name: 'Public record', tech: 'Base blockchain', does: 'Every capture is saved on a public blockchain nobody can edit.',
+      biz: 'Receipts, certificates and contracts nobody can alter, not even you.', now: chainNow },
   ];
   const seen = new Set(evs.map((e) => (e.type === 'turn.started' ? 'event' : e.stage)));
   return stages.map((st) => ({ ...st, done: seen.has(st.id), active: st.id === nowStage }));

@@ -18,7 +18,13 @@ Two kingdoms fight over seven castles. Nobody plays: the technologies below run 
 | **Real weather** | Five regions (four corners and the middle), each dealt a random real city every season, one per climate (hot, cold, wet, tropical, changeable: Lahore, Moscow, London, Mumbai, New York…). Every kind of weather has a visible effect on its own ground: clear skies let armies forage, rain and snow slow every step, storms and wind weaken attacks, fog hides armies, heat, cold and snow make armies hungrier. | Operations that adapt to live conditions, region by region: delivery routes around storms, staffing that follows the forecast. |
 | **Blockchain ledger** | Every capture and season result is written to the `RealmLedger` contract on Base Sepolia. The contract reads Chainlink itself and stamps the price into the record, with a hash of the full battle. | Tamper-proof certificates, supply-chain records or payouts. |
 
-The page opens in a **simple view** for people who have never heard of any of this: the map, a **narrator** that tells the season and the latest turn in plain sentences (with the general's own reasoning quoted), a tug-of-war score, a strip showing what each technology did this turn in everyday words, and a list of key moments you can jump to. The narrator is templated from the game's events ([web/story.js](web/story.js)), so it costs nothing, never makes anything up, and rewinds with the timeline. **Nerd view** switches to the full dashboard (decision theater, pipeline, event log, counters, journals, receipts); the choice is remembered.
+The page opens in a **simple view** for people who have never heard of any of this, and on a laptop it fits one screen. Along the top, six tiles name the tech running the show (Cloudflare, n8n, the AI, Chainlink, Open-Meteo, the blockchain), what each does, and what each just did. Below them: the map, a **narrator** that tells the season and the latest turn in plain sentences (with the general's own reasoning quoted), a tug-of-war score and the key moments. The narrator is templated from the game's events ([web/story.js](web/story.js)), so it costs nothing, never makes anything up, and rewinds with the timeline.
+
+- **See it as your business** rewrites the whole simple view in a company's words (castles → clients, armies → teams, food → stock, gold → cash, seasons → quarters), and the six tiles say what each piece of tech would do for a business. The same templated text, reworded, so it stays free and instant.
+- **Ask a general**: visitors ask either AI a question (or tap a suggested one) and it answers in character from the same situation report it decides from, in business terms when that view is on (`POST /api/ask`). It has its own budget: 4 questions per visitor per 10 minutes, 40 a day, and none once the day's AI tokens pass 80%, so the turns always keep the free tier. Repeat questions in the same turn are answered from a cache; past the budget, the general's latest journal note answers.
+- **Book a meeting** stays on the right edge (a floating button on phones), and the header links to the builder's site.
+
+**Nerd view** switches to the full dashboard (timeline, decision theater, pipeline, event log, counters, journals, receipts); the choice is remembered.
 
 In the nerd view, the **Tech Lens** panel translates every event into plain English plus a business analogy. The **timeline** slider moves through the whole season event by event (drag, arrow keys, or scroll over it; Shift + arrow jumps a turn): the map, log, AI reasoning and cards all rewind and replay, and **Live** snaps back to real time. **Past seasons** replays any finished season the same way. Light and dark themes follow the system, with a toggle.
 
@@ -114,6 +120,7 @@ Plain settings live in `vars` in [wrangler.jsonc](wrangler.jsonc); secrets are s
 | `REALM_SECRET` (secret) | – | Shared secret for `/internal/*` and the n8n webhooks |
 | `N8N_URL` | – | n8n's public URL. Empty = the world runs turns without n8n |
 | `PUBLIC_URL`, `PUBLIC_OWNER_NAME`, `PUBLIC_HIRE_URL`, `PUBLIC_REPO_URL`, `PUBLIC_CONTACT_EMAIL` | – | Links and footer branding |
+| `PUBLIC_BOOKING_URL` | – | The "Book a meeting" button (e.g. a Calendly link); hidden when empty |
 
 Game numbers (market strength, weather effects, cities, garrisons…) are in [server/config.js](server/config.js).
 
