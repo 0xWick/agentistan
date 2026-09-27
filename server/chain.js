@@ -1,11 +1,14 @@
-// Chain: reads the Chainlink ETH/USD feed and writes receipts to the RealmLedger contract.
-// NETWORK=local talks to an Anvil fork of Base Sepolia; NETWORK=base-sepolia talks to the public testnet.
+// Chain: reads Chainlink price feeds and writes receipts to the RealmLedger contract.
+// NETWORK=local talks to an Anvil fork of Base Sepolia (set LEDGER_ADDRESS); NETWORK=base-sepolia talks to the public testnet.
+// No filesystem access, so the same module runs in the Cloudflare Worker and in Node (deploy.js, tests).
 import { createPublicClient, createWalletClient, http, parseAbi, decodeEventLog, decodeFunctionResult } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia } from 'viem/chains';
-import { readFileSync, existsSync } from 'node:fs';
+import LEDGER from './RealmLedger.json' with { type: 'json' };
+import DEPLOYED from '../deployments/base-sepolia.json' with { type: 'json' };
+import { FEEDS } from './config.js';
 
-export const LEDGER = JSON.parse(readFileSync(new URL('./RealmLedger.json', import.meta.url), 'utf8'));
+export { LEDGER };
 export const FEED_ABI = parseAbi(['function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)']);
 export const KINGDOM_ID = { red: 1, blue: 2 };
 
@@ -20,17 +23,15 @@ export function makeChain(env) {
   const chain = { ...baseSepolia, rpcUrls: { default: { http: [rpc] } } }; // an Anvil fork keeps chain id 84532
   const pub = createPublicClient({ chain, transport: http(rpc) });
   const oracle = createPublicClient({ chain: baseSepolia, transport: http(env.ORACLE_RPC_URL || 'https://sepolia.base.org') });
-  const feed = env.FEED_ADDRESS || '0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1'; // Chainlink ETH/USD, Base Sepolia
   const account = env.DEPLOYER_PRIVATE_KEY ? privateKeyToAccount(env.DEPLOYER_PRIVATE_KEY) : null;
   const wallet = account && createWalletClient({ account, chain, transport: http(rpc) });
-  const depFile = new URL(`../deployments/${name}.json`, import.meta.url);
-  const ledger = env.LEDGER_ADDRESS || (existsSync(depFile) ? JSON.parse(readFileSync(depFile, 'utf8')).address : null);
+  const ledger = env.LEDGER_ADDRESS || (name === DEPLOYED.chain ? DEPLOYED.address : null);
   return {
-    name, rpc, feed, ledger, pub, wallet, depFile,
+    name, rpc, ledger, pub, wallet, feed: FEEDS.ETH, feeds: FEEDS,
     account: account?.address ?? null,
     explorer: name === 'local' ? null : env.EXPLORER_URL || 'https://sepolia.basescan.org',
     enabled: Boolean(wallet && ledger),
-    readFeed: async () => round(await oracle.readContract({ address: feed, abi: FEED_ABI, functionName: 'latestRoundData' })),
+    readFeed: async (coin = 'ETH') => round(await oracle.readContract({ address: FEEDS[coin], abi: FEED_ABI, functionName: 'latestRoundData' })),
     send: (kind, args) => wallet.writeContract({ address: ledger, abi: LEDGER.abi, functionName: kind === 'capture' ? 'recordCapture' : 'recordSeasonResult', args }),
     async confirm(hash) {
       const r = await pub.waitForTransactionReceipt({ hash, timeout: 60_000 });

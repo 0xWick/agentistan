@@ -40,7 +40,7 @@ test('rules reject illegal orders', () => {
   assert.match(E.validate(s, 'blue', { action: 'hold' }), /not blue's turn/);
   assert.match(E.validate(s, 'red', { action: 'move', args: { x: 9, y: 9 } }), /not reachable/);
   assert.match(E.validate(s, 'red', { action: 'attack', args: { x: 8, y: 8 } }), /not an adjacent/);
-  assert.match(E.validate(s, 'red', { action: 'recruit', args: { n: 5 } }), /own capital or fort/);
+  assert.match(E.validate(s, 'red', { action: 'recruit', args: { n: 5 } }), /own land/);
   assert.match(E.validate(s, 'red', { action: 'nuke' }), /unknown action/);
   assert.ok(E.applyAction(s, 'red', { action: 'move', args: { x: 9, y: 9 } }).error);
   assert.equal(E.validate(s, 'red', { action: 'move', args: { x: 4, y: 4 } }), null);
@@ -57,11 +57,50 @@ test('economy: starving armies lose 10% strength; buy_food refills without endin
   assert.equal(fed.state.active, 'red');
 });
 
-test('market multiplier follows the real price, amplified and clamped', () => {
-  assert.equal(E.marketMult(2000, 2020), 1.1);
-  assert.equal(E.marketMult(2000, 3000), 1.5);
-  assert.equal(E.marketMult(2000, 1000), 0.5);
-  assert.equal(E.marketMult(null, 2000), 1);
+test('markets: each treasury coin moves income and battle power; LINK prices mercenaries for both', () => {
+  let s = E.newSeason(1, 'standard', { ETH: 2000, BTC: 80000, LINK: 10 });
+  assert.deepEqual([E.incomeMult(s, 'red'), E.incomeMult(s, 'blue'), E.mercMult(s), E.recruitCost(s)], [1, 1, 1, 2]);
+  s = E.setPrice(E.setPrice(E.setPrice(s, 'ETH', 2020), 'BTC', 79200), 'LINK', 10.5); // ETH +1%, BTC -1%, LINK +5%
+  assert.deepEqual([E.incomeMult(s, 'red'), E.incomeMult(s, 'blue')], [1.4, 0.6]);
+  assert.deepEqual([E.mood(s, 'red'), E.mood(s, 'blue')], [0.1, -0.1]);
+  assert.deepEqual([E.mercMult(s), E.recruitCost(s)], [2, 4]);
+  s = E.setPrice(s, 'ETH', 3000); // +50%: clamped
+  assert.deepEqual([E.incomeMult(s, 'red'), E.mood(s, 'red')], [3, 0.25]);
+  assert.equal(E.incomeMult(E.newSeason(1), 'red'), 1); // no prices yet
+});
+
+test('weather: rain bogs armies down, fog blinds scouts, storms blunt attacks, snow doubles rations', () => {
+  const s = E.newSeason(1, 'demo');
+  const wet = E.setWeather(s, { code: 63, tempC: 12, windKmh: 10 });
+  assert.equal(wet.weather.kind, 'rain');
+  assert.ok(E.legalMoves(wet, 'red').every((m) => m.cost <= 1) && E.legalMoves(wet, 'red').length < E.legalMoves(s, 'red').length);
+  assert.equal(E.intel(E.setWeather(s, { code: 45, tempC: 5, windKmh: 3 }), 'red').visible, false);
+  const near = E.newSeason(1, 'demo');
+  Object.assign(near.armies.red, { x: 4, y: 4 });
+  const calm = E.odds(near, 'red', 4, 5), stormy = E.odds(E.setWeather(near, { code: 95, tempC: 20, windKmh: 30 }), 'red', 4, 5);
+  assert.ok(Math.abs(stormy / calm - 0.7) < 0.02, `${stormy} vs ${calm}`);
+  assert.equal(E.eats(E.setWeather(s, { code: 73, tempC: -5, windKmh: 5 }), 'red'), 2 * E.eats(s, 'red'));
+  assert.equal(E.classifyWeather({ code: 0, tempC: 38, windKmh: 5 }), 'heat');
+});
+
+test('upgrade: a save from before markets and weather keeps its ETH baseline', () => {
+  const old = { ...E.newSeason(2, 'demo'), market: { start: 2600, price: 2650, mult: 1.19 } };
+  delete old.weather;
+  const s = E.upgrade(old);
+  assert.deepEqual(s.market.ETH, { start: 2600, price: 2650 });
+  assert.deepEqual(s.market.BTC, { start: null, price: null });
+  assert.equal(s.weather.kind, 'clear');
+  assert.equal(E.upgrade(s), s);
+});
+
+test('recruiting works anywhere on your own land, at the LINK price', () => {
+  let s = E.startTurn(E.newSeason(1, 'demo', { LINK: 10 })).state;
+  s = E.applyAction(s, 'red', { action: 'move', args: { x: 4, y: 4 } }).state; // claims the path
+  s = E.applyAction(E.startTurn(s).state, 'blue', { action: 'hold' }).state;
+  s = E.startTurn(s).state;
+  assert.equal(E.validate(s, 'red', { action: 'recruit', args: { n: 5 } }), null);
+  const gold = s.kingdoms.red.gold, r = E.applyAction(s, 'red', { action: 'recruit', args: { n: 5 } });
+  assert.equal(r.state.kingdoms.red.gold, gold - 5 * E.recruitCost(s));
 });
 
 test('fog of war hides a distant enemy', () => {
@@ -87,7 +126,7 @@ test('seasons end on capital capture and at the round limit', () => {
 test('standing orders play whole seasons to a result, and every event type has a Tech Lens entry', () => {
   const seen = new Set();
   for (const scenario of ['demo', 'standard']) {
-    let s = E.newSeason(7, scenario, 2500);
+    let s = E.newSeason(7, scenario, { ETH: 2500, BTC: 80000, LINK: 12 });
     for (let i = 0; i < 400 && s.status === 'running'; i++) {
       const started = E.startTurn(s);
       const r = E.applyAction(started.state, started.state.active, pickOrder(started.state, started.state.active));
@@ -139,7 +178,7 @@ test('narrator: whole seasons read as plain sentences, with no coordinates or bl
   const { CAST } = await import('../server/config.js');
   const meta = { cast: CAST, turnIntervalMs: 1_800_000, llm: { mode: 'live', model: 'openai/gpt-oss-120b' } };
   const bad = /\(\d+,\d+\)|undefined|NaN|null/;
-  let s = E.newSeason(3, 'demo', 2500), texts = 0;
+  let s = E.newSeason(3, 'demo', { ETH: 2500, BTC: 80000, LINK: 12 }), texts = 0;
   for (let i = 0; i < 400 && s.status === 'running'; i++) {
     const started = E.startTurn(s), k = started.state.active, o = pickOrder(started.state, k);
     const r = E.applyAction(started.state, k, o);

@@ -1,6 +1,6 @@
 // Pure game rules: no I/O, no clock. The only randomness is the seeded battle roll.
 import { createHash } from 'node:crypto';
-import { CFG, MAP, STRONGHOLDS, CAST, SCENARIOS } from './config.js';
+import { CFG, MAP, STRONGHOLDS, CAST, SCENARIOS, PLACES } from './config.js';
 
 const N = CFG.size;
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
@@ -20,7 +20,10 @@ const capital = (s, k) => s.strongholds.find((h) => h.capital === k);
 const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 const morale = (m) => +clamp(m, CFG.army.moraleMin, CFG.army.moraleMax).toFixed(2);
 
-export function newSeason(season, scenario = 'standard', price = null) {
+const COINS = ['ETH', 'BTC', 'LINK'];
+export const placeFor = (season) => PLACES[(season - 1) % PLACES.length];
+
+export function newSeason(season, scenario = 'standard', prices = {}) {
   const sc = SCENARIOS[scenario] ?? SCENARIOS.standard;
   const owner = Array(N * N).fill(null);
   const strongholds = STRONGHOLDS.map((h) => {
@@ -35,21 +38,64 @@ export function newSeason(season, scenario = 'standard', price = null) {
     owner, strongholds,
     armies: { red: army(sc.red), blue: army(sc.blue) },
     kingdoms: { red: realm(), blue: realm() },
-    market: { start: price, price, mult: 1 },
+    market: Object.fromEntries(COINS.map((c) => [c, { start: prices[c] ?? null, price: prices[c] ?? null }])),
+    weather: { kind: 'clear', place: placeFor(season).name },
     status: 'running', winner: null, endReason: null,
   };
 }
 
-export function marketMult(start, price) {
-  if (!start || !price) return 1;
-  return +clamp(1 + (price / start - 1) * CFG.market.amplify, CFG.market.min, CFG.market.max).toFixed(3);
+// State saved before markets and weather existed: ETH carries over, the rest start from their next reading.
+export function upgrade(s0) {
+  if (s0.market?.ETH && s0.weather) return s0;
+  const s = structuredClone(s0), old = s.market ?? {};
+  s.market = Object.fromEntries(COINS.map((c) => [c, old[c] ?? (c === 'ETH' ? { start: old.start ?? null, price: old.price ?? null } : { start: null, price: null })]));
+  s.weather ??= { kind: 'clear', place: placeFor(s.season).name };
+  return s;
 }
 
-export function setPrice(s0, price) {
+// % change of a coin since the season began (0 until there are two readings).
+export const marketPct = (s, coin) => {
+  const m = s.market[coin];
+  return m?.start && m?.price ? +((m.price / m.start - 1) * 100).toFixed(3) : 0;
+};
+export const coinOf = (k) => CFG.market.coin[k];
+export const incomeMult = (s, k) => {
+  const c = CFG.market.income;
+  return +clamp(1 + marketPct(s, coinOf(k)) * c.per1pct, c.min, c.max).toFixed(2);
+};
+export const mood = (s, k) => { // battle power bonus (or penalty) from your coin
+  const c = CFG.market.mood;
+  return +clamp(marketPct(s, coinOf(k)) * c.per1pct, -c.max, c.max).toFixed(3);
+};
+export const mercMult = (s) => {
+  const c = CFG.market.mercs;
+  return +clamp(1 + marketPct(s, 'LINK') * c.per1pct, c.min, c.max).toFixed(2);
+};
+export const recruitCost = (s) => Math.max(1, Math.round(CFG.recruitCost * mercMult(s)));
+
+export function setPrice(s0, coin, price) {
   const s = structuredClone(s0);
-  s.market.start ??= price;
-  s.market.price = price;
-  s.market.mult = marketMult(s.market.start, price);
+  const m = (s.market[coin] ??= { start: null, price: null });
+  m.start ??= price;
+  m.price = price;
+  return s;
+}
+
+// Weather from Open-Meteo's current conditions (WMO weather codes).
+export function classifyWeather({ code, tempC, windKmh }) {
+  if (code >= 95 || windKmh >= 50) return 'storm';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86 || tempC <= -2) return 'snow';
+  if (code === 45 || code === 48) return 'fog';
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+  if (tempC >= 35) return 'heat';
+  return 'clear';
+}
+export const weatherKind = (s) => s.weather?.kind ?? 'clear';
+const sky = (s) => CFG.weather[weatherKind(s)] ?? {};
+
+export function setWeather(s0, w) {
+  const s = structuredClone(s0);
+  s.weather = { ...s.weather, ...w, kind: classifyWeather(w) };
   return s;
 }
 
@@ -63,11 +109,12 @@ export function holdings(s, k) {
 
 export function income(s, k) {
   const { forts, tiles } = holdings(s, k);
-  const mult = k === 'red' ? s.market.mult : 1;
-  return Math.round((CFG.gold.base + CFG.gold.perFort * forts + Math.floor(tiles / CFG.gold.tilesPer)) * mult) + (k === 'blue' ? CFG.gold.blueFlat : 0);
+  return Math.round((CFG.gold.base + CFG.gold.perFort * forts + Math.floor(tiles / CFG.gold.tilesPer)) * incomeMult(s, k));
 }
 
-export const recruitable = (s, k) => Math.max(0, Math.min(Math.floor(s.kingdoms[k].gold / CFG.recruitCost), CFG.army.max - s.armies[k].strength));
+export const recruitable = (s, k) => Math.max(0, Math.min(Math.floor(s.kingdoms[k].gold / recruitCost(s)), CFG.army.max - s.armies[k].strength));
+const onOwnLand = (s, k) => s.owner[idx(s.armies[k].x, s.armies[k].y)] === k;
+export const eats = (s, k) => (onMap(s.armies[k]) ? Math.ceil((s.armies[k].strength / CFG.food.perStrength) * (sky(s).eat ?? 1)) : 0);
 
 // Economy, garrison regen, fortify expiry and respawn for the kingdom whose turn it is.
 export function startTurn(s0) {
@@ -81,12 +128,11 @@ export function startTurn(s0) {
     Object.assign(A, { x: c.x, y: c.y, strength: CFG.army.respawnStrength, morale: CFG.army.morale });
     emit('army.moved', k, `${CAST[k].realm}'s army regrouped at ${c.name}`, { x: c.x, y: c.y, respawn: true });
   }
-  const gold = income(s, k);
-  const eat = onMap(A) ? Math.ceil(A.strength / CFG.food.perStrength) : 0;
+  const gold = income(s, k), eat = eats(s, k), mult = incomeMult(s, k);
   K.gold += gold;
   K.food = clamp(K.food + CFG.food.base + CFG.food.perFort * holdings(s, k).forts - eat, 0, CFG.food.cap);
-  emit('resources.updated', k, `${CAST[k].realm} +${gold} gold${k === 'red' ? ` (market x${s.market.mult})` : ''}, food ${K.food}/${CFG.food.cap}`,
-    { gold: K.gold, income: gold, food: K.food, eat, mult: k === 'red' ? s.market.mult : 1 });
+  emit('resources.updated', k, `${CAST[k].realm} +${gold} gold (${coinOf(k)} x${mult}), ate ${eat} food${weatherKind(s) === 'clear' ? '' : ` in the ${weatherKind(s)}`}, food ${K.food}/${CFG.food.cap}`,
+    { gold: K.gold, income: gold, food: K.food, eat, mult, coin: coinOf(k), weather: weatherKind(s) });
   if (K.food === 0 && onMap(A)) {
     A.strength = Math.floor(A.strength * (1 - CFG.starveLoss));
     emit('army.starving', k, `${CAST[k].realm}'s army is starving: strength falls to ${A.strength}`, { strength: A.strength });
@@ -109,7 +155,7 @@ export function legalMoves(s, k) {
       const h = strongholdAt(s, x, y);
       if (h && h.owner !== k) continue; // garrisoned: attack it, don't walk in
       const cost = cur.cost + CFG.terrain[terrainAt(x, y)].cost;
-      if (cost > CFG.moveBudget || seen.get(idx(x, y)) <= cost) continue;
+      if (cost > (sky(s).moveBudget ?? CFG.moveBudget) || seen.get(idx(x, y)) <= cost) continue;
       seen.set(idx(x, y), cost);
       const step = { x, y, cost, path: [...cur.path, [x, y]] };
       out.push(step);
@@ -127,17 +173,37 @@ export function attackTargets(s, k) {
     .map(([x, y]) => {
       const h = strongholdAt(s, x, y), army = armyAt(s, e, x, y);
       if (!army && !(h && h.owner !== k)) return null;
-      return { x, y, stronghold: h?.name ?? null, owner: h?.owner ?? null, defender: army ? 'army' : 'garrison', strength: army ? s.armies[e].strength : h.garrison };
+      return { x, y, stronghold: h?.name ?? null, owner: h?.owner ?? null, defender: army ? 'army' : 'garrison', strength: army ? s.armies[e].strength : h.garrison, odds: odds(s, k, x, y) };
     })
     .filter(Boolean);
 }
 
-// Fog of war: the enemy is visible within Chebyshev distance 3 of your army or any stronghold you own.
+// Both sides of an attack on (x,y), everything except the dice. fight() and odds() share it.
+function sides(s, k, x, y) {
+  const e = other(k), A = s.armies[k], E = s.armies[e], h = strongholdAt(s, x, y), vsArmy = armyAt(s, e, x, y);
+  const supply = (kk) => (s.kingdoms[kk].food === 0 ? CFG.starveSupply : 1);
+  const market = (kk) => +(1 + mood(s, kk)).toFixed(3);
+  const defTerrain = CFG.terrain[terrainAt(x, y)].def * (vsArmy && E.fortified ? CFG.fortifyMod : 1);
+  const atk = { side: k, strength: A.strength, morale: A.morale, terrain: terrainAt(A.x, A.y) === 'river' ? CFG.riverAttackMod : 1, supply: supply(k), market: market(k), weather: sky(s).attack ?? 1 };
+  const def = vsArmy
+    ? { side: e, strength: E.strength, morale: E.morale, terrain: defTerrain, supply: supply(e), market: market(e), home: s.owner[idx(x, y)] === e ? CFG.homeDefence : 1 }
+    : { side: h.owner ?? 'neutral', garrison: true, strength: h.garrison, morale: 1, terrain: defTerrain, supply: 1, market: h.owner ? market(h.owner) : 1 };
+  return { atk, def, vsArmy, h };
+}
+const basePower = (p) => p.strength * p.morale * p.terrain * p.supply * p.market * (p.weather ?? 1) * (p.home ?? 1);
+
+// Attack odds before the dice: above 1 favours the attacker (the dice swing each side by up to ±20%).
+export function odds(s, k, x, y) {
+  const { atk, def } = sides(s, k, x, y);
+  return +(basePower(atk) / Math.max(1, basePower(def))).toFixed(2);
+}
+
+// Fog of war: the enemy is visible within Chebyshev distance 3 (1 in fog) of your army or any stronghold you own.
 export function intel(s, k) {
   const E = s.armies[other(k)];
   if (!onMap(E)) return { visible: true, routed: true, note: 'enemy army was routed and is regrouping at its capital' };
   const eyes = [...(onMap(s.armies[k]) ? [s.armies[k]] : []), ...s.strongholds.filter((h) => h.owner === k)];
-  if (eyes.some((p) => cheb(p, E) <= CFG.fogRange)) return { visible: true, x: E.x, y: E.y, strength: E.strength, morale: E.morale, fortified: E.fortified };
+  if (eyes.some((p) => cheb(p, E) <= (sky(s).vision ?? CFG.fogRange))) return { visible: true, x: E.x, y: E.y, strength: E.strength, morale: E.morale, fortified: E.fortified };
   const ls = s.kingdoms[k].lastSeen;
   return { visible: false, lastSeen: ls && { x: ls.x, y: ls.y, turnsAgo: s.turn - ls.turn } };
 }
@@ -157,7 +223,7 @@ export function validate(s, k, { action, args = {} } = {}) {
   if (!onMap(A)) return 'your army is routed; you can only hold';
   if (action === 'fortify') return null;
   if (action === 'recruit') {
-    if (strongholdAt(s, A.x, A.y)?.owner !== k) return 'you can only recruit while standing on your own capital or fort';
+    if (!onOwnLand(s, k)) return 'you can only recruit while standing on your own land';
     if (!Number.isInteger(args.n) || args.n < 1) return 'n must be a positive integer';
     return recruitable(s, k) < 1 ? 'not enough gold, or the army is at max strength' : null;
   }
@@ -190,10 +256,10 @@ export function applyAction(s0, k, a) {
       emit('army.fortified', k, `${name} fortified at (${A.x},${A.y}); strength ${A.strength}`, { x: A.x, y: A.y, strength: A.strength });
       break;
     case 'recruit': {
-      const n = Math.min(args.n, recruitable(s, k));
-      K.gold -= n * CFG.recruitCost;
+      const n = Math.min(args.n, recruitable(s, k)), cost = recruitCost(s);
+      K.gold -= n * cost;
       A.strength += n;
-      emit('army.recruited', k, `${name} recruited ${n} troops for ${n * CFG.recruitCost} gold; strength ${A.strength}`, { n, strength: A.strength, gold: K.gold });
+      emit('army.recruited', k, `${name} recruited ${n} troops for ${n * cost} gold (${cost} each at the LINK price); strength ${A.strength}`, { n, cost, strength: A.strength, gold: K.gold });
       break;
     }
     case 'move': {
@@ -220,16 +286,12 @@ export function rolls(season, turn) {
 }
 
 function fight(s, k, x, y, emit) {
-  const e = other(k), A = s.armies[k], E = s.armies[e], h = strongholdAt(s, x, y);
-  const vsArmy = armyAt(s, e, x, y);
+  const e = other(k), A = s.armies[k], E = s.armies[e];
+  const { atk, def, vsArmy, h } = sides(s, k, x, y);
   const { seed, atk: ra, def: rd } = rolls(s.season, s.turn);
-  const supply = (kk) => (s.kingdoms[kk].food === 0 ? CFG.starveSupply : 1);
-  const defTerrain = CFG.terrain[terrainAt(x, y)].def * (vsArmy && E.fortified ? CFG.fortifyMod : 1);
-  const atk = { side: k, strength: A.strength, morale: A.morale, terrain: terrainAt(A.x, A.y) === 'river' ? CFG.riverAttackMod : 1, supply: supply(k), roll: ra };
-  const def = vsArmy
-    ? { side: e, strength: E.strength, morale: E.morale, terrain: defTerrain, supply: supply(e), roll: rd }
-    : { side: h.owner ?? 'neutral', garrison: true, strength: h.garrison, morale: 1, terrain: defTerrain, supply: 1, roll: rd };
-  const power = (p) => +(p.strength * p.morale * p.terrain * p.supply * (1 + p.roll)).toFixed(2);
+  Object.assign(atk, { roll: ra });
+  Object.assign(def, { roll: rd });
+  const power = (p) => +(basePower(p) * (1 + p.roll)).toFixed(2);
   atk.power = power(atk);
   def.power = power(def);
   const won = atk.power > def.power; // ties go to the defender
@@ -245,7 +307,7 @@ function fight(s, k, x, y, emit) {
 
   const where = h?.name ?? `(${x},${y})`;
   const defName = vsArmy ? CAST[e].realm : 'the garrison';
-  const battle = { season: s.season, turn: s.turn, x, y, stronghold: h?.name ?? null, seed, attacker: atk, defender: def, winner: won ? k : def.side };
+  const battle = { season: s.season, turn: s.turn, x, y, stronghold: h?.name ?? null, weather: weatherKind(s), seed, attacker: atk, defender: def, winner: won ? k : def.side };
   emit('battle.resolved', k, `Battle at ${where}: ${CAST[k].realm} ${atk.power} vs ${defName} ${def.power}. ${won ? CAST[k].realm : defName} wins`, battle);
 
   rout(s, k, emit);

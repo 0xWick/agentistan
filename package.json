@@ -2,14 +2,23 @@
   "name": "nobodys-playing",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "start": "node --env-file-if-exists=.env server/server.js",
-    "test": "node --test",
-    "deploy": "node --env-file-if-exists=.env server/deploy.js",
-    "dev": "bash scripts/dev.sh"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:contract": "node --env-file-if-exists=.env server/deploy.js",
+    "test": "node --test"
   },
   "dependencies": {
     "viem": "2.56.9"
+  },
+  "devDependencies": {
+    "wrangler": "^4.141.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20260925.1": true
   }
 }

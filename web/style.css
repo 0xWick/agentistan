@@ -8,7 +8,7 @@
   --red: #d9480f; --red-soft: rgba(217, 72, 15, .22); --blue: #1864ab; --blue-soft: rgba(28, 126, 214, .30);
   --plains: #efe5cc; --forest: #d3e3b8; --mountain: #d9cfc2; --river: #c5e3f3; --grid: rgba(0, 0, 0, .06);
   --g-forest: #74a152; --g-mountain: #9c8f80; --g-river: #74b9dc; --fort-line: #3b3b3b; --neutral: #adb5bd;
-  --agent: #6741d9; --n8n: #c2255c; --oracle: #0b7285; --chain: #2b8a3e; --game: #495057;
+  --agent: #6741d9; --n8n: #c2255c; --oracle: #0b7285; --chain: #2b8a3e; --game: #495057; --weather: #1c7ed6;
   --st-ok: #d3f9d8; --st-wait: #fff3bf; --st-wait-ink: #946800; --st-bad: #ffe3e3;
   --radius: 10px; --gap: 14px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -114,7 +114,8 @@ a.btn { text-decoration: none; display: inline-block; }
 .side .low { color: var(--bad); font-size: .75rem; text-transform: uppercase; }
 .side .bar { display: block; }
 
-#flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+#flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+#flow li.st-oracle, #flow li.st-weather { grid-column: span 2; } /* the real world feeding in, under the turn steps */
 #flow li { position: relative; display: grid; align-content: start; gap: 2px; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line); border-top: 4px solid var(--c); background: var(--soft-2); opacity: .6; transition: opacity .3s, background .3s; }
 #flow li:nth-child(-n+4)::after { content: '→'; position: absolute; right: -12px; top: 18px; font-weight: 800; color: var(--muted); }
 #flow li.done { opacity: 1; }
@@ -124,8 +125,8 @@ a.btn { text-decoration: none; display: inline-block; }
 #flow .tech { font-size: .72rem; font-weight: 700; color: var(--c); }
 #flow .does { font-size: .8rem; color: var(--muted); }
 #flow .now-txt { font-size: .86rem; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); overflow-wrap: anywhere; }
-.st-event { --c: var(--game); } .st-n8n { --c: var(--n8n); } .st-agent { --c: var(--agent); } .st-game { --c: var(--game); } .st-chain { --c: var(--chain); } .st-oracle { --c: var(--oracle); }
-@media (max-width: 1100px) { #flow { grid-template-columns: repeat(3, minmax(0, 1fr)); } #flow li::after { display: none; } }
+.st-event { --c: var(--game); } .st-n8n { --c: var(--n8n); } .st-agent { --c: var(--agent); } .st-game { --c: var(--game); } .st-chain { --c: var(--chain); } .st-oracle { --c: var(--oracle); } .st-weather { --c: var(--weather); }
+@media (max-width: 1100px) { #flow { grid-template-columns: repeat(3, minmax(0, 1fr)); } #flow li::after { display: none; } #flow li.st-oracle, #flow li.st-weather { grid-column: auto; } }
 @media (max-width: 560px) { #flow { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } #flow li { padding: 8px 10px; } }
 .biz-line { margin: 12px 0 0; padding: 8px 12px; background: var(--biz); border-left: 3px solid var(--blue); border-radius: 4px; font-size: .92rem; }
 .biz-line:empty { display: none; }
@@ -201,7 +202,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .events .sum { overflow-wrap: anywhere; }
 .badge { display: inline-flex; align-items: center; gap: 4px; font-size: .7rem; font-weight: 700; padding: 1px 7px; border-radius: 6px; color: #fff; white-space: nowrap; }
 .badge svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.b-agent { background: var(--agent); } .b-n8n { background: var(--n8n); } .b-oracle { background: var(--oracle); } .b-chain { background: var(--chain); } .b-game { background: var(--game); }
+.b-agent { background: var(--agent); } .b-n8n { background: var(--n8n); } .b-oracle { background: var(--oracle); } .b-chain { background: var(--chain); } .b-game { background: var(--game); } .b-weather { background: var(--weather); }
 
 /* lens */
 .lens-head { display: flex; gap: 8px; align-items: baseline; margin-bottom: 10px; }

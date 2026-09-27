@@ -1,6 +1,6 @@
 // Deploys RealmLedger to NETWORK (local | base-sepolia) and records it in deployments/<chain>.json.
-//   NETWORK=local npm run deploy          (Anvil fork, see scripts/dev.sh)
-//   NETWORK=base-sepolia npm run deploy   (public testnet; needs faucet ETH in DEPLOYER_PRIVATE_KEY)
+//   NETWORK=local npm run deploy:contract          (Anvil fork; then set LEDGER_ADDRESS)
+//   NETWORK=base-sepolia npm run deploy:contract   (public testnet; needs faucet ETH in DEPLOYER_PRIVATE_KEY)
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { makeChain, LEDGER } from './chain.js';
 
@@ -17,6 +17,6 @@ const dep = {
   feed: c.feed, operator: c.account, tx, deployedAt: new Date().toISOString(),
 };
 mkdirSync(new URL('../deployments/', import.meta.url), { recursive: true });
-writeFileSync(c.depFile, `${JSON.stringify(dep, null, 2)}\n`);
+writeFileSync(new URL(`../deployments/${c.name}.json`, import.meta.url), `${JSON.stringify(dep, null, 2)}\n`);
 console.log(dep);
 if (c.explorer) console.log(`${c.explorer}/address/${dep.address}`);

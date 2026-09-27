@@ -160,11 +160,25 @@ function onMessage(kind, d) {
   else renderTimeline();
 }
 
-function connect() {
-  const es = new EventSource('/api/stream');
-  for (const kind of ['snapshot', 'state', 'event']) es.addEventListener(kind, (m) => onMessage(kind, JSON.parse(m.data)));
-  es.onopen = () => setLive(true);
-  es.onerror = () => setLive(false); // EventSource reconnects by itself and sends a fresh snapshot
+// Live stream over a WebSocket. The server sends a fresh snapshot on every (re)connect, so gaps heal themselves.
+function connect(delay = 1000) {
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/live`);
+  let ping = 0;
+  ws.onopen = () => {
+    setLive(true);
+    delay = 1000;
+    ping = setInterval(() => ws.readyState === 1 && ws.send('ping'), 30_000); // keeps proxies from dropping a quiet socket
+  };
+  ws.onmessage = (m) => {
+    if (m.data === 'pong') return;
+    const { kind, data } = JSON.parse(m.data);
+    onMessage(kind, data);
+  };
+  ws.onclose = () => {
+    clearInterval(ping);
+    setLive(false);
+    setTimeout(() => connect(Math.min(delay * 2, 30_000)), delay);
+  };
 }
 
 function setLive(ok) {
@@ -296,7 +310,7 @@ function renderSimple() {
 
   const [first, ...rest] = document.documentElement.classList.contains('stale')
     ? [`Replaying round ${roundOf(turnOf(events.at(-1)))}.`, 'This part of the season was recorded before the map was, so the map and score catch up later in the timeline.']
-    : headline(s, cast);
+    : headline(s, cast, S.effects);
   $('#n-big').innerHTML = `<strong>${esc(first)}</strong> ${esc(rest.join(' '))}`;
   $('#n-when').textContent = start ? `Round ${roundOf(turnOf(start))} · ${R(start.kingdom)}'s move` : '';
   const { lines, quote } = turnStory(inTurn.filter((e) => e.type !== 'turn.started'), s, cast);
@@ -313,21 +327,23 @@ function renderSimple() {
   $('#sides').innerHTML = ['red', 'blue'].map((k) => {
     const K = s.kingdoms[k], A = s.armies[k];
     const army = A.routed ? 'Wiped out, regrouping' : `${A.strength} soldiers${A.fortified ? ', dug in' : ''}`;
-    const gold = k === 'red' ? `${K.gold} · earned in ETH` : `${K.gold} · earned in gold`;
+    const fx = S.effects?.[k], sign = (n) => (n >= 0 ? '+' : '−');
+    const coin = fx ? `<div><dt>📈 ${fx.coin} ${sign(fx.pct)}${Math.abs(fx.pct).toFixed(2)}%</dt><dd>×${fx.income} gold, ${sign(fx.mood)}${Math.round(Math.abs(fx.mood) * 100)}% in battle</dd></div>` : '';
     return `<article class="side ${k}">
       <h3>${R(k)}${s.active === k && s.status === 'running' ? ' <span class="to-move">to move</span>' : ''}</h3>
-      <p class="muted">${cast[k].general}, an AI</p>
+      <p class="muted">${cast[k].general}, an AI · paid in ${cast[k].treasury}</p>
       <dl>
         <div><dt>⚔️ Army</dt><dd>${army}</dd></div>
         <div><dt>🍞 Food</dt><dd>${K.food}%${K.food < 20 ? ' <span class="low">low</span>' : ''}<span class="bar${K.food < 20 ? ' low' : ''}"><i style="width:${K.food}%"></i></span></dd></div>
-        <div><dt>💰 Gold</dt><dd>${gold}</dd></div>
+        <div><dt>💰 Gold</dt><dd>${K.gold}</dd></div>
+        ${coin}
       </dl>
     </article>`;
   }).join('');
 
   const at = TL.lines[TL.pos];
   const now = at?.k === 'e' ? (at.e.type === 'turn.started' ? 'event' : at.e.stage) : null;
-  $('#flow').innerHTML = flow(inTurn, s, meta, now, S.proofs).map((st) => `<li class="st-${st.id}${st.done ? ' done' : ''}${st.active ? ' now' : ''}">
+  $('#flow').innerHTML = flow(inTurn, s, meta, now, S.proofs, S.effects).map((st) => `<li class="st-${st.id}${st.done ? ' done' : ''}${st.active ? ' now' : ''}">
     <span class="ic" aria-hidden="true">${st.icon}</span><b>${st.name}</b><span class="tech">${esc(st.tech)}</span>
     <span class="does">${esc(st.does)}</span><span class="now-txt">${esc(st.now)}</span></li>`).join('');
   const e = at?.k === 'e' && LENS[at.e.lensKey]?.[2] ? at.e : events.findLast((x) => LENS[x.lensKey] && !['turn.started', 'resources.updated', 'agent.tool_result'].includes(x.type));
@@ -368,11 +384,9 @@ function renderKingdoms() {
     const held = s.strongholds.filter((h) => h.owner === k).length, tiles = s.owner.filter((o) => o === k).length;
     const journal = (S.journals[k] ?? []).slice().reverse().map((j) => `<li>${esc(j.note)} <span class="muted">(turn ${j.turn})</span></li>`).join('') || '<li class="muted">No notes yet.</li>';
     const lessons = (S.lessons[k] ?? []).map((l) => `<li>${esc(l)}</li>`).join('');
-    const eth = s.market.price ? `$${s.market.price.toFixed(2)}` : '…';
-    const change = s.market.start && s.market.price ? `, ${s.market.price >= s.market.start ? '+' : ''}${((s.market.price / s.market.start - 1) * 100).toFixed(2)}% this season` : '';
-    const market = k === 'red'
-      ? `Treasury in ETH · ETH ${eth} from Chainlink${change} · income ×${s.market.mult} <span class="muted">(game effect amplified ${meta.amplify}×)</span>`
-      : 'Treasury in gold · steady income, +1 per turn';
+    const fx = S.effects?.[k], m = s.market?.[fx?.coin];
+    const market = fx ? `Treasury in ${fx.coin} · ${fx.coin} $${m?.price?.toLocaleString('en-US', { maximumFractionDigits: 2 }) ?? '…'} from Chainlink, ${fx.pct >= 0 ? '+' : ''}${fx.pct.toFixed(2)}% this season · income ×${fx.income} · battle power ${fx.mood >= 0 ? '+' : ''}${Math.round(fx.mood * 100)}% · soldiers ${S.effects.LINK.cost} gold (LINK)`
+      : 'Treasury in gold';
     return `<article class="kcard ${k}">
       <h3>${c.realm}</h3>
       <p class="sub">${c.general}${s.active === k && s.status === 'running' ? ' · <b>to move</b>' : ''}</p>

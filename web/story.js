@@ -16,8 +16,30 @@ export function place(s, x, y) {
   return `${dist(h, { x, y }) ? 'near' : 'at'} ${h.name}`;
 }
 
+export const WEATHER = {
+  clear: 'clear skies, no effect on the war',
+  rain: 'mud: every army moves only 1 step',
+  storm: 'attackers fight 30% weaker',
+  snow: 'armies eat twice as much food',
+  heat: 'armies eat 50% more food',
+  fog: 'scouts can see only 1 tile',
+};
+const signed = (n, digits = 0) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(digits)}`;
+
+// How real prices and weather are hitting each side right now, in a sentence or two. fx: effectsOf(state), from the server.
+export function forces(s, cast, fx) {
+  const out = [];
+  if (fx) {
+    const moved = ['red', 'blue'].filter((k) => Math.abs(fx[k].pct) >= 0.1);
+    for (const k of moved) out.push(`${fx[k].coin} is ${fx[k].pct >= 0 ? 'up' : 'down'} ${Math.abs(fx[k].pct).toFixed(2)}% this season, so ${cast[k].realm} earns ×${fx[k].income} gold and fights ${signed(fx[k].mood * 100)}%.`);
+  }
+  const w = s.weather;
+  if (w && w.kind !== 'clear') out.push(`${cap(w.kind)} over ${w.place}: ${WEATHER[w.kind]}.`);
+  return out;
+}
+
 // The big picture as a few sentences: who is winning, why, and how long is left.
-export function headline(s, cast) {
+export function headline(s, cast, fx) {
   const R = (k) => cast[k].realm;
   if (s.status === 'ended') {
     const pts = /score (\d+) to (\d+)/.exec(s.endReason ?? '')?.slice(1).map(Number).sort((a, b) => b - a);
@@ -37,6 +59,7 @@ export function headline(s, cast) {
   const big = A.red.strength >= A.blue.strength * 1.5 ? 'red' : A.blue.strength >= A.red.strength * 1.5 ? 'blue' : null;
   if (down) out.push(`${R(down)}'s army was wiped out and is regrouping at home.`);
   else if (big) out.push(`${R(big)}'s army is much bigger: ${A[big].strength} soldiers to ${A[other(big)].strength}.`);
+  out.push(...forces(s, cast, fx));
   const left = s.maxRounds - roundOf(s.turn);
   out.push(left > 0 ? `${plural(left, 'round')} to go.` : 'Final round! If nobody wins outright, whoever holds more castles (then land) wins.');
   return out;
@@ -89,7 +112,10 @@ export function turnStory(evs, s, cast) {
       'army.routed': () => `${R(k)}'s army was wiped out and fled home to regroup.`,
       'army.moved': () => (d.retreat ? `${R(k)}'s army fell back.` : d.respawn ? `${R(k)}'s army has regrouped at home.` : null),
       'army.starving': () => `${R(k)}'s soldiers are starving, so the army is shrinking.`,
-      'market.shift': () => `The real ETH price moved, so Emberreach now earns ${d.after >= d.before ? 'a little more' : 'a little less'} gold.`,
+      'market.shift': () => (d.coin === 'LINK' ? `LINK moved ${signed(d.pct, 2)}% this season, so soldiers now cost ${d.after} gold each, for both sides.`
+        : d.coin ? `${d.coin} is ${d.pct >= 0 ? 'up' : 'down'} ${Math.abs(d.pct).toFixed(2)}% this season, so ${R(k)} now earns ×${d.after} gold and fights ${signed(d.mood * 100)}%.`
+          : `The real ETH price moved, so Emberreach now earns ${d.after >= d.before ? 'a little more' : 'a little less'} gold.`), // season 1 wording
+      'weather.changed': () => `The sky over ${d.place} turned to ${d.kind}: ${WEATHER[d.kind]}.`,
       'chain.tx_confirmed': () => 'The result is now recorded on a public blockchain, where nobody can change it.',
       'season.ended': () => `Season over! ${R(d.winner)} wins.`,
     }[e.type]?.();
@@ -112,18 +138,21 @@ export function momentText(e, s, cast) {
 }
 
 // The turn pipeline in plain words: what each piece of tech does, and what it did this turn.
-export function flow(evs, s, meta, nowStage, proofs) {
+// The first five run in order every turn; the last two bring the real world in (prices and weather).
+export function flow(evs, s, meta, nowStage, proofs, fx) {
   const R = (k) => meta.cast[k]?.realm, G = (k) => meta.cast[k]?.general;
   const last = (pred) => evs.findLast(pred);
   const start = last((e) => e.type === 'turn.started');
-  const every = Math.round(meta.turnIntervalMs / 60_000);
+  const ms = meta.turnIntervalMs, every = ms >= 60_000 ? `${Math.round(ms / 60_000)} minutes` : `${Math.round(ms / 1000)} seconds`;
 
   const n8n = last((e) => e.stage === 'n8n');
   const n8nNow = !n8n ? 'Waiting for the next turn.'
     : n8n.type === 'n8n.unreachable' ? 'Was down, so the game ran the turn itself.'
     : n8n.type === 'n8n.threshold_alert' ? `Food was low, so it bought more for ${R(n8n.kingdom)}.`
     : n8n.type === 'n8n.workflow_finished' ? `Delivered ${G(n8n.kingdom)}'s order to the game.`
-    : n8n.data?.workflow === 'Market Sync' ? 'Fetched the latest ETH price.'
+    : n8n.type === 'n8n.news_posted' ? 'Posted the news to Discord.'
+    : n8n.data?.workflow === 'Market Sync' ? 'Fetched the latest Chainlink prices.'
+    : n8n.data?.workflow === 'Weather Sync' ? 'Fetched the latest weather.'
     : `Checked ${R(n8n.kingdom)}'s supplies and asked the general for orders.`;
 
   const ai = last((e) => e.stage === 'agent' && e.type !== 'agent.memory_written');
@@ -156,18 +185,20 @@ export function flow(evs, s, meta, nowStage, proofs) {
     : tx?.type === 'chain.tx_failed' ? 'Failed this time; it shows openly and the game carries on.'
     : `Nothing to record this turn. ${plural(done, 'result')} on record so far.`;
 
-  const m = s.market, pct = m.start && m.price ? ((m.price / m.start - 1) * 100).toFixed(2) : null;
-  const priceNow = !m.price ? 'Waiting for the first price.'
-    : `ETH is $${m.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}${pct === null ? '' : `, ${pct >= 0 ? 'up' : 'down'} ${Math.abs(pct)}% this season`}, so Emberreach earns ×${m.mult}.`;
+  const coin = (k) => `${fx[k].coin} ${signed(fx[k].pct, 2)}% → ${R(k)} earns ×${fx[k].income}, fights ${signed(fx[k].mood * 100)}%`;
+  const priceNow = !fx ? 'Waiting for the first prices.' : `${coin('red')}. ${coin('blue')}. LINK ${signed(fx.LINK.pct, 2)}% → soldiers cost ${fx.LINK.cost} gold.`;
+  const w = s.weather;
+  const weatherNow = !w ? 'Clear skies.' : `${cap(w.kind)} over ${w.place}${Number.isFinite(w.tempC) ? `, ${Math.round(w.tempC)}°C` : ''}: ${WEATHER[w.kind]}.`;
 
   const stages = [
-    { id: 'event', icon: '⏰', name: 'The clock', tech: 'World server', does: `Starts a new turn every ${every} minutes. Nobody presses a button.`,
+    { id: 'event', icon: '⏰', name: 'The clock', tech: 'Cloudflare', does: `Starts a new turn every ${every}. Nobody presses a button.`,
       now: start ? `Round ${roundOf(turnOf(start))}: ${R(start.kingdom)}'s turn.` : 'Waiting for the first turn.' },
-    { id: 'n8n', icon: '⚙️', name: 'Automation', tech: 'n8n', does: 'Runs each turn: checks supplies, reorders food, fetches orders.', now: n8nNow },
+    { id: 'n8n', icon: '⚙️', name: 'Automation', tech: 'n8n', does: 'Runs each turn, reorders food, syncs prices and weather, posts news to Discord.', now: n8nNow },
     { id: 'agent', icon: '🧠', name: 'AI general', tech: `${meta.llm.model.split('/').pop()} on Groq`, does: 'Reads the map and picks one move, then explains why.', now: aiNow },
     { id: 'game', icon: '🎲', name: 'Game rules', tech: 'Rules engine', does: 'Blocks illegal moves and settles battles with fair, replayable dice.', now: gameNow },
     { id: 'chain', icon: '🔒', name: 'Blockchain', tech: 'Base Sepolia', does: 'Writes every castle capture to a public record nobody can edit.', now: chainNow },
-    { id: 'oracle', icon: '📈', name: 'Live price', tech: 'Chainlink', does: "Brings in the real ETH price. Emberreach's treasury is in ETH.", now: priceNow },
+    { id: 'oracle', icon: '📈', name: 'Live prices', tech: 'Chainlink', does: 'Real ETH and BTC prices move each side\'s gold and fighting spirit; LINK sets the price of soldiers.', now: priceNow },
+    { id: 'weather', icon: '🌦️', name: 'Live weather', tech: 'Open-Meteo, via n8n', does: 'The real sky over this season\'s city changes the battlefield for both sides.', now: weatherNow },
   ];
   const seen = new Set(evs.map((e) => (e.type === 'turn.started' ? 'event' : e.stage)));
   return stages.map((st) => ({ ...st, done: seen.has(st.id), active: st.id === nowStage }));

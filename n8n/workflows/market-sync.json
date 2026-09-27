@@ -3,57 +3,163 @@
   "name": "Market Sync",
   "active": true,
   "versionId": "5b0e6a86-1f1d-4c2a-9f55-0d7a3c1e0002",
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {},
   "meta": {},
   "tags": [],
   "nodes": [
     {
-      "id": "1c8f6b4f-0001-4b62-9e2f-6d3c4a2b0001",
+      "id": "1c8f6b4f-0001-4a51-8d1e-5c2b3f1a0001",
       "name": "Every 10 minutes",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 300],
-      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 10 }] } }
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      }
     },
     {
-      "id": "1c8f6b4f-0002-4b62-9e2f-6d3c4a2b0002",
+      "id": "1c8f6b4f-0002-4a51-8d1e-5c2b3f1a0002",
       "name": "Read Chainlink ETH/USD",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "parameters": {
         "method": "POST",
         "url": "={{ $env.ORACLE_RPC_URL }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: $env.FEED_ADDRESS, data: '0xfeaf968c' }, 'latest'] }) }}",
+        "jsonBody": "={{ JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1', data: '0xfeaf968c' }, 'latest'] }) }}",
         "options": {}
       }
     },
     {
-      "id": "1c8f6b4f-0003-4b62-9e2f-6d3c4a2b0003",
-      "name": "Send price to the world",
+      "id": "1c8f6b4f-0003-4a51-8d1e-5c2b3f1a0003",
+      "name": "Read Chainlink BTC/USD",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 300],
+      "position": [
+        480,
+        300
+      ],
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.WORLD_URL }}/internal/oracle/price",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [
-          { "name": "X-Realm-Secret", "value": "={{ $env.REALM_SECRET }}" },
-          { "name": "X-N8N-Execution", "value": "={{ $execution.id }}" }
-        ] },
+        "url": "={{ $env.ORACLE_RPC_URL }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ raw: $json.result, source: 'n8n' }) }}",
+        "jsonBody": "={{ JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298', data: '0xfeaf968c' }, 'latest'] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "1c8f6b4f-0004-4a51-8d1e-5c2b3f1a0004",
+      "name": "Read Chainlink LINK/USD",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ORACLE_RPC_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0xb113F5A928BCfF189C998ab20d753a47F9dE5A61', data: '0xfeaf968c' }, 'latest'] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "1c8f6b4f-0005-4a51-8d1e-5c2b3f1a0005",
+      "name": "Send prices to the world",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WORLD_URL }}/internal/oracle/prices",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Realm-Secret",
+              "value": "={{ $env.REALM_SECRET }}"
+            },
+            {
+              "name": "X-N8N-Execution",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n', feeds: { ETH: $('Read Chainlink ETH/USD').first().json.result, BTC: $('Read Chainlink BTC/USD').first().json.result, LINK: $json.result } }) }}",
         "options": {}
       }
     }
   ],
   "connections": {
-    "Every 10 minutes": { "main": [[{ "node": "Read Chainlink ETH/USD", "type": "main", "index": 0 }]] },
-    "Read Chainlink ETH/USD": { "main": [[{ "node": "Send price to the world", "type": "main", "index": 0 }]] }
+    "Every 10 minutes": {
+      "main": [
+        [
+          {
+            "node": "Read Chainlink ETH/USD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Chainlink ETH/USD": {
+      "main": [
+        [
+          {
+            "node": "Read Chainlink BTC/USD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Chainlink BTC/USD": {
+      "main": [
+        [
+          {
+            "node": "Read Chainlink LINK/USD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Chainlink LINK/USD": {
+      "main": [
+        [
+          {
+            "node": "Send prices to the world",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   }
 }

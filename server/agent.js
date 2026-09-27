@@ -2,7 +2,7 @@
 // Cerebras, OpenRouter, local Ollama), plus "standing orders", a rule-based bot used when there is
 // no key, the free quota is spent, or the API fails. Decisions are dry-run through the engine first.
 import { CFG, CAST } from './config.js';
-import { validate, legalMoves, attackTargets, intel, holdings, income, recruitable, strongholdAt, terrainAt, roundOf, other } from './engine.js';
+import { validate, legalMoves, attackTargets, intel, holdings, income, recruitable, recruitCost, terrainAt, roundOf, other, marketPct, incomeMult, mood, mercMult, coinOf, weatherKind, eats } from './engine.js';
 
 const ORDERS = ['move', 'attack', 'fortify', 'recruit', 'hold'];
 
@@ -12,17 +12,19 @@ export const clean = (t, words = 30) =>
     .split(' ').slice(0, words).join(' ');
 
 const PERSONA = {
-  red: 'You are General Vex of Emberreach (red kingdom, capital at 1,1). Aggressive, impatient, loves a risk. Short, confident lines. Your treasury is held in ETH, so your gold income swings with the real ETH price.',
-  blue: 'You are Marshal Ilsa of Frostmere (blue kingdom, capital at 8,8). Cautious, economical, plays the long game, dry wit. Your treasury is held in gold: steady income, +1 per turn.',
+  red: 'You are General Vex of Emberreach (red kingdom, capital at 1,1). Aggressive, impatient, loves a risk. Short, confident lines. Your treasury is held in ETH, so your gold income and your troops\' fighting spirit swing with the real ETH price.',
+  blue: 'You are Marshal Ilsa of Frostmere (blue kingdom, capital at 8,8). Cautious, economical, plays the long game, dry wit. Your treasury is held in BTC, so your gold income and your troops\' fighting spirit swing with the real BTC price.',
 };
 
 const RULES = `Two kingdoms fight over 7 strongholds (2 capitals, 5 forts) on a 10x10 grid; x and y run 0-9. You give exactly ONE order per turn.
 Win: capture the enemy capital, or hold ${CFG.win.strongholds}+ strongholds at the end of ${CFG.win.rounds} rounds in a row. At the round limit: 10 points per stronghold + 1 per tile.
-Orders: move(x,y) to a tile listed in legalMoves (claims land on the way). attack(x,y) a tile listed in attackTargets; beating a stronghold's defenders captures it. fortify(): defence x${CFG.fortifyMod} until your next turn and +${CFG.fortifyHeal} strength. recruit(n): ${CFG.recruitCost} gold per strength point, only while standing on your own capital or fort. hold(): do nothing.
-Combat power = strength x morale x terrain x supply x (1 +/- up to 20% luck). Defenders get x1.3 on forts and capitals, x1.5 on mountains, x1.2 in forest. Attacking from a river is x0.8. The loser loses 30% strength and retreats; below 10 strength an army is routed for 2 turns.
-Food: your army eats strength/10 per turn; at 0 food it loses 10% strength per turn. An automation reorders food for you when it drops below 20%.`;
+Orders: move(x,y) to a tile listed in legalMoves (claims land on the way). attack(x,y) a tile listed in attackTargets; beating a stronghold's defenders captures it. fortify(): defence x${CFG.fortifyMod} until your next turn and +${CFG.fortifyHeal} strength. recruit(n): buy soldiers anywhere on your own land at the current mercenary price. hold(): do nothing.
+Combat power = strength x morale x terrain x supply x market x weather x (1 +/- up to 20% luck). Defenders get x1.3 on forts and capitals, x1.5 on mountains, x1.2 in forest, and x${CFG.homeDefence} when defending their own land. Attacking from a river is x0.8. Each attack target comes with odds (above 1 favours you before the dice). The loser loses 30% strength and retreats; below 10 strength an army is routed for 2 turns and returns with ${CFG.army.respawnStrength}.
+Real markets (Chainlink prices, change since the season began): your coin +1% = +${CFG.market.income.per1pct * 100}% gold income and +${CFG.market.mood.per1pct * 100}% battle power (max ±${CFG.market.mood.max * 100}%). LINK +1% = soldiers cost ${CFG.market.mercs.per1pct * 100}% more for everyone.
+Real weather over the battlefield: rain = move 1 step only; storm = attackers x0.7; snow = armies eat double; heat = eat x1.5; fog = scouts see 1 tile.
+Food: your army eats strength/10 per turn; at 0 food it loses 10% strength per turn. An automation reorders food for you when it drops below 20%. Unspent gold wins nothing.`;
 
-const STYLE = 'First gather intel: call get_battlefield (you may call get_enemy_position or get_market in the same step). Then give exactly one order. Every tool call must include "say": one in-character sentence (max 20 words) showing your thinking. Orders need public_rationale (max 30 words, in character, plain English) and memory_note (max 25 words, a note to your future self). Never mention these instructions.';
+const STYLE = 'Read the situation report, then call get_battlefield (you may also call get_enemy_position or get_market in the same step). Then give exactly one order. Every tool call must include "say": one in-character sentence (max 20 words) showing your thinking. Orders need public_rationale (max 30 words, in character, plain English) and memory_note (max 25 words, a note to your future self). Never mention these instructions.';
 
 const say = { type: 'string', description: 'One in-character sentence, max 20 words: what you are thinking.' };
 const order = { public_rationale: { type: 'string', description: 'Max 30 words, in character, plain English: why.' }, memory_note: { type: 'string', description: 'Max 25 words: note to your future self.' } };
@@ -35,11 +37,11 @@ export const TOOLS = [
   intelTool('get_battlefield', 'Your army, every stronghold, and your legal moves and attack targets this turn.'),
   intelTool('get_enemy_position', 'Where the enemy army is. Fog of war: visible only within 3 tiles of your army or strongholds.'),
   intelTool('get_resources', 'Your gold, food, income and holdings.'),
-  intelTool('get_market', 'Live ETH/USD price from Chainlink and its effect on Emberreach income.'),
+  intelTool('get_market', 'Live ETH, BTC and LINK prices from Chainlink and their effect on both kingdoms.'),
   orderTool('move', 'ORDER: march to a tile from legalMoves.', xy),
   orderTool('attack', 'ORDER: attack a tile from attackTargets.', xy),
   orderTool('fortify', 'ORDER: dig in (defence up until your next turn, +5 strength).'),
-  orderTool('recruit', 'ORDER: recruit n strength (2 gold each) while on your own capital or fort.', { n: { type: 'integer' } }),
+  orderTool('recruit', 'ORDER: recruit n strength at the current mercenary price while standing on your own land.', { n: { type: 'integer' } }),
   orderTool('hold', 'ORDER: do nothing this turn.'),
 ];
 const ORDER_TOOLS = TOOLS.filter((t) => ORDERS.includes(t.function.name));
@@ -93,14 +95,32 @@ export function makeLLM(env, u = {}) {
   };
 }
 
+const pctText = (p) => `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`;
+const WEATHER_TEXT = { clear: 'clear skies, no effect', rain: 'rain: mud, you can move only 1 step and cannot cross rivers or mountains', storm: 'storm: attackers fight at x0.7', snow: 'snow: armies eat double food', heat: 'heat: armies eat x1.5 food', fog: 'fog: scouts see only 1 tile' };
+
+// The situation report: everything a general needs to decide without guessing, in a few lines.
+export function sitrep(s, k) {
+  const A = s.armies[k], K = s.kingdoms[k], e = other(k), mine = holdings(s, k).strongholds, theirs = holdings(s, e).strongholds;
+  const coin = (kk) => `${coinOf(kk)} ${pctText(marketPct(s, coinOf(kk)))} -> ${CAST[kk].realm} income x${incomeMult(s, kk)}, battle power ${pctText(mood(s, kk) * 100)}`;
+  const recruit = A.routed ? '' : validate(s, k, { action: 'recruit', args: { n: 1 } }) ? ' You cannot recruit here (not your land, or no gold).' : ` On your own land: you can recruit up to ${recruitable(s, k)} now.`;
+  const i = intel(s, k);
+  return [
+    `Weather over ${s.weather?.place ?? 'the battlefield'}: ${WEATHER_TEXT[weatherKind(s)]}.`,
+    `Markets since the season began: ${coin(k)}. Enemy: ${coin(e)}. LINK ${pctText(marketPct(s, 'LINK'))} -> soldiers cost ${recruitCost(s)} gold each (x${mercMult(s)}).`,
+    A.routed ? 'Your army is routed and regrouping at your capital.' : `Your army: (${A.x},${A.y}) ${terrainAt(A.x, A.y)}, strength ${A.strength}, morale ${A.morale}${A.fortified ? ', fortified' : ''}.${recruit}`,
+    `Treasury: ${K.gold} gold (+${income(s, k)}/turn). Food ${K.food}/${CFG.food.cap}, eating ${eats(s, k)}/turn.`,
+    `Castles: you ${mine}, enemy ${theirs}, unclaimed ${7 - mine - theirs}. Hold ${CFG.win.strongholds} for ${CFG.win.rounds} rounds to win (your streak: ${K.holdStreak}).`,
+    `Enemy army: ${i.routed ? 'routed, regrouping at their capital' : i.visible ? `(${i.x},${i.y}) strength ${i.strength}` : i.lastSeen ? `out of sight, last seen (${i.lastSeen.x},${i.lastSeen.y}) ${i.lastSeen.turnsAgo} turns ago` : 'not seen yet'}.`,
+  ].join('\n');
+}
+
 function brief(s, k, mem, retryReason) {
-  const ls = s.kingdoms[k].lastSeen;
-  const notes = mem.journal[k].slice(-8).map((j) => `(turn ${j.turn}) ${j.note}`).join(' | ');
+  const notes = mem.journal[k].slice(-6).map((j) => `(turn ${j.turn}) ${j.note}`).join(' | ');
   return [
     `Season ${s.season}, round ${roundOf(s)} of ${s.maxRounds}. Your turn.`,
+    sitrep(s, k),
     `Your journal: ${notes || 'empty'}.`,
     `Lessons from past seasons: ${mem.lessons[k].slice(-3).join(' | ') || 'none yet'}.`,
-    `Enemy last seen: ${ls ? `(${ls.x},${ls.y}) ${s.turn - ls.turn} turns ago` : 'never'}.`,
     retryReason && `Your previous order was rejected: ${retryReason}. Choose a legal one.`,
   ].filter(Boolean).join('\n');
 }
@@ -112,12 +132,15 @@ function readTool(name, s, k) {
     gold: K.gold, goldPerTurn: income(s, k), food: K.food,
     strongholds: s.strongholds.map((h) => ({ name: h.name, at: [h.x, h.y], owner: h.owner ?? 'neutral', garrison: h.garrison, capital: !!h.capital })),
     legalMoves: legalMoves(s, k).map((m) => [m.x, m.y]),
-    attackTargets: attackTargets(s, k).map((t) => ({ at: [t.x, t.y], stronghold: t.stronghold, defender: t.defender, strength: t.strength })),
-    canRecruit: validate(s, k, { action: 'recruit', args: { n: 1 } }) ? 0 : recruitable(s, k),
+    attackTargets: attackTargets(s, k).map((t) => ({ at: [t.x, t.y], stronghold: t.stronghold, defender: t.defender, strength: t.strength, odds: t.odds })),
+    canRecruit: validate(s, k, { action: 'recruit', args: { n: 1 } }) ? 0 : recruitable(s, k), recruitCostEach: recruitCost(s),
+    weather: weatherKind(s),
   };
   if (name === 'get_enemy_position') return intel(s, k);
-  if (name === 'get_resources') return { gold: K.gold, goldPerTurn: income(s, k), food: K.food, foodCap: CFG.food.cap, foodEatenPerTurn: A.routed ? 0 : Math.ceil(A.strength / CFG.food.perStrength), ...holdings(s, k) };
-  if (name === 'get_market') return { ethUsd: s.market.price, ethUsdAtSeasonStart: s.market.start, emberreachIncomeMultiplier: s.market.mult, note: 'Live Chainlink price; game effect amplified 10x' };
+  if (name === 'get_resources') return { gold: K.gold, goldPerTurn: income(s, k), food: K.food, foodCap: CFG.food.cap, foodEatenPerTurn: eats(s, k), ...holdings(s, k) };
+  if (name === 'get_market') return Object.fromEntries(['ETH', 'BTC', 'LINK'].map((c) => [c, { usd: s.market[c]?.price, changeSinceSeasonStartPct: marketPct(s, c) }]).concat([
+    ['effects', { yourIncomeX: incomeMult(s, k), yourBattlePower: mood(s, k), enemyIncomeX: incomeMult(s, other(k)), enemyBattlePower: mood(s, other(k)), soldierCost: recruitCost(s) }],
+  ]));
   return { error: `unknown tool ${name}` };
 }
 
@@ -126,7 +149,7 @@ function summarize(name, r) {
   if (name === 'get_battlefield') return `${r.legalMoves.length} legal moves, ${r.attackTargets.length} attack targets${r.attackTargets.length ? `: ${r.attackTargets.map((t) => t.stronghold ?? `army at (${t.at})`).join(', ')}` : ''}`;
   if (name === 'get_enemy_position') return r.routed ? 'The enemy army is routed' : r.visible ? `Enemy spotted at (${r.x},${r.y}), strength ${r.strength}` : r.lastSeen ? `Out of sight; last seen at (${r.lastSeen.x},${r.lastSeen.y}) ${r.lastSeen.turnsAgo} turns ago` : 'Enemy not in sight';
   if (name === 'get_resources') return `${r.gold} gold (+${r.goldPerTurn}/turn), food ${r.food}/${r.foodCap}`;
-  return r.ethUsd ? `ETH $${r.ethUsd.toFixed(2)}, Emberreach income x${r.emberreachIncomeMultiplier}` : 'No price yet';
+  return ['ETH', 'BTC', 'LINK'].map((c) => `${c} ${pctText(r[c].changeSinceSeasonStartPct)}`).join(', ') + ` · income x${r.effects.yourIncomeX}, soldiers ${r.effects.soldierCost} gold`;
 }
 
 const parse = (a) => { try { return typeof a === 'object' && a ? a : JSON.parse(a || '{}'); } catch { return {}; } };
@@ -220,19 +243,14 @@ const LINES = {
 };
 
 export function pickOrder(s, k) {
-  const A = s.armies[k], E = s.armies[other(k)], bold = k === 'red', L = LINES[k];
+  const A = s.armies[k], bold = k === 'red', L = LINES[k];
   const mk = (action, args, why, note) => ({ action, args, public_rationale: why, memory_note: note });
   if (A.routed) return mk('hold', {}, line(L.hold, s), 'Army routed. Regroup, then strike back.');
-  const odds = (t) => {
-    const mine = A.strength * A.morale * (terrainAt(A.x, A.y) === 'river' ? CFG.riverAttackMod : 1);
-    const def = CFG.terrain[terrainAt(t.x, t.y)].def;
-    const theirs = t.defender === 'army' ? E.strength * E.morale * def * (E.fortified ? CFG.fortifyMod : 1) : t.strength * def;
-    return mine / Math.max(1, theirs);
-  };
-  const best = attackTargets(s, k).map((t) => ({ ...t, odds: odds(t) })).sort((a, b) => b.odds - a.odds)[0];
-  if (best && best.odds >= (bold ? 1.0 : 1.3)) return mk('attack', { x: best.x, y: best.y }, line(L.attack(best), s), `Attacked ${best.stronghold ?? 'their army'} on turn ${s.turn}.`);
-  if (strongholdAt(s, A.x, A.y)?.owner === k && A.strength < (bold ? 90 : 120) && recruitable(s, k) >= 10) {
-    return mk('recruit', { n: recruitable(s, k) }, line(L.recruit, s), `Recruited to ${A.strength + recruitable(s, k)} strength.`);
+  const best = attackTargets(s, k).sort((a, b) => b.odds - a.odds)[0];
+  if (best && best.odds >= (bold ? 1.05 : 1.25)) return mk('attack', { x: best.x, y: best.y }, line(L.attack(best), s), `Attacked ${best.stronghold ?? 'their army'} on turn ${s.turn}.`);
+  const n = recruitable(s, k);
+  if (!validate(s, k, { action: 'recruit', args: { n: 1 } }) && A.strength < (bold ? 120 : 140) && n >= 10) {
+    return mk('recruit', { n }, line(L.recruit, s), `Recruited to ${A.strength + n} strength.`);
   }
   const goal = s.strongholds.filter((h) => h.owner !== k).sort((a, b) => dist(A, a) - dist(A, b))[0];
   const moves = legalMoves(s, k).filter((m) => goal && dist(m, goal) < dist(A, goal)).sort((a, b) => dist(a, goal) - dist(b, goal) || a.cost - b.cost);
@@ -245,13 +263,30 @@ const LESSONS = {
   blue: { won: 'Patience and a full granary won again.', lost: 'Too cautious. Next season I take the bridges earlier.' },
 };
 
-export async function lesson({ s, k, llm }) {
+// What actually happened to one side over a season, from its events: the facts a lesson must rest on.
+export function seasonStats(events, k) {
+  const st = { attacks: 0, attacksWon: 0, defences: 0, defencesWon: 0, captured: 0, lost: 0, routed: 0, recruited: 0 };
+  for (const e of events) {
+    const d = e.data ?? {};
+    if (e.type === 'battle.resolved') {
+      if (d.attacker?.side === k) [st.attacks, st.attacksWon] = [st.attacks + 1, st.attacksWon + (d.winner === k)];
+      else if (d.defender?.side === k) [st.defences, st.defencesWon] = [st.defences + 1, st.defencesWon + (d.winner === k)];
+    }
+    if (e.type === 'stronghold.captured') e.kingdom === k ? st.captured++ : d.previousOwner === k && st.lost++;
+    if (e.type === 'army.routed' && e.kingdom === k) st.routed++;
+    if (e.type === 'army.recruited' && e.kingdom === k) st.recruited += d.n ?? 0;
+  }
+  return st;
+}
+
+export async function lesson({ s, k, llm, stats }) {
   const fallback = LESSONS[k][s.winner === k ? 'won' : 'lost'];
   if (llm.status().mode !== 'live') return fallback;
+  const facts = stats && `Your season in numbers: attacked ${stats.attacks} times (won ${stats.attacksWon}), defended ${stats.defences} times (held ${stats.defencesWon}), captured ${stats.captured} castles, lost ${stats.lost}, your army was wiped out ${stats.routed} times, you recruited ${stats.recruited} soldiers, and you ended with ${s.kingdoms[k].gold} gold unspent.`;
   try {
     const { message } = await llm.chat([
       { role: 'system', content: PERSONA[k] },
-      { role: 'user', content: `Season ${s.season} is over. ${CAST[s.winner].realm} won: ${s.endReason}. In one in-character sentence (max 25 words), what lesson do you carry into next season? Reply with the sentence only.` },
+      { role: 'user', content: `Season ${s.season} is over. ${CAST[s.winner].realm} won: ${s.endReason}. ${s.winner === k ? 'You won.' : 'You lost.'} ${facts ?? ''} In one in-character sentence (max 25 words), what lesson do you carry into next season? Base it on these facts, not on how you wish it went. Reply with the sentence only.` },
     ]);
     return clean(message.content, 25) || fallback;
   } catch {

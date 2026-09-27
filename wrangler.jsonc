@@ -1,0 +1,44 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The whole game server on Cloudflare's free plan. Deploy: npx wrangler deploy (CI does it on every push to main).
+  "name": "agentistan",
+  "main": "server/worker.js",
+  "compatibility_date": "2026-09-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // The spectator pages, served from the edge without waking the world.
+  "assets": { "directory": "./web", "html_handling": "auto-trailing-slash" },
+
+  // One Durable Object is the whole world: state (SQLite), the turn clock (alarms) and the live stream.
+  "durable_objects": { "bindings": [{ "name": "WORLD", "class_name": "World" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["World"] }],
+
+  // Every 10 minutes: keep n8n awake, and read prices or weather directly if n8n has gone quiet.
+  "triggers": { "crons": ["*/10 * * * *"] },
+
+  // Both names serve the same world (nobodysplaying is the older address, still linked from umarkhatana.com).
+  "routes": [
+    { "pattern": "agentistan.umarkhatana.com/*", "zone_name": "umarkhatana.com" },
+    { "pattern": "nobodysplaying.umarkhatana.com/*", "zone_name": "umarkhatana.com" }
+  ],
+
+  "vars": {
+    "NETWORK": "base-sepolia",
+    "CHAIN_RPC_URL": "https://sepolia.base.org",
+    "SCENARIO": "demo",
+    // One turn every 30 minutes keeps 24/7 play inside the free AI tier (see README)
+    "TURN_INTERVAL_MS": "1800000",
+    "LLM_BASE_URL": "https://api.groq.com/openai/v1",
+    "LLM_MODEL": "openai/gpt-oss-120b",
+    "LLM_EXTRA": "{\"reasoning_effort\":\"low\"}",
+    "MAX_LLM_TOKENS_PER_DAY": "180000",
+    "MAX_LLM_CALLS_PER_DAY": "900",
+    // n8n's public URL (Render). Empty: the world runs every turn itself.
+    "N8N_URL": "",
+    "PUBLIC_URL": "https://agentistan.umarkhatana.com",
+    "PUBLIC_OWNER_NAME": "Umar Khatana",
+    "PUBLIC_HIRE_URL": "https://umarkhatana.com"
+  }
+  // Secrets, set with `npx wrangler secret put NAME`: REALM_SECRET, LLM_API_KEY, DEPLOYER_PRIVATE_KEY
+}

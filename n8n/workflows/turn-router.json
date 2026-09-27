@@ -3,7 +3,9 @@
   "name": "Turn Router",
   "active": true,
   "versionId": "5b0e6a86-1f1d-4c2a-9f55-0d7a3c1e0001",
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {},
   "meta": {},
   "tags": [],
@@ -13,24 +15,76 @@
       "name": "New turn",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 300],
+      "position": [
+        0,
+        300
+      ],
       "webhookId": "7c1f9b2e-7c1f-4f8e-9a51-2d8e6b3c0001",
-      "parameters": { "httpMethod": "POST", "path": "turn", "responseMode": "onReceived", "options": {} }
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "turn",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "0b7e5a3e-0099-4a51-8d1e-5c2b3f1a0099",
+      "name": "Is it the world?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0b7e5a3e-secret",
+              "leftValue": "={{ $json.headers['x-realm-secret'] }}",
+              "rightValue": "={{ $env.REALM_SECRET }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
     },
     {
       "id": "0b7e5a3e-0002-4a51-8d1e-5c2b3f1a0002",
       "name": "Check stores",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [240, 300],
+      "position": [
+        480,
+        300
+      ],
       "parameters": {
         "method": "GET",
         "url": "={{ $env.WORLD_URL }}/internal/kingdoms/{{ $json.body.kingdom }}/resources",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [
-          { "name": "X-Realm-Secret", "value": "={{ $env.REALM_SECRET }}" },
-          { "name": "X-N8N-Execution", "value": "={{ $execution.id }}" }
-        ] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Realm-Secret",
+              "value": "={{ $env.REALM_SECRET }}"
+            },
+            {
+              "name": "X-N8N-Execution",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
         "options": {}
       }
     },
@@ -39,16 +93,27 @@
       "name": "Food below 20%?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [480, 300],
+      "position": [
+        720,
+        300
+      ],
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
           "conditions": [
             {
               "id": "3f2a1c4d-0001-4b6e-8a7f-1e2d3c4b0001",
               "leftValue": "={{ $json.food }}",
               "rightValue": "={{ $json.lowFoodBelow }}",
-              "operator": { "type": "number", "operation": "lt" }
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
             }
           ],
           "combinator": "and"
@@ -61,15 +126,26 @@
       "name": "Supply alert: reorder food",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 180],
+      "position": [
+        960,
+        180
+      ],
       "parameters": {
         "method": "POST",
         "url": "={{ $env.WORLD_URL }}/internal/actions",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [
-          { "name": "X-Realm-Secret", "value": "={{ $env.REALM_SECRET }}" },
-          { "name": "X-N8N-Execution", "value": "={{ $execution.id }}" }
-        ] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Realm-Secret",
+              "value": "={{ $env.REALM_SECRET }}"
+            },
+            {
+              "name": "X-N8N-Execution",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ kingdom: $json.kingdom, action: 'buy_food', args: { n: Math.round($json.reorderTo - $json.food) } }) }}",
@@ -81,19 +157,32 @@
       "name": "Ask the AI general",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [960, 300],
+      "position": [
+        1200,
+        300
+      ],
       "parameters": {
         "method": "POST",
         "url": "={{ $env.WORLD_URL }}/internal/agent/decide",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [
-          { "name": "X-Realm-Secret", "value": "={{ $env.REALM_SECRET }}" },
-          { "name": "X-N8N-Execution", "value": "={{ $execution.id }}" }
-        ] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Realm-Secret",
+              "value": "={{ $env.REALM_SECRET }}"
+            },
+            {
+              "name": "X-N8N-Execution",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ kingdom: $('New turn').first().json.body.kingdom, traceId: $('New turn').first().json.body.traceId }) }}",
-        "options": { "timeout": 80000 }
+        "options": {
+          "timeout": 80000
+        }
       }
     },
     {
@@ -101,15 +190,26 @@
       "name": "Deliver orders to the game",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 300],
+      "position": [
+        1440,
+        300
+      ],
       "parameters": {
         "method": "POST",
         "url": "={{ $env.WORLD_URL }}/internal/actions",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [
-          { "name": "X-Realm-Secret", "value": "={{ $env.REALM_SECRET }}" },
-          { "name": "X-N8N-Execution", "value": "={{ $execution.id }}" }
-        ] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Realm-Secret",
+              "value": "={{ $env.REALM_SECRET }}"
+            },
+            {
+              "name": "X-N8N-Execution",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ kingdom: $json.kingdom, action: $json.action, args: $json.args, public_rationale: $json.public_rationale, memory_note: $json.memory_note, traceId: $json.traceId }) }}",
@@ -118,13 +218,79 @@
     }
   ],
   "connections": {
-    "New turn": { "main": [[{ "node": "Check stores", "type": "main", "index": 0 }]] },
-    "Check stores": { "main": [[{ "node": "Food below 20%?", "type": "main", "index": 0 }]] },
-    "Food below 20%?": { "main": [
-      [{ "node": "Supply alert: reorder food", "type": "main", "index": 0 }],
-      [{ "node": "Ask the AI general", "type": "main", "index": 0 }]
-    ] },
-    "Supply alert: reorder food": { "main": [[{ "node": "Ask the AI general", "type": "main", "index": 0 }]] },
-    "Ask the AI general": { "main": [[{ "node": "Deliver orders to the game", "type": "main", "index": 0 }]] }
+    "New turn": {
+      "main": [
+        [
+          {
+            "node": "Is it the world?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check stores": {
+      "main": [
+        [
+          {
+            "node": "Food below 20%?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Food below 20%?": {
+      "main": [
+        [
+          {
+            "node": "Supply alert: reorder food",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask the AI general",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supply alert: reorder food": {
+      "main": [
+        [
+          {
+            "node": "Ask the AI general",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask the AI general": {
+      "main": [
+        [
+          {
+            "node": "Deliver orders to the game",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is it the world?": {
+      "main": [
+        [
+          {
+            "node": "Check stores",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
   }
 }
