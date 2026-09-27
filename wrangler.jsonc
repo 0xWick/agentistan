@@ -36,7 +36,7 @@
     "MAX_LLM_TOKENS_PER_DAY": "180000",
     "MAX_LLM_CALLS_PER_DAY": "900",
     // n8n's public URL (Render). Empty: the world runs every turn itself.
-    "N8N_URL": "",
+    "N8N_URL": "https://agentistan-n8n.onrender.com",
     "PUBLIC_URL": "https://agentistan.umarkhatana.com",
     "PUBLIC_OWNER_NAME": "Umar Khatana",
     "PUBLIC_HIRE_URL": "https://umarkhatana.com"
