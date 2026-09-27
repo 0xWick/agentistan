@@ -74,7 +74,7 @@
         "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ username: \"Nobody's Playing\", embeds: [{ title: $json.body.title, description: $json.body.text, color: $json.body.color, url: $json.body.url, footer: { text: 'Posted by an n8n automation \u00b7 agentistan.umarkhatana.com' } }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ username: \"Agentistan\", embeds: [{ title: $json.body.title, description: $json.body.text, color: $json.body.color, url: $json.body.url, footer: { text: 'Posted by an n8n automation \u00b7 agentistan.umarkhatana.com' } }] }) }}",
         "options": {}
       }
     },

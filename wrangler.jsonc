@@ -18,7 +18,7 @@
   // Every 10 minutes: keep n8n awake, and read prices or weather directly if n8n has gone quiet.
   "triggers": { "crons": ["*/10 * * * *"] },
 
-  // Both names serve the same world (nobodysplaying is the older address, still linked from umarkhatana.com).
+  // Both names serve the same world: agentistan is the name; nobodysplaying is the old address, kept so old links work.
   "routes": [
     { "pattern": "agentistan.umarkhatana.com/*", "zone_name": "umarkhatana.com" },
     { "pattern": "nobodysplaying.umarkhatana.com/*", "zone_name": "umarkhatana.com" }
@@ -41,7 +41,7 @@
     "PUBLIC_OWNER_NAME": "Umar Khatana",
     "PUBLIC_HIRE_URL": "https://umarkhatana.com",
     // utm_source shows on each Calendly booking, so you can see which meetings came from the game
-    "PUBLIC_BOOKING_URL": "https://calendly.com/realumargujjar/30min?utm_source=nobodys-playing&utm_medium=book-button"
+    "PUBLIC_BOOKING_URL": "https://calendly.com/realumargujjar/30min?utm_source=agentistan&utm_medium=book-button"
   }
   // Secrets, set with `npx wrangler secret put NAME`: REALM_SECRET, LLM_API_KEY, DEPLOYER_PRIVATE_KEY
 }
