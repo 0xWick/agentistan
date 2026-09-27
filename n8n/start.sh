@@ -13,7 +13,8 @@ export WORLD_URL="${WORLD_URL:-http://127.0.0.1:8787}"
 export ORACLE_RPC_URL="${ORACLE_RPC_URL:-https://sepolia.base.org}"
 : "${REALM_SECRET:?REALM_SECRET must be set (see .env)}"
 
-N8N=$(command -v n8n || echo node_modules/.bin/n8n) # the Docker image has n8n on PATH; locally it's installed here
+N8N=node_modules/.bin/n8n # locally it's installed here; the Docker image has it on PATH instead
+[ -x "$N8N" ] || [ ! -f /.dockerenv ] || N8N=$(command -v n8n)
 [ -x "$N8N" ] || npm install --no-audit --no-fund
 "$N8N" import:workflow --separate --input=workflows
 for id in nbpTurnRouter001 nbpMarketSync001 nbpWeatherSync01 nbpWarCorresp01; do "$N8N" publish:workflow --id="$id"; done

@@ -43,7 +43,6 @@ export class World extends DurableObject {
     this.sql = ctx.storage.sql;
     this.hits = new Map();
     this.stateTimer = null;
-    this.lastN8nAt = 0;
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong')); // keep-alives never wake the object
     ctx.blockConcurrencyWhile(async () => this.load());
   }
@@ -435,7 +434,7 @@ export class World extends DurableObject {
     if (W.state.status === 'running' && !W.pending && !W.timers.turn) this.schedule(Math.max(3000, (W.nextTurnAt ?? 0) - Date.now()));
     if (W.state.status === 'ended' && !W.timers.season && !W.timers.seasonEnd) this.at('season', 5000);
     this.arm();
-    if (this.cfg.n8n) await fetch(`${this.cfg.n8n}/healthz`, { signal: AbortSignal.timeout(10_000) }).then((r) => r.ok && (this.lastN8nAt = Date.now())).catch(() => {});
+    if (this.cfg.n8n) await fetch(`${this.cfg.n8n}/healthz`, { signal: AbortSignal.timeout(10_000) }).then((r) => r.ok && (W.n8nAt = Date.now())).catch(() => {});
     if (Date.now() - (W.pricesAt ?? 0) > 20 * 60_000) await this.refreshPrices().catch((err) => console.error('oracle read failed:', err.shortMessage ?? err.message));
     if (Date.now() - (W.weatherAt ?? 0) > 50 * 60_000) await this.refreshWeather().catch((err) => console.error('weather read failed:', err.message));
     this.save();
@@ -475,7 +474,7 @@ export class World extends DurableObject {
     const W = this.W;
     return {
       ok: true, world: W.state.status, season: W.state.season, turn: W.state.turn, viewers: this.ctx.getWebSockets().length,
-      n8n: !this.cfg.n8n ? 'off (world runs turns directly)' : Date.now() - this.lastN8nAt < 900_000 ? 'ok' : 'no recent contact',
+      n8n: !this.cfg.n8n ? 'off (world runs turns directly)' : Date.now() - (W.n8nAt ?? 0) < 900_000 ? 'ok' : 'no recent contact',
       chain: this.chain.enabled ? `${this.chain.name} ${this.chain.ledger}` : 'off',
       oracle: Object.fromEntries(COINS.map((c) => [c, W.prices[c]?.usd ?? null])), weather: W.state.weather,
       llmMode: this.llm.status().mode, model: this.llm.model, llmCallsToday: this.llm.usage.calls, nextTurnAt: W.nextTurnAt, timers: W.timers,
@@ -526,7 +525,7 @@ export class World extends DurableObject {
     if (p === '/internal/import') return this.import(body);
     if (!this.W) return json(503, { error: 'the world has not started yet' });
     const W = this.W, exec = clean(req.headers.get('x-n8n-execution'), 1).slice(0, 24);
-    if (exec) this.lastN8nAt = Date.now();
+    if (exec) W.n8nAt = Date.now(); // saved: the object may sleep between calls
     const km = p.match(/^\/internal\/kingdoms\/(red|blue)\/resources$/);
     if (km && req.method === 'GET') {
       const k = km[1], K = W.state.kingdoms[k];
