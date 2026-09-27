@@ -135,6 +135,6 @@ Next ideas: an MCP server so any AI assistant can ask "who's winning and why?", 
 
 ## Known limitations
 
-- Render's free instance has 0.1 CPU: n8n takes a couple of minutes to start after a deploy, and the world runs turns itself meanwhile.
+- Render's free instance has 0.1 CPU: n8n takes about five minutes to start after a deploy, and the world runs turns itself meanwhile. The n8n image comes from Docker Hub, because docker.n8n.io rate-limits Render's shared build machines.
 - Season 1's recording began mid-season, so its early rounds replay without the map. Every later season is recorded from its first turn.
 - Test network only: no real money, not financial advice.
