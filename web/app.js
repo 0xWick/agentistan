@@ -1,4 +1,5 @@
 import { LENS, TECH } from './lens.js';
+import { headline, turnStory, flow, isMoment, momentText, MOMENTS, roundOf, turnOf } from './story.js';
 import './theme.js';
 
 const $ = (s) => document.querySelector(s);
@@ -28,7 +29,7 @@ let dismissedSeason = 0;
 
 // ---------- timeline: the season's recording plus whatever arrives live ----------
 // Lines are {k:'s', s: snapshot} or {k:'e', e: event} in order; the slider position is a line index.
-const TL = { season: 0, past: false, lines: [], snaps: [], evs: [], turns: [], maxId: 0, pos: 0, live: true, playing: false, speed: 1, gen: 0 };
+const TL = { season: 0, past: false, lines: [], snaps: [], evs: [], turns: [], keys: [], maxId: 0, pos: 0, live: true, playing: false, speed: 1, gen: 0 };
 const last = () => TL.lines.length - 1;
 const countUpTo = (arr, p) => { // how many entries of the sorted array are <= p
   let lo = 0, hi = arr.length;
@@ -40,10 +41,9 @@ const countUpTo = (arr, p) => { // how many entries of the sorted array are <= p
   return lo;
 };
 const snapKey = (s) => JSON.stringify([s.state, s.counters, s.proofs, s.journals, s.lessons]);
-const turnOf = (e) => +(/t(\d+)$/.exec(e?.traceId ?? '')?.[1] ?? 0);
 
 function reset(season) {
-  Object.assign(TL, { season, lines: [], snaps: [], evs: [], turns: [], maxId: 0, pos: 0 });
+  Object.assign(TL, { season, lines: [], snaps: [], evs: [], turns: [], keys: [], maxId: 0, pos: 0 });
 }
 
 function add(line) {
@@ -52,6 +52,7 @@ function add(line) {
   TL.evs.push(i);
   TL.maxId = Math.max(TL.maxId, line.e.id);
   if (line.e.type === 'turn.started') TL.turns.push(i);
+  if (isMoment(line.e)) TL.keys.push(i);
 }
 
 function addState(d) { // a public state from the server; skipped when nothing on screen would change
@@ -69,7 +70,11 @@ function show(p, step = false) {
   events = TL.evs.slice(Math.max(0, c - 300), c).map((i) => TL.lines[i].e);
   const at = TL.lines[TL.pos];
   if (step && at.k === 'e' && (at.e.type === 'battle.resolved' || at.e.type === 'stronghold.captured')) burst(at.e.data.x, at.e.data.y);
+  // Season 1 started recording mid-season: its early events come after a later snapshot, so the map can't match them yet.
+  const t = turnOf(events.at(-1));
+  document.documentElement.classList.toggle('stale', t > 0 && S.state.turn > t + 1);
   renderState();
+  renderSimple();
   renderLog();
   renderTheater();
   renderPipeline();
@@ -172,7 +177,7 @@ async function boot() {
   try {
     now = await fetch('/api/state', { cache: 'no-store' }).then((r) => r.json());
   } catch {
-    $('#theater-who').textContent = 'Can’t reach the world right now. Retrying…';
+    $('#theater-who').textContent = $('#n-big').textContent = 'Can’t reach the world right now. Retrying…';
     return setTimeout(boot, 5000);
   }
   meta = now.meta;
@@ -181,7 +186,7 @@ async function boot() {
   TL.past = season !== now.state.season;
   await load(season);
   if (!TL.snaps.length) {
-    if (TL.past) return void ($('#theater-who').textContent = `There’s no recording of season ${season}.`);
+    if (TL.past) return void ($('#theater-who').textContent = $('#n-big').textContent = `There’s no recording of season ${season}.`);
     addState(now);
   }
   if (TL.past) {
@@ -195,9 +200,7 @@ async function boot() {
   // A turn comes every 30 minutes, so newcomers see the last one played back first, then the view follows live.
   const start = ASKED ? 0 : (TL.turns.at(-1) ?? 0);
   if (ASKED) TL.speed = 4;
-  const go = () => TL.live && play(start);
-  if ($('#intro').open) $('#intro').addEventListener('close', go, { once: true });
-  else setTimeout(go, 400);
+  setTimeout(() => TL.live && play(start), 400);
 }
 
 // ---------- map ----------
@@ -221,6 +224,7 @@ function drawMap() {
     const who = h.owner ? meta.cast[h.owner].realm : 'neutral';
     return `<g transform="translate(${h.x * T + 25} ${h.y * T + 22})"><title>${esc(h.name)}: ${who}, garrison ${h.garrison}</title><path class="fort o-${h.owner ?? 'none'}" d="${shape}"/><text class="garrison" y="22">${h.garrison}</text></g>`;
   }).join('');
+  if (!$('#labels').childElementCount) $('#labels').innerHTML = s.strongholds.map((h) => `<text class="sh-name" x="${h.x * T + 25}" y="${h.y * T + 7}">${esc(h.name)}</text>`).join('');
   for (const k of ['red', 'blue']) {
     const a = s.armies[k];
     let el = document.getElementById(`army-${k}`);
@@ -255,7 +259,7 @@ function renderTimeline() {
   const at = TL.lines[TL.pos];
   const ts = at && (at.k === 'e' ? at.e.ts : at.s.at);
   const when = ts ? new Date(ts).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '';
-  if (S) $('#tl-label').textContent = `Season ${TL.season} · turn ${turnOf(events.at(-1)) || S.state.turn} · ${when}`;
+  if (S) $('#tl-label').textContent = `Season ${TL.season} · round ${roundOf(turnOf(events.at(-1)) || S.state.turn)} of ${S.state.maxRounds} · ${when}`;
   $('#tl-play').textContent = TL.playing ? 'Pause' : 'Play';
   $('#tl-live').textContent = TL.past ? 'Back to live' : TL.live ? '● Live' : 'Go live';
   $('#tl-live').classList.toggle('on', !TL.past && TL.live);
@@ -269,14 +273,72 @@ function renderTicks() {
 
 function renderNext() {
   if (!meta || !S) return;
-  const el = $('#next');
+  const el = $('#next'), up = $('#n-next');
+  up.textContent = '';
   if (TL.past) return void (el.textContent = 'Watching a recording');
   if (!TL.live) return void (el.textContent = 'Looking back · press Live to catch up');
   const at = meta.nextTurnAt, left = Math.max(0, Math.round((at - Date.now()) / 1000));
   const every = meta.turnIntervalMs >= 60_000 ? `${Math.round(meta.turnIntervalMs / 60_000)} min` : `${Math.round(meta.turnIntervalMs / 1000)} s`;
+  const clock = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
   el.textContent = S.state.status !== 'running' ? 'New season starting…'
     : !at ? 'Turn in progress…'
-    : `Next turn in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} · one every ${every}`;
+    : `Next turn in ${clock} · one every ${every}`;
+  const k = S.state.active;
+  if (S.state.status === 'running' && at) up.textContent = `Up next: ${meta.cast[k].general} (${meta.cast[k].realm}) moves in ${clock}.`;
+}
+
+// ---------- simple view: narrator, score, the tech strip, key moments ----------
+function renderSimple() {
+  const s = S.state, cast = meta.cast, R = (k) => cast[k].realm;
+  const tr = events.findLast((e) => e.type === 'turn.started')?.traceId;
+  const inTurn = tr ? events.filter((e) => e.traceId === tr) : [];
+  const start = inTurn.find((e) => e.type === 'turn.started');
+
+  const [first, ...rest] = document.documentElement.classList.contains('stale')
+    ? [`Replaying round ${roundOf(turnOf(events.at(-1)))}.`, 'This part of the season was recorded before the map was, so the map and score catch up later in the timeline.']
+    : headline(s, cast);
+  $('#n-big').innerHTML = `<strong>${esc(first)}</strong> ${esc(rest.join(' '))}`;
+  $('#n-when').textContent = start ? `Round ${roundOf(turnOf(start))} · ${R(start.kingdom)}'s move` : '';
+  const { lines, quote } = turnStory(inTurn.filter((e) => e.type !== 'turn.started'), s, cast);
+  $('#n-lines').textContent = lines.join(' ') || (start ? `${cast[start.kingdom].general} is about to decide…` : 'Waiting for the first move…');
+  $('#n-quote').hidden = !quote;
+  if (quote) $('#n-quote').innerHTML = `<p>“${esc(quote.text)}”</p><cite>${esc(quote.who)}${quote.thinking ? ', thinking out loud' : ', explaining the order'}</cite>`;
+
+  const count = (k) => s.strongholds.filter((h) => h.owner === k).length;
+  const order = { red: 0, null: 1, blue: 2 };
+  $('#s-round').textContent = `Score · round ${roundOf(s.turn)} of ${s.maxRounds}`;
+  $('#tug').innerHTML = s.strongholds.slice().sort((a, b) => order[a.owner] - order[b.owner]).map((h) => `<i class="o-${h.owner ?? 'none'}" title="${esc(h.name)}"></i>`).join('');
+  $('#tug').setAttribute('aria-label', `Castles: ${R('red')} ${count('red')}, unclaimed ${count(null)}, ${R('blue')} ${count('blue')}`);
+  $('#tug-legend').innerHTML = `<b class="red">${R('red')} ${count('red')}</b><span class="muted">${count(null)} unclaimed</span><b class="blue">${count('blue')} ${R('blue')}</b>`;
+  $('#sides').innerHTML = ['red', 'blue'].map((k) => {
+    const K = s.kingdoms[k], A = s.armies[k];
+    const army = A.routed ? 'Wiped out, regrouping' : `${A.strength} soldiers${A.fortified ? ', dug in' : ''}`;
+    const gold = k === 'red' ? `${K.gold} · earned in ETH` : `${K.gold} · earned in gold`;
+    return `<article class="side ${k}">
+      <h3>${R(k)}${s.active === k && s.status === 'running' ? ' <span class="to-move">to move</span>' : ''}</h3>
+      <p class="muted">${cast[k].general}, an AI</p>
+      <dl>
+        <div><dt>⚔️ Army</dt><dd>${army}</dd></div>
+        <div><dt>🍞 Food</dt><dd>${K.food}%${K.food < 20 ? ' <span class="low">low</span>' : ''}<span class="bar${K.food < 20 ? ' low' : ''}"><i style="width:${K.food}%"></i></span></dd></div>
+        <div><dt>💰 Gold</dt><dd>${gold}</dd></div>
+      </dl>
+    </article>`;
+  }).join('');
+
+  const at = TL.lines[TL.pos];
+  const now = at?.k === 'e' ? (at.e.type === 'turn.started' ? 'event' : at.e.stage) : null;
+  $('#flow').innerHTML = flow(inTurn, s, meta, now, S.proofs).map((st) => `<li class="st-${st.id}${st.done ? ' done' : ''}${st.active ? ' now' : ''}">
+    <span class="ic" aria-hidden="true">${st.icon}</span><b>${st.name}</b><span class="tech">${esc(st.tech)}</span>
+    <span class="does">${esc(st.does)}</span><span class="now-txt">${esc(st.now)}</span></li>`).join('');
+  const e = at?.k === 'e' && LENS[at.e.lensKey]?.[2] ? at.e : events.findLast((x) => LENS[x.lensKey] && !['turn.started', 'resources.updated', 'agent.tool_result'].includes(x.type));
+  $('#biz-line').innerHTML = e ? `<b>💼 In a real business, this is like:</b> ${esc(LENS[e.lensKey][2])}` : '';
+
+  const c = countUpTo(TL.keys, TL.pos), keys = TL.keys.slice(0, c);
+  $('#moments').innerHTML = keys.slice(-8).reverse().map((i) => {
+    const m = TL.lines[i].e;
+    return `<li><button data-line="${i}"><span class="when">Round ${roundOf(turnOf(m)) || 1}</span><span aria-hidden="true">${MOMENTS[m.type]}</span><span>${esc(momentText(m, s, cast))}</span></button></li>`;
+  }).join('') + (keys.length > 8 ? `<li class="muted more">…and ${keys.length - 8} earlier. Drag the bar at the top to go further back.</li>` : '')
+    || '<li class="muted">Nothing big has happened yet.</li>';
 }
 
 function renderState() {
@@ -284,7 +346,7 @@ function renderState() {
   $('#clock').textContent = `Season ${s.season} · Round ${Math.ceil(s.turn / 2)} of ${s.maxRounds}${meta.paused ? ' · paused (nobody watching)' : ''}`;
   const live = meta.llm.mode === 'live';
   $('#ai-mode').textContent = live ? `AI: live · ${meta.llm.model.split('/').pop()} · free tier` : 'Generals resting: running on standing orders';
-  $('#ai-mode').className = `pill ${live ? '' : 'warn'}`;
+  $('#ai-mode').classList.toggle('warn', !live);
   $('#ai-mode').title = meta.llm.why ?? `${meta.llm.callsToday} AI calls today`;
   $('#counters').innerHTML = [['AI decisions', C.decisions], ['Tool calls', C.toolCalls], ['Automations run', C.automations], ['Oracle reads', C.oracleReads], ['On-chain receipts', C.receipts]]
     .map(([l, v]) => `<div><dt>${l}</dt><dd>${v.toLocaleString()}</dd></div>`).join('');
@@ -436,10 +498,31 @@ document.querySelector('.tl-speed').addEventListener('click', (ev) => {
   renderTimeline();
 });
 $('#tl-live').addEventListener('click', () => (TL.past ? location.assign('/') : goLive()));
-$('#replay').addEventListener('click', () => {
+document.querySelectorAll('.replay').forEach((b) => b.addEventListener('click', () => {
   TL.speed = 1;
   play(TL.turns.at(-1) ?? 0);
+}));
+$('#moments').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-line]');
+  if (b) scrub(+b.dataset.line, true);
 });
+
+// Simple view by default; the full dashboard lives in the nerd view. Both share one map.
+function setView(v) {
+  const nerd = v === 'nerd';
+  if (nerd) document.documentElement.dataset.view = 'nerd';
+  else delete document.documentElement.dataset.view;
+  if (nerd) $('#nerd').prepend($('.board'));
+  else $('#simple').prepend($('.board'));
+  $('#view').textContent = nerd ? 'Simple view' : 'Nerd view';
+  $('#view').setAttribute('aria-pressed', String(nerd));
+}
+$('#view').addEventListener('click', () => {
+  const v = document.documentElement.dataset.view === 'nerd' ? 'simple' : 'nerd';
+  setView(v);
+  try { localStorage.setItem('np-view', v); } catch { /* private browsing: lasts until the tab closes */ }
+});
+setView(document.documentElement.dataset.view);
 $('#filters').addEventListener('click', (ev) => {
   const b = ev.target.closest('button');
   if (!b) return;
@@ -466,14 +549,6 @@ $('#results').addEventListener('click', (ev) => {
   renderResults();
 });
 $('#intro-open').addEventListener('click', () => $('#intro').showModal());
-try {
-  if (!localStorage.getItem('np-intro-seen')) {
-    $('#intro').showModal();
-    localStorage.setItem('np-intro-seen', '1');
-  }
-} catch {
-  $('#intro').showModal();
-}
 setInterval(() => renderLens(), 3000);
 setInterval(renderNext, 1000);
 renderFilters();

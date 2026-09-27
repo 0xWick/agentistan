@@ -12,7 +12,7 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 28V10h4V5h5v5h6V5h5v5h4v18z' fill='%23e8590c'/%3E%3C/svg%3E">
-  <script>try { const t = localStorage.getItem('np-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
+  <script>try { const t = localStorage.getItem('np-theme'); if (t) document.documentElement.dataset.theme = t; if (localStorage.getItem('np-view') === 'nerd') document.documentElement.dataset.view = 'nerd'; } catch {}</script>
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
@@ -20,19 +20,20 @@
   <header class="top">
     <div class="brand">
       <h1>Nobody's Playing</h1>
-      <p class="thesis">A war nobody is playing, run entirely by AI generals, business automations, real market data and a public ledger. Just watch.</p>
+      <p class="thesis">Two AI generals are fighting a war on their own. No human is playing. Just watch.</p>
     </div>
     <div class="status">
       <span id="live" class="pill">Connecting…</span>
-      <span id="clock" class="pill"></span>
       <span id="next" class="pill"></span>
-      <span class="pill tag">Testnet</span>
-      <span id="ai-mode" class="pill"></span>
-      <button id="intro-open" class="btn">What am I looking at?</button>
+      <span id="clock" class="pill nerd-only"></span>
+      <span class="pill tag nerd-only">Testnet</span>
+      <span id="ai-mode" class="pill nerd-only"></span>
+      <button id="intro-open" class="btn nerd-only">What am I looking at?</button>
       <a class="btn" href="/history">Past seasons</a>
+      <button id="view" class="btn" aria-pressed="false">Nerd view</button>
       <button id="theme" class="btn" aria-pressed="false">Dark mode</button>
     </div>
-    <dl id="counters" class="counters"></dl>
+    <dl id="counters" class="counters nerd-only"></dl>
   </header>
 
   <div id="timeline" class="timeline" role="group" aria-label="Timeline of the season">
@@ -46,15 +47,48 @@
     </div>
   </div>
 
-  <main class="grid">
+  <main id="simple" class="simple simple-only">
+    <section class="panel narrator" aria-live="polite">
+      <div class="panel-head"><h2>🎙️ The narrator</h2><button class="btn replay">Replay last turn</button></div>
+      <p id="n-big" class="n-big">Loading the war…</p>
+      <h3 id="n-when" class="n-when"></h3>
+      <p id="n-lines" class="n-lines"></p>
+      <blockquote id="n-quote" class="n-quote" hidden></blockquote>
+      <p id="n-next" class="n-next"></p>
+    </section>
+
+    <section class="panel score" aria-label="Score">
+      <h2 id="s-round">Score</h2>
+      <div id="tug" class="tug" role="img"></div>
+      <p id="tug-legend" class="tug-legend"></p>
+      <p class="muted goal">Win by holding 5 of the 7 castles for 3 rounds in a row.</p>
+      <div id="sides" class="sides"></div>
+    </section>
+
+    <section class="panel flow">
+      <h2>What's running the show</h2>
+      <ol id="flow"></ol>
+      <p id="biz-line" class="biz-line"></p>
+    </section>
+
+    <section class="panel moments">
+      <div class="panel-head"><h2>Key moments this season</h2><span class="muted hint">Click one to jump there, or drag the bar at the top.</span></div>
+      <ol id="moments"></ol>
+    </section>
+  </main>
+
+  <main id="nerd" class="grid nerd-only">
     <section class="panel board" aria-label="Battle map">
       <svg id="map" viewBox="0 0 500 500" role="img" aria-label="10 by 10 battle map">
         <defs>
           <radialGradient id="burst"><stop offset="0" stop-color="#fff7d6"/><stop offset=".5" stop-color="#ffb347"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
         </defs>
-        <g id="terrain"></g><g id="owners"></g><g id="strongholds"></g><g id="armies"></g><g id="fx"></g>
+        <g id="terrain"></g><g id="owners"></g><g id="strongholds"></g><g id="armies"></g><g id="labels"></g><g id="fx"></g>
       </svg>
+      <p class="stale-note">The map wasn't recorded this early in the season. It catches up later in the timeline.</p>
       <ul class="legend">
+        <li><i class="sw sw-castle"></i>Castle (number: defenders)</li>
+        <li><i class="sw sw-army"></i>Army (number: soldiers)</li>
         <li><i class="sw sw-red"></i>Emberreach land</li>
         <li><i class="sw sw-blue"></i>Frostmere land</li>
         <li><i class="sw sw-forest"></i>Forest</li>
@@ -64,7 +98,7 @@
     </section>
 
     <section class="panel theater" aria-live="polite">
-      <div class="theater-head"><h2>Decision theater</h2><button id="replay" class="btn">Replay last turn</button></div>
+      <div class="theater-head"><h2>Decision theater</h2><button class="btn replay">Replay last turn</button></div>
       <p id="theater-who" class="who">Waiting for the next turn…</p>
       <ol id="theater" class="theater-log"></ol>
     </section>

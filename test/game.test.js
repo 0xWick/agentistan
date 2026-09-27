@@ -133,3 +133,24 @@ test('clean() strips links and markup and caps length', () => {
   assert.equal(clean('go to http://x.io <script>now</script> please', 30), 'go to scriptnow/script please');
   assert.equal(clean('a b c d e', 3), 'a b c');
 });
+
+test('narrator: whole seasons read as plain sentences, with no coordinates or blanks', async () => {
+  const { headline, turnStory, momentText, isMoment, flow } = await import('../web/story.js');
+  const { CAST } = await import('../server/config.js');
+  const meta = { cast: CAST, turnIntervalMs: 1_800_000, llm: { mode: 'live', model: 'openai/gpt-oss-120b' } };
+  const bad = /\(\d+,\d+\)|undefined|NaN|null/;
+  let s = E.newSeason(3, 'demo', 2500), texts = 0;
+  for (let i = 0; i < 400 && s.status === 'running'; i++) {
+    const started = E.startTurn(s), k = started.state.active, o = pickOrder(started.state, k);
+    const r = E.applyAction(started.state, k, o);
+    const evs = [...started.events, { type: 'agent.decision', kingdom: k, stage: 'agent', data: { ...o, public_rationale: 'Why not.' } }, ...r.events];
+    const out = [...headline(r.state, CAST), ...turnStory(evs, r.state, CAST).lines, ...evs.filter(isMoment).map((e) => momentText(e, r.state, CAST)),
+      ...flow(evs, r.state, meta, 'agent', []).map((f) => f.now)];
+    for (const t of out) assert.doesNotMatch(t, bad, t);
+    texts += out.length;
+    s = r.state;
+  }
+  assert.equal(s.status, 'ended');
+  assert.match(headline(s, CAST)[0], /won season 3/);
+  assert.ok(texts > 100);
+});
