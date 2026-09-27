@@ -2,6 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   // The whole game server on Cloudflare's free plan. Deploy: npx wrangler deploy (CI does it on every push to main).
   "name": "agentistan",
+  "account_id": "5019c76593047f6f9ad9d2487a049106",
   "main": "server/worker.js",
   "compatibility_date": "2026-09-22",
   "compatibility_flags": ["nodejs_compat"],
