@@ -1,6 +1,6 @@
 # Nobody's Playing
 
-**A war nobody is playing, run entirely by AI generals, business automations, real market data and a public ledger. Just watch.**
+**A war nobody is playing, run entirely by AI generals, business automations, real market data, real weather and a public ledger. Just watch.**
 
 Live: **https://agentistan.umarkhatana.com** · Past seasons: [/history](https://agentistan.umarkhatana.com/history) · How it's built: [/how](https://agentistan.umarkhatana.com/how)
 
@@ -8,14 +8,15 @@ Live: **https://agentistan.umarkhatana.com** · Past seasons: [/history](https:/
 
 ## What you're looking at
 
-Two kingdoms fight over seven strongholds. Nobody plays: four technologies run the whole thing, and every step is shown and explained on the page.
+Two kingdoms fight over seven castles. Nobody plays: the technologies below run the whole thing, and every step is shown and explained on the page.
 
 | Technology | What it does here | In a business, this is… |
 |---|---|---|
-| **AI agents** | Two generals with their own personalities read the battlefield through tools, give one order per turn, and keep a journal (memory). The game checks every order against its rules before anything happens. | An assistant that checks your inventory before it places an order, and remembers your customers. |
-| **n8n automations** | Every turn runs as an n8n workflow: check the kingdom's stores → reorder food if it's below 20% → ask the AI general → deliver the order. A second workflow syncs the ETH price every 10 minutes. | Form submitted → CRM, invoice and welcome email, with nobody clicking. Stock below minimum → reorder. |
-| **Chainlink oracle** | The real ETH/USD price comes in from Chainlink. Emberreach keeps its treasury in ETH, so the market moves its income (amplified 10× so you can see it). | Contracts and apps that react to live exchange rates, weather or shipping data. |
-| **Blockchain ledger** | Every capture is written to the `RealmLedger` contract on Base Sepolia. The contract reads Chainlink itself and stamps the price into the record, with a hash of the full battle. | Tamper-proof certificates, supply-chain records or payouts. |
+| **AI agents** | Two generals with their own personalities get a situation report every turn, check the map through tools (with attack odds), give one order, and keep a journal. The game checks every order against its rules before anything happens. At season end each writes a lesson based on its real numbers. | An assistant that checks your inventory before it places an order, and remembers your customers. |
+| **n8n automations** | Four workflows: **Turn Router** (check stores → reorder food below 20% → ask the AI general → deliver the order), **Market Sync** (three Chainlink feeds every 10 minutes), **Weather Sync** (Open-Meteo every 15 minutes) and **War Correspondent** (posts key moments to Discord). | Form submitted → CRM, invoice and welcome email, with nobody clicking. Stock below minimum → reorder. Big event → team notified. |
+| **Chainlink oracle** | Real ETH, BTC and LINK prices. Emberreach is paid in ETH and Frostmere in BTC: each 1% its coin moves since the season began is ±40% gold income and ±10% battle power (capped at ±25%). LINK sets what soldiers cost, for both sides. Heavy on purpose, so ordinary crypto days show up in the war. | Contracts and apps that react to live exchange rates. |
+| **Real weather** | Each season is fought under a different real city's sky. Rain limits armies to one step, storms weaken attackers by 30%, snow and heat make armies hungrier, fog blinds scouts. | Operations that adapt to live conditions: delivery routes around storms, staffing that follows the forecast. |
+| **Blockchain ledger** | Every capture and season result is written to the `RealmLedger` contract on Base Sepolia. The contract reads Chainlink itself and stamps the price into the record, with a hash of the full battle. | Tamper-proof certificates, supply-chain records or payouts. |
 
 The page opens in a **simple view** for people who have never heard of any of this: the map, a **narrator** that tells the season and the latest turn in plain sentences (with the general's own reasoning quoted), a tug-of-war score, a strip showing what each technology did this turn in everyday words, and a list of key moments you can jump to. The narrator is templated from the game's events ([web/story.js](web/story.js)), so it costs nothing, never makes anything up, and rewinds with the timeline. **Nerd view** switches to the full dashboard (decision theater, pipeline, event log, counters, journals, receipts); the choice is remembered.
 
@@ -24,122 +25,116 @@ In the nerd view, the **Tech Lens** panel translates every event into plain Engl
 ## Proof it's real
 
 - Contract: [`0x57dd5fe4710e21cbd788239359e3058c09517d94`](https://sepolia.basescan.org/address/0x57dd5fe4710e21cbd788239359e3058c09517d94) on Base Sepolia ([deploy tx](https://sepolia.basescan.org/tx/0x876a1b63f55aa3be182eac302d3be86748533d3bff5b2704100ebbff4630f037))
-- Chainlink ETH/USD feed it reads: [`0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1`](https://sepolia.basescan.org/address/0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1)
+- Chainlink feeds read on Base Sepolia: [ETH/USD](https://sepolia.basescan.org/address/0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1), [BTC/USD](https://sepolia.basescan.org/address/0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298), [LINK/USD](https://sepolia.basescan.org/address/0xb113F5A928BCfF189C998ab20d753a47F9dE5A61)
 - Sample receipts, each stamped with the ETH price the contract read at capture time:
-  - [Turn 3 · Emberreach captured Crown Fort · ETH $2,691.54](https://sepolia.basescan.org/tx/0x1f0f3ecb4210086fe90038cf32965a441031c73fc35feabc9f36bf18d7c58cd2)
-  - [Turn 4 · Frostmere captured Crown Fort · ETH $2,691.54](https://sepolia.basescan.org/tx/0x18aeafe4c7ad315998b6980337d65c6d6d217dd80ae11ee61bec8857f57a49d0)
-  - [Turn 28 · Frostmere captured Cinder Fort · ETH $2,689.52](https://sepolia.basescan.org/tx/0x15fcab990327c12df0744aa90c967ae754308f53d505a7a2a7077d533dcc06f6)
+  - [Season 1, turn 4 · Frostmere captured Crown Fort · ETH $2,691.54](https://sepolia.basescan.org/tx/0x18aeafe4c7ad315998b6980337d65c6d6d217dd80ae11ee61bec8857f57a49d0)
+  - [Season 1 · Frostmere won](https://sepolia.basescan.org/tx/0xac6eed93873c0ef5e383def048f46d79e143913326da36ea807ec380070725bb)
+  - [Season 2, turn 3 · Emberreach captured Crown Fort · ETH $2,694.97](https://sepolia.basescan.org/tx/0x6d78dd1f00d3723b5f654a3b4afc8710c3033d8b2ffde7f0547725da1964baae) (the first turn played on Cloudflare)
 - Every battle is deterministic (`sha256(season:turn:battle)` seeds the dice). `GET /api/battles/<season>/<turn>` returns the battle record whose keccak256 is the `battleHash` stored on-chain. The How page has a "verify a battle" box.
 
 ## How a turn works
 
 ```mermaid
 sequenceDiagram
-  participant W as World server
-  participant N as n8n: Turn Router
+  participant W as World (Cloudflare Durable Object)
+  participant N as n8n on Render: Turn Router
   participant A as AI general (Groq)
   participant C as RealmLedger (Base Sepolia)
-  W->>N: POST /webhook/turn (every 30 min)
+  W->>N: POST /webhook/turn (alarm, every 30 min)
   N->>W: GET stores (gold, food)
   opt food below 20%
     N->>W: buy_food (automatic reorder)
   end
   N->>W: POST /internal/agent/decide
-  W->>A: tools: get_battlefield, get_enemy_position, get_market
+  W->>A: situation report + tools: get_battlefield (with odds), get_enemy_position, get_market
   A-->>W: one order + rationale + journal note (rules-checked)
   N->>W: POST /internal/actions (deliver the order)
-  W->>W: resolve battle, update the world, record the season
-  opt stronghold captured
+  W->>W: resolve battle (markets and weather included), record the season
+  opt castle captured
     W->>C: recordCapture() via outbox (reads Chainlink on-chain)
+    W->>N: key moment → War Correspondent → Discord
   end
 ```
 
-If n8n is down, the world notices, runs the turn itself and logs that it did. If the AI is unavailable or the free quota runs out, a rule-based bot ("standing orders") takes over, labelled on the page. If the chain is unreachable, receipts wait in an outbox and go out later. Spectators can't type anything, so nothing from the public reaches a prompt.
+If n8n is down, the world notices, runs the turn itself and logs that it did; its 10-minute cron tick also reads prices and weather directly when n8n has gone quiet. If the AI is unavailable or the free quota runs out, a rule-based bot ("standing orders") takes over, labelled on the page. If the chain is unreachable, receipts wait in an outbox and go out later. Spectators can't type anything, so nothing from the public reaches a prompt.
 
 ## Architecture
 
 | Part | Tech | Job |
 |---|---|---|
-| `server/` | Node 22+, `node:http`, SSE, [viem](https://viem.sh) | Game engine (pure functions), turn clock, AI agent runtime, chain outbox, public API, live stream, season recordings |
-| `web/` | Plain HTML/CSS/JS, inline SVG | Spectator UI, How it's built, Past seasons (no build step) |
-| `n8n/` | n8n 2.40 (self-hosted, Community Edition) | Turn Router and Market Sync workflows, imported and published on start |
+| `server/` | Cloudflare Worker + one Durable Object ([world.js](server/world.js)), [viem](https://viem.sh) | Game engine (pure functions), turn clock (alarms), AI agent runtime, chain outbox, markets and weather, public API, live stream (hibernating WebSockets), season recordings (SQLite) |
+| `web/` | Plain HTML/CSS/JS, inline SVG, served as Workers static assets | Spectator UI, How it's built, Past seasons (no build step) |
+| `n8n/` | n8n 2.40 (Community Edition) in Docker on Render's free tier | Four workflows, imported and published on start; editor switched off in production |
 | `contracts/` | Solidity 0.8.28, Foundry | `RealmLedger`: capture and season receipts, reads Chainlink ETH/USD |
-| `scripts/` | bash | `dev.sh` runs everything; `tunnel.sh` publishes on a Cloudflare domain; `autodeploy.sh` deploys on push |
 
-State is one JSON snapshot (`data/world.json`, written atomically, restart-safe). Each season is also recorded append-only to `data/seasons/season-N.jsonl`, which feeds the timelapses.
+Nothing runs on a personal machine. The world is one Durable Object: its SQLite holds the world, every season's recording and every battle record. An alarm fires each turn; a cron trigger every 10 minutes keeps n8n awake (Render's free tier sleeps after 15 idle minutes) and fills in for it when it's quiet.
 
-## Running for $0: the free-tier math
+## Running for $0
 
-The AI runs on Groq's free tier (`openai/gpt-oss-120b`: 1,000 requests/day, 8,000 tokens/minute, **200,000 tokens/day**). A decision takes about 2 model calls and ~2,700 tokens (up to ~4,000 when the model corrects an illegal order).
+| Piece | Free tier | Our use |
+|---|---|---|
+| Cloudflare Workers + Durable Objects | 100k requests/day, SQLite Durable Objects on the free plan | One object; pages are static assets and don't count; WebSockets hibernate between events |
+| Render (n8n) | 750 instance hours/month, 512 MB, no card | One always-on service (~744 h/month) |
+| Groq (`openai/gpt-oss-120b`) | 1,000 requests/day, **200,000 tokens/day** | 48 decisions/day at ~2,200 tokens ≈ 105k tokens; hard cap at 180k |
+| Chainlink, Open-Meteo, Discord webhooks, Base Sepolia RPC | free | Reads every 10–15 minutes; a capture costs a fraction of a cent of faucet ETH |
 
-| Turn every | AI decisions/day | Tokens/day (typical) | Worst case | Verdict |
-|---|---|---|---|---|
-| 15 min | 96 | 259k | 384k | over the free limit |
-| 20 min | 72 | 194k | 288k | too tight |
-| **30 min** | **48** | **~130k (65%)** | **~192k** | **default** |
-| 60 min | 24 | ~65k | ~96k | fine but slow |
-
-A hard cap (`MAX_LLM_TOKENS_PER_DAY=180000`) switches to standing orders before the free limit. Thirty minutes also gives the real ETH price time to move between turns: a typical 0.2–0.5% move becomes a 2–5% swing in Emberreach's income. A season on the default scenario lasts about 20 hours.
-
-Everything else is free as well: n8n Community Edition (self-hosted), Base Sepolia test ETH from a faucet (a capture costs a tiny fraction of a cent), the public `sepolia.base.org` RPC, and Cloudflare Tunnel.
+One turn every 30 minutes keeps the AI inside the free quota around the clock, and gives real prices and weather time to move between turns. A season on the default scenario lasts about 20 hours.
 
 ## Run it yourself
 
-Requirements: Linux or WSL, Node 24 (for n8n; the world server runs on 22+), and [Foundry](https://getfoundry.sh) only for the local chain and contract tests.
+Requirements: Node 24 and a free Cloudflare account. Foundry only for the contract tests.
 
 ```bash
 git clone git@github.com:0xWick/agentistan.git && cd agentistan
 npm install
-cp .env.example .env        # add a free Groq key (console.groq.com) and a fresh testnet key
-bash scripts/dev.sh start   # n8n + world (+ Anvil fork when NETWORK=local)
-# open http://localhost:8080 ; the n8n editor is at http://localhost:5678 (create the owner account on first visit)
+echo 'REALM_SECRET=any-long-random-string' > .dev.vars    # add LLM_API_KEY=... for live AI
+npm run dev                                                # http://localhost:8787
+curl -X POST localhost:8787/internal/import -H "x-realm-secret: any-long-random-string"   # start a fresh world
+REALM_SECRET=any-long-random-string bash n8n/start.sh     # optional: n8n + editor on http://localhost:5678
 ```
 
-- **Local chain first:** `NETWORK=local` runs an Anvil fork of Base Sepolia (real Chainlink data, no faucet needed) and deploys the contract automatically.
-- **Public testnet:** fund the wallet from a Base Sepolia faucet, then `NETWORK=base-sepolia npm run deploy` and set `NETWORK=base-sepolia` in `.env`.
-- **Your own domain (free):** `bash scripts/tunnel.sh [subdomain]` logs in to Cloudflare, creates a named tunnel and the DNS record, and publishes only the world server. The n8n editor stays on localhost.
-- **Deploy on push:** when the repo has an `origin`, `dev.sh` also runs `scripts/autodeploy.sh`. Every minute it fast-forwards to `origin/main` and restarts only what changed (page changes need no restart).
-- Other commands: `bash scripts/dev.sh status | stop [name] | restart [name]`. Logs are in `data/*.log`.
+Run the world with `--var N8N_URL:http://127.0.0.1:5678` to hand turns to your local n8n.
+
+**Deploy:** `npx wrangler deploy`, then `npx wrangler secret put` for `REALM_SECRET`, `LLM_API_KEY` and `DEPLOYER_PRIVATE_KEY`, then start the world with `POST /internal/import` (an empty body starts fresh; `{ "world": ..., "seasons": ... }` moves an existing one in). n8n: create a Render web service from `n8n/` (Docker) with `WORLD_URL`, `REALM_SECRET` and `DISCORD_WEBHOOK_URL`, then set `N8N_URL` in `wrangler.jsonc` to its URL.
 
 ## Configuration
 
+Plain settings live in `vars` in [wrangler.jsonc](wrangler.jsonc); secrets are set with `wrangler secret put` (locally, in `.dev.vars`).
+
 | Variable | Default | What it does |
 |---|---|---|
-| `LLM_API_KEY` | – | Any OpenAI-compatible key. Empty = standing orders only |
-| `LLM_BASE_URL` / `LLM_MODEL` | Groq / `openai/gpt-oss-120b` | Swap in Gemini, Cerebras, OpenRouter, Ollama… |
-| `LLM_EXTRA` | – | Extra JSON merged into requests, e.g. `{"reasoning_effort":"low"}` |
+| `LLM_API_KEY` (secret) | – | Any OpenAI-compatible key. Empty = standing orders only |
+| `LLM_BASE_URL` / `LLM_MODEL` | Groq / `openai/gpt-oss-120b` | Swap in Gemini, Cerebras, OpenRouter… |
+| `LLM_EXTRA` | `{"reasoning_effort":"low"}` | Extra JSON merged into requests |
 | `MAX_LLM_TOKENS_PER_DAY` / `MAX_LLM_CALLS_PER_DAY` | 180000 / 900 | Daily caps before switching to standing orders |
 | `TURN_INTERVAL_MS` | 1800000 | Time between turns (30 min) |
-| `SCENARIO` | `standard` | `demo` starts the armies near the Crown Fort with low food, for early action |
-| `NETWORK` | `local` | `local` (Anvil fork) or `base-sepolia` |
-| `DEPLOYER_PRIVATE_KEY` | – | Testnet-only operator wallet. Never put a real-funds key here |
-| `CHAIN_RPC_URL` / `ORACLE_RPC_URL` | `https://sepolia.base.org` | Chain and oracle RPC endpoints |
-| `REALM_SECRET` | – | Shared secret for `/internal/*` (world ↔ n8n) |
-| `N8N_TURN_WEBHOOK` | `http://127.0.0.1:5678/webhook/turn` | Empty = the world runs turns without n8n |
-| `IDLE_MODE` | – | `pause` pauses the clock after 5 minutes with no viewers |
-| `TUNNEL_NAME` / `QUICK_TUNNEL` | – | Named Cloudflare tunnel (set by `tunnel.sh`), or `1` for a temporary trycloudflare.com URL |
-| `PUBLIC_OWNER_NAME`, `PUBLIC_HIRE_URL`, `PUBLIC_REPO_URL`, `PUBLIC_CONTACT_EMAIL` | – | Footer branding |
-| `HOST` / `PORT` | `127.0.0.1` / 8080 | Where the world server listens |
+| `SCENARIO` | `demo` | `demo` starts the armies near the Crown Fort with low food, for early action; `standard` starts them at home |
+| `NETWORK` | `base-sepolia` | `base-sepolia`, or `local` for an Anvil fork (set `LEDGER_ADDRESS`) |
+| `DEPLOYER_PRIVATE_KEY` (secret) | – | Testnet-only operator wallet. Never put a real-funds key here |
+| `REALM_SECRET` (secret) | – | Shared secret for `/internal/*` and the n8n webhooks |
+| `N8N_URL` | – | n8n's public URL. Empty = the world runs turns without n8n |
+| `PUBLIC_URL`, `PUBLIC_OWNER_NAME`, `PUBLIC_HIRE_URL`, `PUBLIC_REPO_URL`, `PUBLIC_CONTACT_EMAIL` | – | Links and footer branding |
+
+Game numbers (market strength, weather effects, cities, garrisons…) are in [server/config.js](server/config.js).
 
 ## Tests
 
 ```bash
-npm test                                    # rules, AI loop (scripted fake model), Tech Lens coverage
+npm test                                    # rules, markets, weather, AI loop (scripted fake model), narrator, Tech Lens coverage
 cd contracts && forge install --no-git foundry-rs/forge-std \
   && FORK_RPC_URL=https://sepolia.base.org forge test   # contract, incl. a fork test on the real feed
 ```
 
-Also checked by hand on the local fork and then on Base Sepolia: n8n drives every turn (its own execution records all succeed); the food alert reorders; the world falls back when n8n is killed and hands back when it returns; restarts resume the same turn without duplicate receipts; on-chain `ownerOf` matches the world; battle hashes match; and a season end writes `recordSeasonResult`, stores lessons and starts the next season.
+Also checked by hand: the Durable Object imports a running world and keeps its turn schedule; turns run end to end on Cloudflare with the live AI and on-chain receipts; the live page updates over WebSockets; past seasons replay; n8n drives every turn when it's up and the world takes over when it isn't.
 
-## V1 scope
+## Scope and next ideas
 
-This first version keeps what makes each technology visible and provable, and cuts the rest to stay free and simple. Cut for now, from the original spec: the Discord "Town Crier" workflow, the separate Quartermaster AI (the n8n threshold rule does the reordering), SQLite (JSON snapshot and append-only season logs), React/Vite/Tailwind (plain HTML/JS), the Docker/Playwright test tiers, and Caddy/VPS hosting (Cloudflare Tunnel instead). The paid Anthropic API was swapped for any OpenAI-compatible free tier.
+Cut to stay free and simple: the separate Quartermaster AI (the n8n threshold rule does the reordering) and React/Vite (plain HTML/JS). The paid Anthropic API was swapped for any OpenAI-compatible free tier. Weather comes from Open-Meteo through n8n rather than Chainlink, because Chainlink has no weather feed on test networks; Chainlink Functions could fetch it on-chain, paid in testnet LINK.
 
-Next ideas: an MCP server so any AI assistant can ask "who's winning and why?", Chainlink VRF for provably fair dice, spectator voting on weather events, diplomacy between the generals, and a white-label version (warehouses and delivery fleets instead of kingdoms).
+Next ideas: an MCP server so any AI assistant can ask "who's winning and why?", Chainlink VRF for provably fair dice, Chainlink Functions for on-chain weather, diplomacy between the generals, and a white-label version (warehouses and delivery fleets instead of kingdoms).
 
 ## Known limitations
 
-- It runs on one machine behind a Cloudflare Tunnel. If that machine sleeps or reboots, the site is down until `bash scripts/dev.sh start`. A free always-on VM (for example Oracle Cloud Always Free) runs the same scripts.
-- Season 1's recording began mid-season. Every later season is recorded from its first turn.
-- n8n runs from npm, which the n8n project now marks as deprecated in favour of its Docker image. It works on 2.40.7.
+- Render's free instance has 0.1 CPU: n8n takes a couple of minutes to start after a deploy, and the world runs turns itself meanwhile.
+- Season 1's recording began mid-season, so its early rounds replay without the map. Every later season is recorded from its first turn.
 - Test network only: no real money, not financial advice.

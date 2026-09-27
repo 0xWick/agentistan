@@ -29,69 +29,84 @@
   <main class="page">
     <div class="page-top"><a href="/">← Back to the live war</a><button id="theme" class="btn" aria-pressed="false">Dark mode</button></div>
     <h1>How it's built</h1>
-    <p class="thesis">One small server owns the game. An automation platform runs every turn. Two AI agents make the decisions. A Chainlink oracle brings in the real ETH price, and a smart contract keeps a public, tamper-proof record. Every piece runs on free tiers or a test network.</p>
+    <p class="thesis">One Durable Object on Cloudflare owns the game. An automation platform runs every turn. Two AI agents make the decisions. Chainlink brings in real ETH, BTC and LINK prices, a weather service brings in a real city's sky, and a smart contract keeps a public, tamper-proof record. Every piece runs on a free tier or a test network, and nothing runs on anyone's own computer.</p>
 
     <section class="panel">
       <h2>Architecture</h2>
-      <svg class="arch" viewBox="0 0 900 380" role="img" aria-label="Architecture diagram">
+      <svg class="arch" viewBox="0 0 900 420" role="img" aria-label="Architecture diagram">
         <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#868e96" stroke="none"/></marker></defs>
-        <rect x="330" y="140" width="240" height="110" fill="#fcc419" stroke="#fcc419"/>
-        <text x="450" y="168" text-anchor="middle" font-weight="700">World server (Node.js)</text>
-        <text x="450" y="190" text-anchor="middle" class="small">game rules · turn clock · AI agent runtime</text>
-        <text x="450" y="208" text-anchor="middle" class="small">receipt outbox · live stream (SSE)</text>
-        <text x="450" y="226" text-anchor="middle" class="small">JSON snapshot, restart-safe</text>
+        <rect x="330" y="140" width="240" height="120" fill="#fcc419" stroke="#fcc419"/>
+        <text x="450" y="166" text-anchor="middle" font-weight="700">World (Cloudflare)</text>
+        <text x="450" y="186" text-anchor="middle" class="small">one Durable Object: rules · turn clock</text>
+        <text x="450" y="203" text-anchor="middle" class="small">AI agent runtime · receipt outbox</text>
+        <text x="450" y="220" text-anchor="middle" class="small">markets + weather · SQLite recordings</text>
+        <text x="450" y="237" text-anchor="middle" class="small">live stream (WebSockets)</text>
 
-        <rect x="20" y="130" width="220" height="130" fill="#c2255c" stroke="#c2255c"/>
-        <text x="130" y="158" text-anchor="middle" font-weight="700">n8n (self-hosted)</text>
-        <text x="130" y="182" text-anchor="middle" class="small">Turn Router: stores → food alert</text>
-        <text x="130" y="198" text-anchor="middle" class="small">→ ask the general → deliver order</text>
-        <text x="130" y="222" text-anchor="middle" class="small">Market Sync: every 10 min, read</text>
-        <text x="130" y="238" text-anchor="middle" class="small">Chainlink via JSON-RPC → world</text>
+        <rect x="20" y="130" width="220" height="140" fill="#c2255c" stroke="#c2255c"/>
+        <text x="130" y="156" text-anchor="middle" font-weight="700">n8n (Render, free)</text>
+        <text x="130" y="180" text-anchor="middle" class="small">Turn Router: stores → food alert</text>
+        <text x="130" y="196" text-anchor="middle" class="small">→ ask the general → deliver order</text>
+        <text x="130" y="216" text-anchor="middle" class="small">Market Sync · every 10 min</text>
+        <text x="130" y="234" text-anchor="middle" class="small">Weather Sync · every 15 min</text>
+        <text x="130" y="252" text-anchor="middle" class="small">War Correspondent → Discord</text>
 
         <rect x="330" y="10" width="240" height="70" fill="#6741d9" stroke="#6741d9"/>
         <text x="450" y="38" text-anchor="middle" font-weight="700">Free-tier LLM (Groq)</text>
         <text x="450" y="58" text-anchor="middle" class="small">tool calling · rule-based fallback</text>
 
-        <rect x="660" y="40" width="220" height="80" fill="#0b7285" stroke="#0b7285"/>
-        <text x="770" y="70" text-anchor="middle" font-weight="700">Chainlink ETH/USD</text>
-        <text x="770" y="90" text-anchor="middle" class="small">price feed on Base Sepolia</text>
+        <rect x="660" y="30" width="220" height="90" fill="#0b7285" stroke="#0b7285"/>
+        <text x="770" y="60" text-anchor="middle" font-weight="700">Chainlink feeds</text>
+        <text x="770" y="80" text-anchor="middle" class="small">ETH · BTC · LINK / USD</text>
+        <text x="770" y="98" text-anchor="middle" class="small">on Base Sepolia</text>
 
-        <rect x="660" y="250" width="220" height="80" fill="#2b8a3e" stroke="#2b8a3e"/>
-        <text x="770" y="280" text-anchor="middle" font-weight="700">RealmLedger contract</text>
-        <text x="770" y="300" text-anchor="middle" class="small">captures + season results</text>
+        <rect x="660" y="280" width="220" height="80" fill="#2b8a3e" stroke="#2b8a3e"/>
+        <text x="770" y="310" text-anchor="middle" font-weight="700">RealmLedger contract</text>
+        <text x="770" y="330" text-anchor="middle" class="small">captures + season results</text>
 
-        <rect x="330" y="300" width="240" height="60" fill="#495057" stroke="#495057"/>
-        <text x="450" y="327" text-anchor="middle" font-weight="700">Spectators' browsers</text>
-        <text x="450" y="345" text-anchor="middle" class="small">read-only live stream</text>
+        <rect x="20" y="320" width="220" height="80" fill="#1c7ed6" stroke="#1c7ed6"/>
+        <text x="130" y="350" text-anchor="middle" font-weight="700">Open-Meteo + Discord</text>
+        <text x="130" y="370" text-anchor="middle" class="small">real weather in · news out</text>
+
+        <rect x="330" y="330" width="240" height="60" fill="#495057" stroke="#495057"/>
+        <text x="450" y="357" text-anchor="middle" font-weight="700">Spectators' browsers</text>
+        <text x="450" y="375" text-anchor="middle" class="small">read-only live stream</text>
 
         <path d="M330 180H240"/><text x="252" y="172" class="small">turn webhook</text>
-        <path d="M240 215H330"/><text x="250" y="232" class="small">orders, food, price</text>
+        <path d="M240 225H330"/><text x="250" y="243" class="small">orders, food, prices</text>
         <path d="M450 140V80"/><text x="458" y="115" class="small">decide (tools)</text>
-        <path d="M570 230L660 280"/><text x="585" y="275" class="small">recordCapture()</text>
-        <path d="M770 250V120"/><text x="778" y="190" class="small">latestRoundData()</text>
+        <path d="M570 240L660 300"/><text x="585" y="295" class="small">recordCapture()</text>
+        <path d="M770 280V120"/><text x="778" y="205" class="small">latestRoundData()</text>
         <path d="M130 130Q130 60 660 70"/><text x="200" y="88" class="small">eth_call (Market Sync)</text>
-        <path d="M450 250V300"/>
+        <path d="M130 270V320"/>
+        <path d="M450 260V330"/>
       </svg>
     </section>
 
     <section class="panel">
       <h2>The Generals: AI agents</h2>
-      <p>Each turn the general gets its personality, a rules summary, its journal (memory) and past-season lessons. It calls read-only tools (<code>get_battlefield</code>, <code>get_enemy_position</code>, <code>get_market</code>) and then exactly one order tool. The server dry-runs every order through the same rules engine the game uses; an illegal order goes back to the model with the reason, and it corrects itself. The model never touches the game state directly.</p>
-      <p>Limits per decision: 5 model calls, 45 seconds, a daily call cap below the free quota. If the AI is unavailable, a rule-based bot takes over and the page says so ("standing orders"). Spectators can't send any text, so nothing typed by the public ever reaches a prompt.</p>
+      <p>Each turn the general gets its personality, a rules summary, a <b>situation report</b> (weather, what the markets are doing to both sides, whether it can recruit, castles held, where the enemy was last seen), its journal (memory) and past-season lessons. It calls read-only tools (<code>get_battlefield</code>, which includes the odds of every possible attack, <code>get_enemy_position</code>, <code>get_market</code>) and then exactly one order tool. The server dry-runs every order through the same rules engine the game uses; an illegal order goes back to the model with the reason, and it corrects itself. The model never touches the game state directly.</p>
+      <p>At the end of a season each general writes one lesson, and it's given its real numbers first (battles won and lost, castles taken, gold left unspent), so the lesson is about what actually happened.</p>
+      <p>Limits per decision: 5 model calls, 45 seconds, a daily cap below the free quota. If the AI is unavailable, a rule-based bot takes over and the page says so ("standing orders"). Spectators can't send any text, so nothing typed by the public ever reaches a prompt.</p>
     </section>
 
     <section class="panel">
       <h2>The Automations: n8n</h2>
       <p><b>Turn Router</b> (event-driven orchestration). Built only from standard nodes:</p>
       <ol class="steps">
-        <li><b>Webhook</b> receives "new turn" from the world and replies at once.</li>
+        <li><b>Webhook</b> receives "new turn" from the world and replies at once; an <b>IF</b> node drops anything that doesn't carry the shared secret.</li>
         <li><b>HTTP Request</b> reads the kingdom's gold and food.</li>
         <li><b>IF</b> food is below 20%, then <b>HTTP Request</b> reorders food automatically (threshold alert → reorder).</li>
         <li><b>HTTP Request</b> asks the AI general for an order (60-second timeout).</li>
         <li><b>HTTP Request</b> delivers the order to the game.</li>
       </ol>
-      <p><b>Market Sync</b> (scheduled data sync): every 10 minutes it calls the Chainlink feed with a raw JSON-RPC <code>eth_call</code> and posts the result to the world, which logs it whenever Chainlink has published a new price.</p>
-      <p>If n8n is down, the world notices, runs the turn itself, and logs that it did. The n8n editor is bound to localhost and never exposed publicly.</p>
+      <p><b>Market Sync</b> (scheduled data sync): every 10 minutes it reads three Chainlink feeds with raw JSON-RPC <code>eth_call</code>s and posts them to the world. <b>Weather Sync</b>: every 15 minutes it asks the world where this season is fought, reads the sky there from Open-Meteo and reports back. <b>War Correspondent</b>: the world sends it key moments (captures, wiped-out armies, weather changes, big market moves, season results) and it posts them to Discord.</p>
+      <p>n8n runs on Render's free tier with its editor switched off. The world pings it every 10 minutes so it never falls asleep; if it's down anyway, the world runs the turn itself, reads prices and weather directly, and logs that it did.</p>
+    </section>
+
+    <section class="panel">
+      <h2>The real world: markets and weather</h2>
+      <p>Emberreach keeps its treasury in <b>ETH</b> and Frostmere in <b>BTC</b>. Every 1% a kingdom's coin moves since the season began changes its gold income by 40% and its battle power by 10% (capped at 25%). <b>LINK</b> sets the price of soldiers for both sides. The effects are heavy on purpose, so an ordinary day in crypto shows up in the war.</p>
+      <p>Each season is fought under a different real city's sky. <b>Rain</b> turns roads to mud (one step per turn, no crossing rivers or mountains), <b>storms</b> weaken attackers by 30%, <b>snow</b> doubles what armies eat and <b>heat</b> adds half again, and <b>fog</b> limits scouts to one tile. Chainlink has no weather feed on test networks, so the weather comes from Open-Meteo through n8n.</p>
     </section>
 
     <section class="panel">
@@ -115,20 +130,22 @@
     <section class="panel">
       <h2>What it costs to run: $0</h2>
       <ul>
+        <li>Hosting: Cloudflare Workers and Durable Objects on the free plan. The pages are static assets, and the live stream's WebSockets sleep between events.</li>
         <li>AI: free tier of an OpenAI-compatible provider (Groq by default). Any OpenAI-compatible model can be dropped in.</li>
-        <li>Automation: n8n Community Edition, self-hosted.</li>
+        <li>Automation: n8n Community Edition on Render's free tier (no card needed).</li>
+        <li>Data: Chainlink feeds and Open-Meteo are free to read; Discord webhooks are free.</li>
         <li>Chain: Base Sepolia test network, with gas from a free faucet. Only captures and season results are written.</li>
-        <li>Pacing: one turn every 30 minutes, around the clock. That's 48 AI decisions a day at about 2,700 tokens each, roughly 130,000 of the 200,000 free daily tokens, with a hard stop at 180,000. The slow pace also gives the real ETH price time to move between turns.</li>
+        <li>Pacing: one turn every 30 minutes, around the clock. That's 48 AI decisions a day at about 2,200 tokens each, roughly 105,000 of the 200,000 free daily tokens, with a hard stop at 180,000. The pace also gives real prices and weather time to move between turns.</li>
       </ul>
     </section>
 
     <section class="panel">
       <h2>Tests</h2>
       <ul>
-        <li>Game rules: map symmetry, deterministic battles, illegal-order rejection, economy and starvation, fog of war, season endings, full simulated seasons, and a check that every event type has Tech Lens copy (<code>npm test</code>).</li>
+        <li>Game rules: map symmetry, deterministic battles, illegal-order rejection, economy and starvation, markets, weather, fog of war, season endings, full simulated seasons, the narrator's plain-English output, and a check that every event type has Tech Lens copy (<code>npm test</code>).</li>
         <li>AI loop: intel → rejected order → corrected order, link and markup stripping, and fallback on API failure (with a scripted fake model).</li>
         <li>Contract (Foundry): price stamping, access control, bad-price rejection, events, and a fork test against the real Chainlink feed.</li>
-        <li>End to end: n8n → AI → game → receipt confirmed on a local fork of Base Sepolia, then on Base Sepolia itself.</li>
+        <li>End to end: n8n → AI → game → receipt confirmed on a local fork of Base Sepolia, then on Base Sepolia itself, and again after the move to Cloudflare.</li>
       </ul>
     </section>
 
@@ -141,7 +158,7 @@
     const safe = (u) => (/^(https?:|mailto:)/i.test(u ?? '') ? u : '');
     fetch('/api/state').then((r) => r.json()).then(({ meta }) => {
       const c = meta.chain, link = (kind, a) => (c.explorer ? `<a href="${esc(c.explorer)}/${kind}/${esc(a)}" target="_blank" rel="noopener">${esc(a)}</a>` : `<code>${esc(a)}</code>`);
-      $('#addresses').innerHTML = `${c.explorer ? 'Base Sepolia' : 'Local test chain (a fork of Base Sepolia)'} · RealmLedger: ${c.ledger ? link('address', c.ledger) : 'not deployed yet'} · Chainlink ETH/USD feed: ${link('address', c.feed)}`;
+      $('#addresses').innerHTML = `${c.explorer ? 'Base Sepolia' : 'Local test chain (a fork of Base Sepolia)'} · RealmLedger: ${c.ledger ? link('address', c.ledger) : 'not deployed yet'} · Chainlink feeds: ${Object.entries(c.feeds ?? { ETH: c.feed }).map(([k, a]) => `${k}/USD ${link('address', a)}`).join(', ')}`;
       if (safe(meta.public.repoUrl)) {
         $('#repo').href = meta.public.repoUrl;
         $('#repo-wrap').hidden = false;
