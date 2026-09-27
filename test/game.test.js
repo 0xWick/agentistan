@@ -223,3 +223,16 @@ test('narrator: whole seasons read as plain sentences, with no coordinates or bl
   assert.match(headline(s, CAST)[0], /won season 3/);
   assert.ok(texts > 100);
 });
+
+test('plan: the model\'s JSON is trimmed to known tech, 3 steps and plain text; empty or off-topic plans are handled', async () => {
+  const { normalizePlan } = await import('../server/plan.js');
+  const step = (n) => ({ title: `Step ${n}`, today: 'Calls all day', automated: 'An AI agent books it <b>now</b> http://evil.x', tech: ['AI agent', 'Rocket', 'AI agent', 'n8n automation'], result: 'Quiet phones' });
+  const p = normalizePlan(JSON.stringify({ fit: true, headline: 'Your front desk, on autopilot', steps: [1, 2, 3, 4].map(step), extra: 'ignored' }));
+  assert.equal(p.steps.length, 3);
+  assert.deepEqual(p.steps[0].tech, ['AI agent', 'n8n automation']);
+  assert.doesNotMatch(p.steps[0].automated, /<|http/);
+  assert.equal(p.extra, undefined);
+  assert.equal(normalizePlan({ fit: false, headline: 'I can only help with business workflows.' }).fit, false);
+  assert.throws(() => normalizePlan({ fit: true, headline: 'x', steps: [] }));
+  assert.throws(() => normalizePlan('not json'));
+});

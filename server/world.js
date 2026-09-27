@@ -5,6 +5,7 @@ import { keccak256, stringToHex } from 'viem';
 import * as E from './engine.js';
 import { CFG, CAST, MAP, REGIONS, cityNamed } from './config.js';
 import { makeLLM, decide, lesson, clean, seasonStats, answer } from './agent.js';
+import { draftPlan } from './plan.js';
 import { makeChain, decodeRoundData, KINGDOM_ID } from './chain.js';
 import { LENS } from '../web/lens.js';
 import { headline, momentText, isMoment, turnStory, WEATHER } from '../web/story.js';
@@ -17,8 +18,13 @@ const pickArgs = (a) => Object.fromEntries(['x', 'y', 'n'].filter((f) => a?.[f] 
 const isKingdom = (k) => k === 'red' || k === 'blue';
 const COLOR = { red: 0xd9480f, blue: 0x1864ab, null: 0x495057 };
 const SKY_ICON = { clear: '☀️', rain: '🌧️', snow: '❄️', storm: '⛈️', wind: '💨', fog: '🌫️', heat: '🔥', cold: '🥶' };
-// "Ask the general" budget: ~1k tokens a question, so 40 a day stays well inside the free tier the turns rely on.
-const ASK = { perIp: 4, perDay: 40, windowMs: 600_000 };
+// The public AI features share the free tier with the generals, so each has its own limits and stops at a share of the
+// day's tokens. Ask: ~1k tokens a question. Plan: ~5k (high reasoning) but seldom used and the most valuable, so it
+// may use nearly everything left.
+const AI = {
+  ask: { perIp: 4, windowMs: 600_000, perDay: 40, maxShare: 0.8 },
+  plan: { perIp: 3, windowMs: 3_600_000, perDay: 15, maxShare: 0.95, maxWait: 45 }, // waits out the per-minute limit
+};
 
 // What each snapshot carries besides the raw state, so recordings replay the market and weather effects too.
 export const effectsOf = (s) => ({
@@ -45,8 +51,8 @@ export class World extends DurableObject {
     this.chain = makeChain(env);
     this.sql = ctx.storage.sql;
     this.hits = new Map();
-    this.askHits = new Map(); // ip -> times of recent questions
-    this.answers = new Map(); // the same question in the same turn gets the same answer, free
+    this.aiHits = {}; // kind -> ip -> times of recent uses
+    this.answers = new Map(); // the same question (same turn) or plan request (same day) is answered again for free
     this.stateTimer = null;
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong')); // keep-alives never wake the object
     ctx.blockConcurrencyWhile(async () => this.load());
@@ -511,8 +517,25 @@ export class World extends DurableObject {
     try { ws.close(code === 1005 ? 1000 : code, 'bye'); } catch { /* already closed */ }
   }
 
-  // "Ask the general": a viewer's question, answered in character from the live game. It has its own small budget and
-  // stops at 80% of the daily tokens, so the turns always have the AI; past that, the general's latest journal note answers.
+  // Can this visitor use this AI feature now? 'visitor' (their limit), 'resting' (the day's or the free tier's), or null,
+  // which also counts the use.
+  quota(kind, ip) {
+    const L = AI[kind], now = Date.now(), hits = (this.aiHits[kind] ??= new Map());
+    const mine = (hits.get(ip) ?? []).filter((t) => now - t < L.windowMs);
+    if (mine.length >= L.perIp) return 'visitor';
+    const day = new Date().toISOString().slice(0, 10);
+    if (this.W.aiDaily?.day !== day) this.W.aiDaily = { day };
+    const used = this.W.aiDaily[kind] ?? 0, st = this.llm.status();
+    const ready = st.mode === 'live' || (st.soon && L.maxWait); // a per-minute pause is one a patient caller can wait out
+    if (!ready || used >= L.perDay || this.llm.usage.tokens >= this.llm.tokenCap * L.maxShare) return 'resting';
+    hits.set(ip, [...mine, now]);
+    if (hits.size > 5000) hits.clear(); // ponytail: crude cap, like the request limiter
+    this.W.aiDaily[kind] = used + 1;
+    return null;
+  }
+
+  // "Ask the general": a viewer's question, answered in character from the live game. Past its budget, the general's
+  // latest journal note answers.
   async ask(req, ip) {
     if (req.method !== 'POST') return json(405, { error: 'POST a question' });
     const body = await req.json().catch(() => ({}));
@@ -520,17 +543,12 @@ export class World extends DurableObject {
     if (!isKingdom(k) || q.length < 3) return json(400, { error: 'Pick a general and ask a question.' });
     const s = this.W.state, who = CAST[k].general, key = `${s.season}:${s.turn}:${k}:${business}:${q.toLowerCase()}`;
     if (this.answers.has(key)) return json(200, this.answers.get(key));
-    const now = Date.now(), mine = (this.askHits.get(ip) ?? []).filter((t) => now - t < ASK.windowMs);
-    if (mine.length >= ASK.perIp) return json(429, { error: `${who} answers ${ASK.perIp} questions per visitor every 10 minutes. Try again soon.` });
-    const day = new Date().toISOString().slice(0, 10), A = (this.W.asks ??= { day, n: 0 });
-    if (A.day !== day) Object.assign(A, { day, n: 0 });
-    if (this.llm.status().mode !== 'live' || A.n >= ASK.perDay || this.llm.usage.tokens >= this.llm.tokenCap * 0.8) {
+    const why = this.quota('ask', ip);
+    if (why === 'visitor') return json(429, { error: `${who} answers ${AI.ask.perIp} questions per visitor every 10 minutes. Try again soon.` });
+    if (why) {
       const note = this.W.memory.journal[k].at(-1)?.note;
       return json(200, { who, mode: 'resting', answer: note ? `I'm resting to stay on the free AI tier. My latest journal note: "${note}"` : 'I\'m resting to stay on the free AI tier. Ask me again tomorrow.' });
     }
-    this.askHits.set(ip, [...mine, now]);
-    if (this.askHits.size > 5000) this.askHits.clear(); // ponytail: crude cap, like the request limiter
-    A.n++;
     try {
       const out = { who, mode: 'live', model: this.llm.model, answer: (await answer({ s, k, mem: this.W.memory, llm: this.llm, question: q, business })) || 'No comment.' };
       if (this.answers.size > 200) this.answers.clear();
@@ -541,6 +559,30 @@ export class World extends DurableObject {
       return json(503, { error: `${who} couldn't answer just now. Try again in a minute.` });
     } finally {
       this.save(); // keeps the AI usage and the daily question count
+    }
+  }
+
+  // "Get your free plan": a visitor describes their business; the AI drafts how Umar could automate it (server/plan.js).
+  async plan(req, ip) {
+    if (req.method !== 'POST') return json(405, { error: 'POST your request' });
+    const body = await req.json().catch(() => ({}));
+    const request = typeof body.text === 'string' ? clean(body.text, 120).slice(0, 700) : '';
+    if (request.length < 10) return json(400, { error: 'Tell me a little about your business first: a sentence or two is enough.' });
+    const key = `plan:${new Date().toISOString().slice(0, 10)}:${request.toLowerCase()}`;
+    if (this.answers.has(key)) return json(200, this.answers.get(key));
+    const why = this.quota('plan', ip);
+    if (why === 'visitor') return json(429, { error: `That's ${AI.plan.perIp} plans this hour. Book a call and Umar will map the rest with you.` });
+    if (why) return json(503, { error: 'The planner is resting to stay on the free AI tier. Book a call and Umar will map it with you directly.' });
+    try {
+      const out = { plan: await draftPlan({ llm: this.llm, request, maxWait: AI.plan.maxWait }), model: this.llm.model };
+      if (this.answers.size > 200) this.answers.clear();
+      this.answers.set(key, out);
+      return json(200, out);
+    } catch (err) {
+      console.error('plan failed:', err);
+      return json(503, { error: 'The planner couldn\'t finish this one. Try again in a minute, or book a call.' });
+    } finally {
+      this.save(); // keeps the AI usage and the daily count
     }
   }
 
@@ -563,6 +605,7 @@ export class World extends DurableObject {
       if (!this.W) return json(503, { error: 'the world has not started yet' });
       if (p === '/api/live') return this.live(req, ip);
       if (p === '/api/ask') return await this.ask(req, ip);
+      if (p === '/api/plan') return await this.plan(req, ip);
       if (p === '/api/state') return json(200, this.publicState());
       if (p === '/api/health') return json(200, this.health());
       if (p === '/api/proof') return json(200, this.publicState().proofs);

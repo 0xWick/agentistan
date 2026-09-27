@@ -441,6 +441,7 @@ function renderState() {
   $('#owner').textContent = p.owner;
   $('#hire').href = $('#site').href = safeUrl(p.hireUrl) || (p.email ? `mailto:${p.email}` : '#');
   $('#site').textContent = `By ${p.owner} ↗`;
+  document.querySelectorAll('.owner-name').forEach((e) => { e.textContent = p.owner; });
   document.querySelectorAll('.book-link').forEach((a) => { a.href = safeUrl(p.bookingUrl) || '#'; a.hidden = !safeUrl(p.bookingUrl); });
   $('#repo').href = safeUrl(p.repoUrl) || '#';
   $('#repo-wrap').hidden = !safeUrl(p.repoUrl);
@@ -591,6 +592,64 @@ $('#moments').addEventListener('click', (ev) => {
   if (b) scrub(+b.dataset.line, true);
 });
 $('#next').addEventListener('click', goLive);
+
+// ---------- "A free plan for your business": the visitor's business in, a plan from the AI out ----------
+const TECH_COLOR = { 'AI agent': 'agent', 'n8n automation': 'n8n', 'Live data': 'oracle', 'Blockchain record': 'chain', 'Always-on cloud': 'game' };
+const bookUrl = (content) => {
+  const raw = safeUrl(meta?.public?.bookingUrl);
+  if (!raw) return '';
+  const u = new URL(raw);
+  u.searchParams.set('utm_content', content); // Calendly shows it on the booking: this one came from a plan
+  return u.href;
+};
+function renderPlan({ plan: p, model }) {
+  if (!p.fit) return `<p class="plan-note">${esc(p.headline)}</p>`;
+  const book = bookUrl('plan');
+  return `<article class="plan-result">
+    <h3>${esc(p.headline)}</h3>${p.situation ? `<p class="muted">${esc(p.situation)}</p>` : ''}
+    <ol class="plan-steps">${p.steps.map((s) => `<li><b>${esc(s.title)}</b>
+      ${s.today ? `<p><span class="lbl">Today</span> ${esc(s.today)}</p>` : ''}
+      <p><span class="lbl">Automated</span> ${esc(s.automated)}</p>
+      ${s.result ? `<p><span class="lbl">You get</span> ${esc(s.result)}</p>` : ''}
+      <p class="plan-tech">${s.tech.map((t) => `<span class="tchip" style="--c: var(--${TECH_COLOR[t] ?? 'game'})">${esc(t)}</span>`).join('')}</p></li>`).join('')}</ol>
+    ${p.first_step ? `<p><b>First step:</b> ${esc(p.first_step)}</p>` : ''}
+    ${p.care ? `<p class="plan-care">🔒 ${esc(p.care)}</p>` : ''}
+    ${p.why_umar ? `<p class="muted">${esc(p.why_umar)}</p>` : ''}
+    ${book ? `<p class="plan-cta"><a class="btn primary" href="${esc(book)}" target="_blank" rel="noopener">📅 Book a free 30-minute call to go through it</a></p>` : ''}
+    <p class="muted"><small>Drafted just now by ${esc(model.split('/').pop())} (AI on Groq, thinking it through) from what you wrote. A starting point for the call, not a quote.</small></p>
+  </article>`;
+}
+async function draftPlan(text) {
+  const btn = $('#plan-form .primary'), out = $('#plan-out');
+  if (text.trim().length < 10 || btn.disabled) return void (out.innerHTML = '<p class="plan-note">Tell me a little about your business first: a sentence or two is enough.</p>');
+  btn.disabled = true;
+  out.innerHTML = '<p class="muted">Thinking it through… about 10 seconds, up to a minute when busy.</p>';
+  try {
+    const r = await fetch('/api/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
+    const d = await r.json();
+    out.innerHTML = d.plan ? renderPlan(d) : `<p class="plan-note">${esc(d.error ?? 'No plan this time. Try again in a minute.')}</p>`;
+  } catch {
+    out.innerHTML = '<p class="plan-note">Couldn’t reach the planner. Try again in a minute.</p>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+const openPlan = () => $('#plan').open || $('#plan').showModal();
+document.querySelectorAll('.plan-open').forEach((b) => b.addEventListener('click', openPlan));
+$('#plan').addEventListener('click', (ev) => {
+  const pick = ev.target.closest('.plan-picks button');
+  if (!pick) return;
+  $('#plan-text').value = pick.dataset.text;
+  draftPlan(pick.dataset.text);
+});
+$('#plan-form').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  draftPlan($('#plan-text').value);
+});
+// /#plan opens it straight away: the link to send people.
+const planFromHash = () => location.hash === '#plan' && openPlan();
+addEventListener('hashchange', planFromHash);
+planFromHash();
 function setLens(v) {
   if (v === 'biz') document.documentElement.dataset.lens = 'biz';
   else delete document.documentElement.dataset.lens;

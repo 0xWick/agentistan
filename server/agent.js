@@ -64,23 +64,30 @@ export function makeLLM(env, u = {}) {
       roll();
       if (!key) return { mode: 'off', why: 'no AI key configured' };
       if (u.calls >= cap || u.tokens >= tokenCap) return { mode: 'resting', why: 'free daily AI quota used; back at midnight UTC' };
-      if (Date.now() < u.restUntil) return { mode: 'resting', why: 'free-tier rate limit; back in a minute' };
+      if (Date.now() < u.restUntil) return { mode: 'resting', why: 'free-tier rate limit; back in a minute', soon: true };
       return { mode: 'live' };
     },
-    async chat(messages, tools, retried = false) {
+    // opts: request-body overrides per call ({ reasoning_effort, max_tokens, response_format }), plus maxWait: how many
+    // seconds this call may wait out the per-minute token limit (the turns keep 15; a rare, valuable call can wait longer).
+    async chat(messages, tools, { maxWait = 15, ...opts } = {}, retried = false) {
       roll();
+      const pause = u.restUntil - Date.now();
+      if (pause > 0) {
+        if (pause > maxWait * 1000) throw new Error('free-tier rate limit; resting');
+        await new Promise((r) => setTimeout(r, pause));
+      }
       u.calls++;
       const res = await fetch(`${base}/chat/completions`, {
         method: 'POST',
         headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ model, messages, max_tokens: 600, temperature: 0.8, ...(tools && { tools, tool_choice: 'required' }), ...extra }),
+        body: JSON.stringify({ model, messages, max_tokens: 600, temperature: 0.8, ...(tools && { tools, tool_choice: 'required' }), ...extra, ...opts }),
         signal: AbortSignal.timeout(30_000),
       });
       if (res.status === 429) {
         const wait = Math.min(600, +res.headers.get('retry-after') || 60);
-        if (!retried && wait <= 15) { // per-minute token limit: a short pause usually clears it
+        if (!retried && wait <= maxWait) { // per-minute token limit: a short pause usually clears it
           await new Promise((r) => setTimeout(r, wait * 1000));
-          return this.chat(messages, tools, true);
+          return this.chat(messages, tools, { maxWait, ...opts }, true);
         }
         u.restUntil = Date.now() + wait * 1000;
         throw new Error(`free-tier rate limit hit; resting ${wait}s`);

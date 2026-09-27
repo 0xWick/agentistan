@@ -149,7 +149,27 @@
     <p class="muted">Test network only. No real money. Not financial advice. Real prices and weather hit the game hard on purpose, so you can see them.</p>
   </footer>
 
-  <a class="book book-link" href="#" target="_blank" rel="noopener" hidden>📅 Book a meeting</a>
+  <div class="cta-rail">
+    <button class="cta plan-open" type="button">✨ Free plan<span class="long"> for your business</span></button>
+    <a class="cta book-link" href="#" target="_blank" rel="noopener" hidden>📅 Book<span class="long"> a meeting</span></a>
+  </div>
+
+  <dialog id="plan" aria-labelledby="plan-title">
+    <form method="dialog" class="plan-x"><button class="btn" aria-label="Close">✕</button></form>
+    <h2 id="plan-title">✨ A free plan for your business</h2>
+    <p class="muted">Tell us what eats your team's time. An AI drafts how <span class="owner-name">Umar Khatana</span> could automate it with the same tech that runs this war: AI agents, n8n automations, live data and blockchain records.</p>
+    <div class="plan-picks" role="group" aria-label="Examples">
+      <button type="button" class="chip" data-text="I run a small clinic with 3 doctors. The front desk is buried in calls, appointment changes, no-shows and insurance paperwork.">🏥 A clinic</button>
+      <button type="button" class="chip" data-text="I run an accounting firm with about 40 small-business clients. Collecting documents, reconciling bank statements and chasing unpaid invoices take up most of our month.">📊 An accounting firm</button>
+      <button type="button" class="chip" data-text="We are an early-stage fintech moving customer payments in several currencies. We need live exchange rates, fewer manual checks and records that auditors can trust.">💳 A fintech</button>
+      <button type="button" class="chip" data-text="I want my personal finances on autopilot: bills, subscriptions, savings goals, and alerts when prices I care about move.">🏠 My personal finances</button>
+    </div>
+    <form id="plan-form">
+      <textarea id="plan-text" rows="3" maxlength="700" aria-label="Your business, in a sentence or two" placeholder="Or write your own, e.g. “We're a 5-person bookkeeping firm. Chasing clients for receipts every month takes days.”"></textarea>
+      <div class="plan-row"><button class="btn primary">Draft my plan</button><small class="muted">Free, no sign-up. What you write is only used to draft this plan.</small></div>
+    </form>
+    <div id="plan-out" aria-live="polite"></div>
+  </dialog>
 
   <dialog id="intro" aria-labelledby="intro-title">
     <h2 id="intro-title">Meet the cast</h2>
