@@ -1,0 +1,1565 @@
+{
+ "baghdad": {
+  "neighbors": [
+   "basra",
+   "mosul",
+   "shahrazur",
+   "lur"
+  ],
+  "city": [
+   244.0,
+   849.4
+  ],
+  "label": [
+   107.3,
+   890.5
+  ],
+  "area": 70481
+ },
+ "basra": {
+  "neighbors": [
+   "baghdad",
+   "khuzestan",
+   "lur",
+   "fars"
+  ],
+  "city": [
+   417.1,
+   1017.1
+  ],
+  "label": [
+   313.0,
+   1038.8
+  ],
+  "area": 30555
+ },
+ "mosul": {
+  "neighbors": [
+   "baghdad",
+   "shahrazur",
+   "amid",
+   "tabriz",
+   "nakhchivan"
+  ],
+  "city": [
+   182.2,
+   668.1
+  ],
+  "label": [
+   170.7,
+   685.3
+  ],
+  "area": 40048
+ },
+ "khuzestan": {
+  "neighbors": [
+   "basra",
+   "lur",
+   "isfahan",
+   "fars"
+  ],
+  "city": [
+   469.3,
+   924.9
+  ],
+  "label": [
+   474.2,
+   949.0
+  ],
+  "area": 18209
+ },
+ "shahrazur": {
+  "neighbors": [
+   "baghdad",
+   "mosul",
+   "lur",
+   "tabriz",
+   "ardabil",
+   "hamadan"
+  ],
+  "city": [
+   318.7,
+   730.3
+  ],
+  "label": [
+   341.5,
+   699.5
+  ],
+  "area": 18616
+ },
+ "lur": {
+  "neighbors": [
+   "baghdad",
+   "basra",
+   "khuzestan",
+   "shahrazur",
+   "hamadan",
+   "isfahan"
+  ],
+  "city": [
+   444.7,
+   838.7
+  ],
+  "label": [
+   402.3,
+   838.8
+  ],
+  "area": 16159
+ },
+ "amid": {
+  "neighbors": [
+   "mosul",
+   "imereti",
+   "ani",
+   "nakhchivan"
+  ],
+  "city": [
+   36.6,
+   574.1
+  ],
+  "label": [
+   77.0,
+   540.7
+  ],
+  "area": 35191
+ },
+ "kartli": {
+  "neighbors": [
+   "imereti",
+   "ani",
+   "arran",
+   "derbent"
+  ],
+  "city": [
+   265.5,
+   346.0
+  ],
+  "label": [
+   270.0,
+   346.3
+  ],
+  "area": 12579
+ },
+ "imereti": {
+  "neighbors": [
+   "amid",
+   "kartli",
+   "ani"
+  ],
+  "city": [
+   160.6,
+   313.1
+  ],
+  "label": [
+   154.0,
+   308.5
+  ],
+  "area": 18538
+ },
+ "ani": {
+  "neighbors": [
+   "amid",
+   "kartli",
+   "imereti",
+   "arran",
+   "nakhchivan"
+  ],
+  "city": [
+   204.3,
+   418.4
+  ],
+  "label": [
+   175.9,
+   432.5
+  ],
+  "area": 17984
+ },
+ "arran": {
+  "neighbors": [
+   "kartli",
+   "ani",
+   "shirvan",
+   "derbent",
+   "ardabil",
+   "nakhchivan"
+  ],
+  "city": [
+   344.3,
+   408.3
+  ],
+  "label": [
+   336.6,
+   424.3
+  ],
+  "area": 11331
+ },
+ "shirvan": {
+  "neighbors": [
+   "arran",
+   "derbent",
+   "ardabil",
+   "gorgan"
+  ],
+  "city": [
+   458.8,
+   411.3
+  ],
+  "label": [
+   457.4,
+   424.3
+  ],
+  "area": 10815
+ },
+ "derbent": {
+  "neighbors": [
+   "kartli",
+   "arran",
+   "shirvan"
+  ],
+  "city": [
+   441.2,
+   325.6
+  ],
+  "label": [
+   400.8,
+   327.1
+  ],
+  "area": 8012
+ },
+ "tabriz": {
+  "neighbors": [
+   "mosul",
+   "shahrazur",
+   "ardabil",
+   "nakhchivan"
+  ],
+  "city": [
+   340.8,
+   563.9
+  ],
+  "label": [
+   365.7,
+   592.3
+  ],
+  "area": 17575
+ },
+ "ardabil": {
+  "neighbors": [
+   "shahrazur",
+   "arran",
+   "shirvan",
+   "tabriz",
+   "nakhchivan",
+   "hamadan",
+   "qazvin",
+   "gilan"
+  ],
+  "city": [
+   441.2,
+   553.7
+  ],
+  "label": [
+   437.3,
+   521.4
+  ],
+  "area": 10365
+ },
+ "nakhchivan": {
+  "neighbors": [
+   "mosul",
+   "amid",
+   "ani",
+   "arran",
+   "tabriz",
+   "ardabil"
+  ],
+  "city": [
+   296.7,
+   496.3
+  ],
+  "label": [
+   247.0,
+   527.4
+  ],
+  "area": 15666
+ },
+ "hamadan": {
+  "neighbors": [
+   "shahrazur",
+   "lur",
+   "ardabil",
+   "isfahan",
+   "rey",
+   "qazvin"
+  ],
+  "city": [
+   452.3,
+   760.2
+  ],
+  "label": [
+   437.0,
+   747.1
+  ],
+  "area": 15253
+ },
+ "isfahan": {
+  "neighbors": [
+   "khuzestan",
+   "lur",
+   "hamadan",
+   "rey",
+   "kumis",
+   "yazd",
+   "fars"
+  ],
+  "city": [
+   610.9,
+   889.0
+  ],
+  "label": [
+   598.5,
+   878.1
+  ],
+  "area": 37118
+ },
+ "rey": {
+  "neighbors": [
+   "hamadan",
+   "isfahan",
+   "qazvin",
+   "alamut",
+   "tabaristan",
+   "kumis"
+  ],
+  "city": [
+   598.8,
+   713.0
+  ],
+  "label": [
+   585.7,
+   744.3
+  ],
+  "area": 9194
+ },
+ "qazvin": {
+  "neighbors": [
+   "ardabil",
+   "hamadan",
+   "rey",
+   "alamut",
+   "gilan"
+  ],
+  "city": [
+   527.1,
+   672.3
+  ],
+  "label": [
+   506.7,
+   688.0
+  ],
+  "area": 7666
+ },
+ "alamut": {
+  "neighbors": [
+   "rey",
+   "qazvin",
+   "gilan",
+   "tabaristan"
+  ],
+  "city": [
+   556.7,
+   662.1
+  ],
+  "label": [
+   566.2,
+   684.7
+  ],
+  "area": 1922
+ },
+ "gilan": {
+  "neighbors": [
+   "ardabil",
+   "qazvin",
+   "alamut",
+   "tabaristan"
+  ],
+  "city": [
+   527.1,
+   616.6
+  ],
+  "label": [
+   515.5,
+   626.6
+  ],
+  "area": 5317
+ },
+ "tabaristan": {
+  "neighbors": [
+   "rey",
+   "alamut",
+   "gilan",
+   "gorgan",
+   "kumis"
+  ],
+  "city": [
+   645.0,
+   660.3
+  ],
+  "label": [
+   683.0,
+   668.7
+  ],
+  "area": 7444
+ },
+ "gorgan": {
+  "neighbors": [
+   "shirvan",
+   "tabaristan",
+   "kumis",
+   "nasa",
+   "mangyshlak"
+  ],
+  "city": [
+   749.9,
+   638.1
+  ],
+  "label": [
+   774.4,
+   578.4
+  ],
+  "area": 23013
+ },
+ "kumis": {
+  "neighbors": [
+   "isfahan",
+   "rey",
+   "tabaristan",
+   "gorgan",
+   "quhistan",
+   "yazd",
+   "nishapur"
+  ],
+  "city": [
+   744.9,
+   678.2
+  ],
+  "label": [
+   778.9,
+   718.8
+  ],
+  "area": 27008
+ },
+ "quhistan": {
+  "neighbors": [
+   "kumis",
+   "yazd",
+   "kerman",
+   "nishapur",
+   "herat",
+   "sistan"
+  ],
+  "city": [
+   937.2,
+   806.9
+  ],
+  "label": [
+   973.8,
+   814.9
+  ],
+  "area": 25150
+ },
+ "yazd": {
+  "neighbors": [
+   "isfahan",
+   "kumis",
+   "quhistan",
+   "fars",
+   "darabgerd",
+   "kerman"
+  ],
+  "city": [
+   746.4,
+   933.8
+  ],
+  "label": [
+   842.3,
+   870.3
+  ],
+  "area": 36601
+ },
+ "fars": {
+  "neighbors": [
+   "basra",
+   "khuzestan",
+   "isfahan",
+   "yazd",
+   "darabgerd"
+  ],
+  "city": [
+   656.6,
+   1072.1
+  ],
+  "label": [
+   637.8,
+   1068.9
+  ],
+  "area": 31146
+ },
+ "darabgerd": {
+  "neighbors": [
+   "yazd",
+   "fars",
+   "kerman",
+   "hormuz"
+  ],
+  "city": [
+   754.9,
+   1122.4
+  ],
+  "label": [
+   742.9,
+   1147.0
+  ],
+  "area": 17401
+ },
+ "kerman": {
+  "neighbors": [
+   "quhistan",
+   "yazd",
+   "darabgerd",
+   "hormuz",
+   "sistan"
+  ],
+  "city": [
+   881.9,
+   1030.2
+  ],
+  "label": [
+   908.0,
+   1049.1
+  ],
+  "area": 55687
+ },
+ "hormuz": {
+  "neighbors": [
+   "darabgerd",
+   "kerman",
+   "makran"
+  ],
+  "city": [
+   841.8,
+   1216.4
+  ],
+  "label": [
+   833.2,
+   1187.3
+  ],
+  "area": 21842
+ },
+ "nishapur": {
+  "neighbors": [
+   "kumis",
+   "quhistan",
+   "sarakhs",
+   "nasa",
+   "herat"
+  ],
+  "city": [
+   968.8,
+   675.8
+  ],
+  "label": [
+   977.0,
+   679.0
+  ],
+  "area": 27552
+ },
+ "merv": {
+  "neighbors": [
+   "sarakhs",
+   "nasa",
+   "herat",
+   "balkh",
+   "ghor",
+   "khiva",
+   "bukhara",
+   "nasaf"
+  ],
+  "city": [
+   1138.9,
+   589.0
+  ],
+  "label": [
+   1174.3,
+   612.9
+  ],
+  "area": 34153
+ },
+ "sarakhs": {
+  "neighbors": [
+   "nishapur",
+   "merv",
+   "nasa",
+   "herat"
+  ],
+  "city": [
+   1094.3,
+   652.5
+  ],
+  "label": [
+   1050.7,
+   608.5
+  ],
+  "area": 6154
+ },
+ "nasa": {
+  "neighbors": [
+   "gorgan",
+   "nishapur",
+   "merv",
+   "sarakhs",
+   "gurganj",
+   "khiva"
+  ],
+  "city": [
+   938.7,
+   569.3
+  ],
+  "label": [
+   951.3,
+   511.0
+  ],
+  "area": 41520
+ },
+ "herat": {
+  "neighbors": [
+   "quhistan",
+   "nishapur",
+   "merv",
+   "sarakhs",
+   "ghor",
+   "sistan"
+  ],
+  "city": [
+   1139.5,
+   787.2
+  ],
+  "label": [
+   1123.0,
+   825.4
+  ],
+  "area": 23725
+ },
+ "balkh": {
+  "neighbors": [
+   "merv",
+   "ghor",
+   "bamiyan",
+   "khuttal",
+   "termez",
+   "nasaf"
+  ],
+  "city": [
+   1375.4,
+   642.9
+  ],
+  "label": [
+   1358.8,
+   667.9
+  ],
+  "area": 20493
+ },
+ "ghor": {
+  "neighbors": [
+   "merv",
+   "herat",
+   "balkh",
+   "bamiyan",
+   "ghazni",
+   "kandahar",
+   "sistan"
+  ],
+  "city": [
+   1255.9,
+   784.2
+  ],
+  "label": [
+   1301.3,
+   805.3
+  ],
+  "area": 26984
+ },
+ "bamiyan": {
+  "neighbors": [
+   "balkh",
+   "ghor",
+   "ghazni",
+   "kabul",
+   "badakhshan",
+   "termez"
+  ],
+  "city": [
+   1422.1,
+   759.1
+  ],
+  "label": [
+   1404.6,
+   759.9
+  ],
+  "area": 13576
+ },
+ "ghazni": {
+  "neighbors": [
+   "ghor",
+   "bamiyan",
+   "kabul",
+   "kandahar",
+   "peshawar",
+   "multan"
+  ],
+  "city": [
+   1451.7,
+   835.1
+  ],
+  "label": [
+   1469.9,
+   884.4
+  ],
+  "area": 17497
+ },
+ "kabul": {
+  "neighbors": [
+   "bamiyan",
+   "ghazni",
+   "badakhshan",
+   "peshawar"
+  ],
+  "city": [
+   1489.3,
+   776.4
+  ],
+  "label": [
+   1522.7,
+   750.9
+  ],
+  "area": 10061
+ },
+ "kandahar": {
+  "neighbors": [
+   "ghor",
+   "ghazni",
+   "sistan",
+   "turan"
+  ],
+  "city": [
+   1315.6,
+   951.2
+  ],
+  "label": [
+   1290.6,
+   946.3
+  ],
+  "area": 32968
+ },
+ "sistan": {
+  "neighbors": [
+   "quhistan",
+   "kerman",
+   "herat",
+   "ghor",
+   "kandahar",
+   "makran",
+   "turan"
+  ],
+  "city": [
+   1122.4,
+   987.7
+  ],
+  "label": [
+   1124.5,
+   978.1
+  ],
+  "area": 47636
+ },
+ "badakhshan": {
+  "neighbors": [
+   "bamiyan",
+   "kabul",
+   "khuttal",
+   "termez",
+   "ferghana",
+   "kashgar",
+   "peshawar",
+   "kashmir"
+  ],
+  "city": [
+   1560.1,
+   621.4
+  ],
+  "label": [
+   1597.4,
+   606.7
+  ],
+  "area": 28042
+ },
+ "khuttal": {
+  "neighbors": [
+   "balkh",
+   "badakhshan",
+   "termez",
+   "samarkand",
+   "ushrusana",
+   "ferghana"
+  ],
+  "city": [
+   1519.9,
+   574.1
+  ],
+  "label": [
+   1503.1,
+   554.6
+  ],
+  "area": 14573
+ },
+ "termez": {
+  "neighbors": [
+   "balkh",
+   "bamiyan",
+   "badakhshan",
+   "khuttal",
+   "samarkand",
+   "nasaf",
+   "ushrusana"
+  ],
+  "city": [
+   1394.4,
+   615.4
+  ],
+  "label": [
+   1397.4,
+   577.5
+  ],
+  "area": 9180
+ },
+ "gurganj": {
+  "neighbors": [
+   "nasa",
+   "khiva",
+   "kipchak",
+   "mangyshlak"
+  ],
+  "city": [
+   986.4,
+   310.1
+  ],
+  "label": [
+   970.6,
+   293.5
+  ],
+  "area": 64333
+ },
+ "khiva": {
+  "neighbors": [
+   "merv",
+   "nasa",
+   "gurganj",
+   "bukhara",
+   "jand",
+   "kipchak"
+  ],
+  "city": [
+   1047.1,
+   366.4
+  ],
+  "label": [
+   1118.6,
+   312.2
+  ],
+  "area": 24237
+ },
+ "bukhara": {
+  "neighbors": [
+   "merv",
+   "khiva",
+   "samarkand",
+   "nasaf",
+   "otrar",
+   "jand"
+  ],
+  "city": [
+   1250.9,
+   462.7
+  ],
+  "label": [
+   1240.6,
+   397.9
+  ],
+  "area": 30739
+ },
+ "samarkand": {
+  "neighbors": [
+   "khuttal",
+   "termez",
+   "bukhara",
+   "nasaf",
+   "ushrusana",
+   "shash",
+   "otrar"
+  ],
+  "city": [
+   1378.9,
+   469.9
+  ],
+  "label": [
+   1360.1,
+   439.1
+  ],
+  "area": 12573
+ },
+ "nasaf": {
+  "neighbors": [
+   "merv",
+   "balkh",
+   "termez",
+   "bukhara",
+   "samarkand",
+   "ushrusana"
+  ],
+  "city": [
+   1319.7,
+   517.2
+  ],
+  "label": [
+   1311.4,
+   536.6
+  ],
+  "area": 15274
+ },
+ "ushrusana": {
+  "neighbors": [
+   "khuttal",
+   "termez",
+   "samarkand",
+   "nasaf",
+   "shash",
+   "ferghana",
+   "otrar"
+  ],
+  "city": [
+   1480.8,
+   454.4
+  ],
+  "label": [
+   1478.3,
+   477.6
+  ],
+  "area": 18845
+ },
+ "shash": {
+  "neighbors": [
+   "samarkand",
+   "ushrusana",
+   "ferghana",
+   "otrar",
+   "talas"
+  ],
+  "city": [
+   1492.8,
+   371.1
+  ],
+  "label": [
+   1523.4,
+   377.1
+  ],
+  "area": 6210
+ },
+ "ferghana": {
+  "neighbors": [
+   "badakhshan",
+   "khuttal",
+   "ushrusana",
+   "shash",
+   "talas",
+   "balasagun",
+   "kashgar"
+  ],
+  "city": [
+   1696.6,
+   402.9
+  ],
+  "label": [
+   1692.3,
+   403.7
+  ],
+  "area": 28954
+ },
+ "otrar": {
+  "neighbors": [
+   "bukhara",
+   "samarkand",
+   "ushrusana",
+   "shash",
+   "jand",
+   "talas"
+  ],
+  "city": [
+   1445.6,
+   278.4
+  ],
+  "label": [
+   1474.6,
+   300.1
+  ],
+  "area": 43834
+ },
+ "jand": {
+  "neighbors": [
+   "khiva",
+   "bukhara",
+   "otrar",
+   "kipchak"
+  ],
+  "city": [
+   1280.0,
+   185.6
+  ],
+  "label": [
+   1308.1,
+   177.2
+  ],
+  "area": 61213
+ },
+ "talas": {
+  "neighbors": [
+   "shash",
+   "ferghana",
+   "otrar",
+   "balasagun"
+  ],
+  "city": [
+   1599.7,
+   275.4
+  ],
+  "label": [
+   1627.3,
+   209.7
+  ],
+  "area": 57185
+ },
+ "balasagun": {
+  "neighbors": [
+   "ferghana",
+   "talas",
+   "almaliq",
+   "kashgar"
+  ],
+  "city": [
+   1794.5,
+   284.3
+  ],
+  "label": [
+   1828.7,
+   134.7
+  ],
+  "area": 54588
+ },
+ "almaliq": {
+  "neighbors": [
+   "balasagun",
+   "kashgar",
+   "khotan"
+  ],
+  "city": [
+   2078.1,
+   209.5
+  ],
+  "label": [
+   2089.4,
+   273.6
+  ],
+  "area": 130081
+ },
+ "kashgar": {
+  "neighbors": [
+   "badakhshan",
+   "ferghana",
+   "balasagun",
+   "almaliq",
+   "khotan",
+   "kashmir"
+  ],
+  "city": [
+   1831.7,
+   480.7
+  ],
+  "label": [
+   1826.0,
+   520.0
+  ],
+  "area": 60303
+ },
+ "khotan": {
+  "neighbors": [
+   "almaliq",
+   "kashgar"
+  ],
+  "city": [
+   2029.4,
+   622.0
+  ],
+  "label": [
+   1956.4,
+   602.5
+  ],
+  "area": 34081
+ },
+ "kipchak": {
+  "neighbors": [
+   "gurganj",
+   "khiva",
+   "jand"
+  ],
+  "city": [
+   1159.5,
+   71.8
+  ],
+  "label": [
+   1191.3,
+   64.2
+  ],
+  "area": 41963
+ },
+ "saqsin": {
+  "neighbors": [
+   "mangyshlak"
+  ],
+  "city": [
+   426.7,
+   68.8
+  ],
+  "label": [
+   426.6,
+   48.7
+  ],
+  "area": 17227
+ },
+ "mangyshlak": {
+  "neighbors": [
+   "gorgan",
+   "gurganj",
+   "saqsin"
+  ],
+  "city": [
+   647.5,
+   197.5
+  ],
+  "label": [
+   730.5,
+   216.6
+  ],
+  "area": 72441
+ },
+ "peshawar": {
+  "neighbors": [
+   "ghazni",
+   "kabul",
+   "badakhshan",
+   "saltrange",
+   "multan",
+   "kashmir"
+  ],
+  "city": [
+   1610.3,
+   807.5
+  ],
+  "label": [
+   1599.0,
+   789.4
+  ],
+  "area": 29798
+ },
+ "saltrange": {
+  "neighbors": [
+   "peshawar",
+   "lahore",
+   "multan",
+   "kashmir"
+  ],
+  "city": [
+   1718.2,
+   872.2
+  ],
+  "label": [
+   1665.1,
+   883.1
+  ],
+  "area": 14147
+ },
+ "lahore": {
+  "neighbors": [
+   "saltrange",
+   "multan",
+   "kashmir",
+   "delhi",
+   "ajmer"
+  ],
+  "city": [
+   1748.8,
+   954.8
+  ],
+  "label": [
+   1774.1,
+   977.7
+  ],
+  "area": 28588
+ },
+ "multan": {
+  "neighbors": [
+   "ghazni",
+   "peshawar",
+   "saltrange",
+   "lahore",
+   "sehwan",
+   "turan",
+   "ajmer",
+   "thar"
+  ],
+  "city": [
+   1604.8,
+   1035.6
+  ],
+  "label": [
+   1612.8,
+   1048.5
+  ],
+  "area": 34315
+ },
+ "thatta": {
+  "neighbors": [
+   "sehwan",
+   "turan",
+   "gujarat",
+   "saurashtra",
+   "marwar",
+   "thar"
+  ],
+  "city": [
+   1426.6,
+   1361.9
+  ],
+  "label": [
+   1435.8,
+   1356.0
+  ],
+  "area": 16674
+ },
+ "sehwan": {
+  "neighbors": [
+   "multan",
+   "thatta",
+   "turan",
+   "thar"
+  ],
+  "city": [
+   1423.6,
+   1261.9
+  ],
+  "label": [
+   1446.5,
+   1222.9
+  ],
+  "area": 21435
+ },
+ "makran": {
+  "neighbors": [
+   "hormuz",
+   "sistan",
+   "turan"
+  ],
+  "city": [
+   1182.1,
+   1287.0
+  ],
+  "label": [
+   1158.7,
+   1234.7
+  ],
+  "area": 53446
+ },
+ "turan": {
+  "neighbors": [
+   "kandahar",
+   "sistan",
+   "multan",
+   "thatta",
+   "sehwan",
+   "makran"
+  ],
+  "city": [
+   1360.3,
+   1179.3
+  ],
+  "label": [
+   1319.2,
+   1151.1
+  ],
+  "area": 57774
+ },
+ "kashmir": {
+  "neighbors": [
+   "badakhshan",
+   "kashgar",
+   "peshawar",
+   "saltrange",
+   "lahore"
+  ],
+  "city": [
+   1771.9,
+   803.3
+  ],
+  "label": [
+   1772.1,
+   694.9
+  ],
+  "area": 28696
+ },
+ "delhi": {
+  "neighbors": [
+   "lahore",
+   "ajmer",
+   "ranthambore",
+   "kannauj"
+  ],
+  "city": [
+   1893.9,
+   1128.4
+  ],
+  "label": [
+   1843.3,
+   1081.6
+  ],
+  "area": 18526
+ },
+ "ajmer": {
+  "neighbors": [
+   "lahore",
+   "multan",
+   "delhi",
+   "ranthambore",
+   "malwa",
+   "marwar",
+   "thar"
+  ],
+  "city": [
+   1763.9,
+   1260.1
+  ],
+  "label": [
+   1753.3,
+   1194.5
+  ],
+  "area": 33926
+ },
+ "ranthambore": {
+  "neighbors": [
+   "delhi",
+   "ajmer",
+   "gwalior",
+   "kannauj",
+   "malwa"
+  ],
+  "city": [
+   1855.2,
+   1285.8
+  ],
+  "label": [
+   1861.0,
+   1242.8
+  ],
+  "area": 17831
+ },
+ "gwalior": {
+  "neighbors": [
+   "ranthambore",
+   "kannauj",
+   "kalinjar",
+   "malwa"
+  ],
+  "city": [
+   1941.1,
+   1273.3
+  ],
+  "label": [
+   1921.7,
+   1294.3
+  ],
+  "area": 13269
+ },
+ "kannauj": {
+  "neighbors": [
+   "delhi",
+   "ranthambore",
+   "gwalior",
+   "varanasi",
+   "kalinjar"
+  ],
+  "city": [
+   2028.9,
+   1224.2
+  ],
+  "label": [
+   2051.9,
+   1210.9
+  ],
+  "area": 45558
+ },
+ "varanasi": {
+  "neighbors": [
+   "kannauj",
+   "bihar",
+   "kalinjar"
+  ],
+  "city": [
+   2182.0,
+   1327.7
+  ],
+  "label": [
+   2173.2,
+   1281.3
+  ],
+  "area": 27768
+ },
+ "bihar": {
+  "neighbors": [
+   "varanasi",
+   "bengal"
+  ],
+  "city": [
+   2310.0,
+   1334.9
+  ],
+  "label": [
+   2333.8,
+   1306.0
+  ],
+  "area": 38986
+ },
+ "bengal": {
+  "neighbors": [
+   "bihar"
+  ],
+  "city": [
+   2441.0,
+   1354.7
+  ],
+  "label": [
+   2461.7,
+   1419.0
+  ],
+  "area": 54151
+ },
+ "kalinjar": {
+  "neighbors": [
+   "gwalior",
+   "kannauj",
+   "varanasi",
+   "malwa"
+  ],
+  "city": [
+   2057.0,
+   1346.9
+  ],
+  "label": [
+   2040.8,
+   1410.8
+  ],
+  "area": 26437
+ },
+ "malwa": {
+  "neighbors": [
+   "ajmer",
+   "ranthambore",
+   "gwalior",
+   "kalinjar",
+   "gujarat",
+   "marwar"
+  ],
+  "city": [
+   1797.0,
+   1490.6
+  ],
+  "label": [
+   1868.3,
+   1459.0
+  ],
+  "area": 26011
+ },
+ "gujarat": {
+  "neighbors": [
+   "thatta",
+   "malwa",
+   "saurashtra",
+   "marwar"
+  ],
+  "city": [
+   1637.4,
+   1415.7
+  ],
+  "label": [
+   1641.2,
+   1440.8
+  ],
+  "area": 26534
+ },
+ "saurashtra": {
+  "neighbors": [
+   "thatta",
+   "gujarat"
+  ],
+  "city": [
+   1554.1,
+   1555.2
+  ],
+  "label": [
+   1575.8,
+   1541.0
+  ],
+  "area": 18653
+ },
+ "marwar": {
+  "neighbors": [
+   "thatta",
+   "ajmer",
+   "malwa",
+   "gujarat",
+   "thar"
+  ],
+  "city": [
+   1662.5,
+   1325.9
+  ],
+  "label": [
+   1662.3,
+   1314.4
+  ],
+  "area": 21762
+ },
+ "thar": {
+  "neighbors": [
+   "multan",
+   "thatta",
+   "sehwan",
+   "ajmer",
+   "marwar"
+  ],
+  "city": [
+   1576.2,
+   1232.6
+  ],
+  "label": [
+   1589.2,
+   1235.7
+  ],
+  "area": 19852
+ }
+}

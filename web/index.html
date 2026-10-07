@@ -4,304 +4,109 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Agentistan</title>
-  <meta name="description" content="The Silk Road, 1200 AD: a world that writes its own history. Kings, viziers, generals and assassins, all played by AI. Being built now.">
-  <meta property="og:title" content="Agentistan: the Silk Road, 1200 AD, played by AI">
-  <meta property="og:description" content="A world that writes its own history. Kings, viziers, generals and assassins, all played by AI. Empires rise, split and fall while nobody plays.">
+  <meta name="description" content="The Silk Road, 1200 AD: a world that writes its own history. Real realms and rulers, revolts, assassins and steppe hordes, on a living map.">
+  <meta property="og:title" content="Agentistan: the Silk Road, 1200 AD, writing its own history">
+  <meta property="og:description" content="Real realms and rulers of 1200 on a living map. Revolts found kingdoms, heirs split empires, assassins strike, and the Mongols may or may not come.">
   <meta property="og:image" content="https://agentistan.umarkhatana.com/world/og.jpg">
   <meta property="og:url" content="https://agentistan.umarkhatana.com/">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="#14110c">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 3h20v14c0 6-5 10-10 12C11 27 6 23 6 17z' fill='%23b5452d' stroke='%23d4a94f' stroke-width='2'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#2b2116">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 3h20v14c0 6-5 10-10 12C11 27 6 23 6 17z' fill='%2327466e' stroke='%23b3852c' stroke-width='2'/%3E%3C/svg%3E">
   <script>
-    // Old links keep working: the classic war moved to /classic/, and so did its free plan.
-    if (location.hash === '#plan' || new URLSearchParams(location.search).has('season')) location.replace(`/classic/${location.search}${location.hash}`);
+    // Old links to a classic season replay keep working. (/#plan opens the free plan right here.)
+    if (new URLSearchParams(location.search).has('season')) location.replace(`/classic/${location.search}`);
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --night: #0d0f12;
-      --leather: #1b1610;
-      --leather-2: #241c13;
-      --parchment: #f1e6cb;
-      --ink-soft: #c7b691;
-      --muted: #9c8c6d;
-      --gold: #d4a94f;
-      --gold-hi: #f3d68b;
-      --gold-lo: #8a6a2c;
-      --seal: #8f2323;
-      --line: rgba(212, 169, 79, .35);
-      color-scheme: dark;
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; background: var(--night); color: var(--parchment); }
-    body { font: 500 18px/1.45 'Cormorant Garamond', Georgia, serif; overflow: hidden; }
-    a { color: inherit; }
-
-    /* ---------- the map: one SVG, so every label stays on its real place at any screen size ---------- */
-    .map { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-    .map .pan { animation: drift 90s ease-in-out infinite alternate; transform-origin: 50% 50%; }
-    @keyframes drift { from { transform: scale(1.01) translate(-0.4%, 0.2%); } to { transform: scale(1.05) translate(0.5%, -0.3%); } }
-    .vignette { position: fixed; inset: 0; pointer-events: none; background:
-      radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(8, 7, 5, .55) 75%, rgba(8, 7, 5, .9) 100%),
-      linear-gradient(180deg, rgba(8, 7, 5, .35), transparent 18%, transparent 80%, rgba(8, 7, 5, .55)); }
-    .grain { position: fixed; inset: 0; pointer-events: none; opacity: .18; mix-blend-mode: overlay;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-
-    .region { font: 700 30px 'Cinzel', serif; letter-spacing: .32em; fill: rgba(40, 28, 14, .58); text-anchor: middle; paint-order: stroke; stroke: rgba(246, 236, 210, .22); stroke-width: 2px; }
-    .region.small { font-size: 21px; letter-spacing: .26em; }
-    .region.waste { font: italic 600 25px 'Cormorant Garamond', serif; letter-spacing: .3em; fill: rgba(60, 42, 20, .5); }
-    .sea { font: italic 600 30px 'Cormorant Garamond', serif; letter-spacing: .34em; fill: rgba(200, 222, 228, .55); text-anchor: middle; }
-    .river { font: italic 600 22px 'Cormorant Garamond', serif; letter-spacing: .2em; fill: rgba(40, 70, 90, .7); text-anchor: middle; }
-    .city circle { fill: #2a1e10; stroke: #f3e7c9; stroke-width: 2.5px; }
-    .city text { font: 600 22px 'Cormorant Garamond', serif; fill: #21170c; paint-order: stroke; stroke: rgba(246, 236, 210, .75); stroke-width: 5px; stroke-linejoin: round; }
-    .road { fill: none; stroke: rgba(240, 200, 110, .9); stroke-width: 4; stroke-dasharray: 2 13; stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(255, 210, 120, .6)); }
-    .road.branch { stroke-width: 3; opacity: .75; }
-    .caravan { fill: #fff2c8; filter: drop-shadow(0 0 8px #ffd27a); }
-    .banner { cursor: default; }
-    .banner .pole { stroke: #2a1e10; stroke-width: 3; }
-    .banner .cloth { stroke: var(--gold); stroke-width: 2.5; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .45)); }
-    .banner text { font: 700 19px 'Cinzel', serif; letter-spacing: .08em; fill: #fbf2da; paint-order: stroke; stroke: rgba(20, 14, 6, .85); stroke-width: 5px; stroke-linejoin: round; text-anchor: middle; }
-    .banner .wave { animation: wave 3.2s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 0 50%; }
-    @keyframes wave { from { transform: skewY(-3deg) scaleX(.97); } to { transform: skewY(3deg) scaleX(1.02); } }
-
-    /* ---------- the popup ---------- */
-    .veil { position: fixed; inset: 0; background: rgba(9, 8, 6, .42); backdrop-filter: blur(2px); transition: opacity .5s; }
-    .card {
-      position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto;
-      padding: 34px 40px 26px; border-radius: 6px; text-align: center;
-      background: radial-gradient(ellipse at 50% 0%, rgba(212, 169, 79, .16), transparent 55%), linear-gradient(180deg, var(--leather-2), var(--leather));
-      border: 1px solid var(--gold-lo); outline: 1px solid rgba(212, 169, 79, .25); outline-offset: 6px;
-      box-shadow: 0 30px 80px rgba(0, 0, 0, .65), inset 0 0 0 1px rgba(255, 230, 170, .06), inset 0 0 60px rgba(0, 0, 0, .55);
-      transition: opacity .45s, transform .45s;
-    }
-    .card::before, .card::after { content: ''; position: absolute; width: 46px; height: 46px; border: 2px solid var(--gold); opacity: .8; }
-    .card::before { left: 10px; top: 10px; border-right: 0; border-bottom: 0; }
-    .card::after { right: 10px; bottom: 10px; border-left: 0; border-top: 0; }
-    .seal { margin: -12px auto 10px; width: 62px; height: 62px; border-radius: 50%;
-      background: radial-gradient(circle at 35% 30%, #c0413a, var(--seal) 55%, #5a1212); box-shadow: 0 6px 16px rgba(0, 0, 0, .55), inset 0 -4px 8px rgba(0, 0, 0, .35);
-      display: grid; place-items: center; }
-    .seal svg { width: 38px; height: 38px; fill: #f0c9a0; opacity: .9; }
-    .kicker { font: 700 13px 'Cinzel', serif; letter-spacing: .38em; color: var(--gold); margin: 0; }
-    h1 { margin: 6px 0 2px; font: 900 clamp(38px, 7vw, 56px)/1 'Cinzel', serif; letter-spacing: .08em;
-      background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, #a57b30); -webkit-background-clip: text; background-clip: text; color: transparent;
-      filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .6)); }
-    .rule { display: flex; align-items: center; gap: 12px; margin: 14px auto 16px; max-width: 320px; color: var(--gold); }
-    .rule::before, .rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
-    .lede { font-size: 21px; line-height: 1.4; margin: 0 auto; max-width: 30em; color: var(--parchment); }
-    .lede em { color: var(--gold-hi); font-style: italic; }
-
-    .forge { margin: 22px 0 6px; text-align: left; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 14px 4px 10px; }
-    .forge h2 { margin: 0 0 8px; font: 700 13px 'Cinzel', serif; letter-spacing: .3em; color: var(--gold); text-align: center; }
-    .forge ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
-    .forge ol li { display: grid; grid-template-columns: 26px 1fr; align-items: baseline; color: var(--ink-soft); font-size: 18px; }
-    .forge ol li::before { content: ''; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--gold-lo); transform: translateY(1px); }
-    .forge ol li.now { color: var(--parchment); }
-    .forge ol li.now::before { background: var(--gold); border-color: var(--gold-hi); box-shadow: 0 0 10px var(--gold); animation: pulse 1.6s ease-in-out infinite; }
-    .forge li.now span::after { content: ' · being drawn now'; font-style: italic; color: var(--gold); }
-    @keyframes pulse { 50% { box-shadow: 0 0 2px var(--gold); opacity: .7; } }
-
-    .realms { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin: 14px 0 4px; padding: 0; list-style: none; }
-    .realms li { display: flex; align-items: center; gap: 6px; font: 600 14px 'Cinzel', serif; letter-spacing: .04em; color: var(--ink-soft); }
-    .realms i { width: 12px; height: 15px; clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%); background: var(--c); box-shadow: inset 0 0 0 1.5px rgba(243, 214, 139, .7); }
-
-    .actions { display: grid; gap: 10px; margin-top: 22px; }
-    .btn { display: block; text-decoration: none; font: 700 15px 'Cinzel', serif; letter-spacing: .14em; text-transform: uppercase; padding: 14px 18px; border-radius: 4px; cursor: pointer; transition: transform .15s, filter .15s, background .15s; border: 0; }
-    .btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
-    .btn:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
-    .btn.gold { color: #2a1b07; background: linear-gradient(180deg, var(--gold-hi), var(--gold) 50%, #b8892f); box-shadow: 0 6px 18px rgba(212, 169, 79, .28), inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -2px 0 rgba(0, 0, 0, .2); }
-    .btn.ghost { color: var(--gold-hi); background: rgba(212, 169, 79, .06); box-shadow: inset 0 0 0 1px var(--gold-lo); }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .fine { margin: 18px 0 0; font-size: 15px; color: var(--muted); }
-    .fine a { color: var(--ink-soft); }
-
-    .reopen { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(140%); font: 700 14px 'Cinzel', serif; letter-spacing: .18em; text-transform: uppercase;
-      color: #2a1b07; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border: 0; border-radius: 40px; padding: 12px 22px; cursor: pointer;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, .5); transition: transform .45s, opacity .3s; opacity: 0; pointer-events: none; }
-    body.map-only .reopen { transform: translateX(-50%); opacity: 1; pointer-events: auto; }
-    body.map-only .card { opacity: 0; transform: translate(-50%, -44%); pointer-events: none; }
-    body.map-only .veil { opacity: 0; pointer-events: none; }
-
-    /* Short screens (laptops at 768px tall, phones): the steps fold into one line, so the buttons stay on screen. */
-    @media (max-height: 860px), (max-width: 560px) {
-      .card { padding-top: 24px; padding-bottom: 18px; }
-      .seal { width: 50px; height: 50px; margin: -4px auto 8px; }
-      .seal svg { width: 28px; height: 28px; }
-      h1 { font-size: clamp(36px, 6vw, 48px); }
-      .rule { margin: 10px auto 12px; }
-      .forge { margin-top: 16px; padding-top: 10px; }
-      .forge ol li:not(.now) { display: none; }
-      .forge ol::after { content: 'Then the realms of 1200, rebels and assassins, the AI cast, and a chronicle on the blockchain.'; font-size: 16px; font-style: italic; color: var(--muted); padding-left: 26px; }
-      .actions { margin-top: 16px; }
-    }
-    @media (max-width: 560px) {
-      body { font-size: 17px; }
-      .card { padding: 22px 18px 16px; top: auto; bottom: 10px; transform: translateX(-50%); max-height: 74dvh; }
-      body.map-only .card { transform: translate(-50%, 8%); }
-      .seal { width: 46px; height: 46px; margin: -4px auto 6px; }
-      .seal svg { width: 26px; height: 26px; }
-      .rule { margin: 8px auto 10px; }
-      .lede { font-size: 18px; }
-      .forge { margin-top: 14px; padding-top: 10px; }
-      .forge ol li { font-size: 16px; }
-      .realms { display: none; }
-      .actions { margin-top: 14px; }
-      .row { grid-template-columns: 1fr 1fr; }
-      .btn { padding: 12px 10px; font-size: 13px; letter-spacing: .1em; }
-      .fine { margin-top: 12px; font-size: 14px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .map .pan, .banner .wave, .forge ol li.now::before { animation: none; }
-      .caravan { display: none; }
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/silk/view.css">
+  <script type="module" src="/silk/view.js"></script>
 </head>
 <body>
-  <svg class="map" id="map" viewBox="0 0 2560 1736" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Map of the Silk Road in 1200 AD, from Baghdad to Bengal">
-    <defs>
-      <linearGradient id="fallback" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6b5a3e"/><stop offset=".5" stop-color="#8a7655"/><stop offset="1" stop-color="#3d4f55"/></linearGradient>
-    </defs>
-    <g class="pan">
-      <rect width="2560" height="1736" fill="url(#fallback)"/>
-      <image href="/world/relief.webp" width="2560" height="1736"/>
-      <g id="labels"></g>
-      <g id="roads"></g>
-      <g id="cities"></g>
-      <g id="banners"></g>
-    </g>
-  </svg>
-  <div class="vignette"></div>
-  <div class="grain"></div>
-  <div class="veil"></div>
+  <svg id="map" role="img" aria-label="A living map of the Silk Road in 1200 AD, from Baghdad to Bengal"></svg>
 
-  <main class="card" aria-labelledby="title">
-    <div class="seal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l2.4 5.1 5.6.6-4.2 3.8 1.2 5.5L12 14.2 7 17l1.2-5.5L4 7.7l5.6-.6z"/></svg></div>
-    <p class="kicker">The Silk Road · 1200 AD</p>
-    <h1 id="title">Agentistan</h1>
-    <div class="rule" aria-hidden="true">✦</div>
-    <p class="lede">A world that writes its own history. Kings, viziers, generals and assassins, <em>all played by AI</em>. Empires rise, split and fall while nobody plays.</p>
+  <header class="title panel">
+    <h1>Agentistan</h1>
+    <p class="fa" lang="fa">ایجنتستان</p>
+    <p class="date" id="date">January 1200</p>
+  </header>
 
-    <section class="forge" aria-labelledby="forge-title">
-      <h2 id="forge-title">Being forged</h2>
-      <ol>
-        <li class="now"><span>The map of the Silk Road</span></li>
-        <li><span>The realms of 1200 and their rulers</span></li>
-        <li><span>Rebels, assassins, successions and steppe hordes</span></li>
-        <li><span>The minds of the cast: AI rulers, viziers, generals</span></li>
-        <li><span>A chronicle nobody can rewrite, on the blockchain</span></li>
-      </ol>
-      <ul class="realms" id="realm-list" aria-label="The great powers of 1200"></ul>
-    </section>
+  <nav class="tools" aria-label="Tools">
+    <button class="tool panel" id="powers-btn" aria-pressed="true"><svg viewBox="0 0 24 24"><use href="#i-crown"/></svg><span>Powers</span></button>
+    <button class="tool panel" id="key-btn" aria-pressed="false"><svg viewBox="0 0 24 24"><use href="#i-key"/></svg><span>Key</span></button>
+    <a class="tool panel" href="/classic/"><svg viewBox="0 0 24 24"><use href="#i-swords"/></svg><span>Classic war</span></a>
+    <button class="tool panel" id="plan-btn"><svg viewBox="0 0 24 24"><use href="#i-scroll"/></svg><span>Free plan</span></button>
+  </nav>
 
-    <div class="actions">
-      <a class="btn gold" href="/classic/">Watch the classic war</a>
-      <div class="row">
-        <button class="btn ghost" id="view-map" type="button">View the map</button>
-        <a class="btn ghost" href="/classic/#plan">Free automation plan</a>
+  <aside class="powers panel" id="powers" aria-label="The great powers"><h2>Powers</h2><ol id="powers-list"></ol></aside>
+  <aside class="feed panel" id="feed" aria-live="polite" aria-label="Chronicle"><h2>Chronicle</h2><ol id="feed-list"></ol></aside>
+
+  <div class="key panel" id="key" hidden>
+    <h2>Map key</h2>
+    <ul>
+      <li><svg viewBox="0 0 24 24"><use href="#i-crown"/></svg>Capital</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-banner" style="color:#27466e"/></svg>Army</li>
+      <li><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#a3361f" stroke-width="2.4" stroke-dasharray="3 3"/></svg>Siege</li>
+      <li><svg viewBox="0 0 24 24"><path d="M3 12h13" stroke="#a3361f" stroke-width="2.6" stroke-dasharray="4 3"/><path d="M15 7l6 5-6 5z" fill="#a3361f"/></svg>March</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-flame" style="color:#c2541f"/></svg>Unrest</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-skull" style="color:#4f6b3a"/></svg>Plague</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-wheat" style="color:#9a7a2a"/></svg>Famine</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-flame" style="color:#4a3626"/></svg>Ravaged</li>
+      <li><svg viewBox="0 0 24 24"><path d="M2 12h20" stroke="#301e0e" stroke-width="2.6"/></svg>Border</li>
+      <li><svg viewBox="0 0 24 24"><path d="M2 12h20" stroke="#b3852c" stroke-width="3" stroke-dasharray="1 5" stroke-linecap="round"/></svg>Silk Road</li>
+    </ul>
+  </div>
+
+  <div class="card panel" id="card" hidden></div>
+
+  <div class="zoom">
+    <button class="round" id="zin" aria-label="Zoom in"><svg viewBox="0 0 24 24"><use href="#i-plus"/></svg></button>
+    <button class="round" id="zout" aria-label="Zoom out"><svg viewBox="0 0 24 24"><use href="#i-minus"/></svg></button>
+  </div>
+
+  <footer class="player panel">
+    <button class="round" id="new" title="A new age: history again from 1200" aria-label="New age"><svg viewBox="0 0 24 24"><use href="#i-dice"/></svg></button>
+    <button class="round big" id="play" aria-label="Play"></button>
+    <div class="track" aria-hidden="true"><div class="line"></div><div class="done" id="done"></div><div id="track-events"></div><div id="track-ticks"></div></div>
+    <div class="speed" role="group" aria-label="Speed"><button data-speed="1">1×</button><button data-speed="4">4×</button><button data-speed="16">16×</button></div>
+    <span class="yr" id="yr">1200</span>
+  </footer>
+
+  <dialog class="forge" id="forge" aria-labelledby="forge-title">
+    <form method="dialog" class="panel">
+      <button class="x" value="close" aria-label="Close">×</button>
+      <div class="seal"><svg viewBox="0 0 24 24"><use href="#i-star"/></svg></div>
+      <h2 id="forge-title">Agentistan</h2>
+      <p class="fa" lang="fa">ایجنتستان</p>
+      <p class="lede">The Silk Road, 1200.<br>History writes itself.</p>
+      <ul>
+        <li><svg viewBox="0 0 24 24"><use href="#i-crown" style="color:#b3852c"/></svg>The real realms and rulers of 1200</li>
+        <li><svg viewBox="0 0 24 24"><use href="#i-dagger" style="color:#a3361f"/></svg>Revolts, assassins, successions, hordes</li>
+        <li><svg viewBox="0 0 24 24"><use href="#i-eye" style="color:#27466e"/></svg>Soon: an AI mind for every ruler</li>
+      </ul>
+      <div class="go"><button class="btn main" id="begin" value="go">Begin 1200</button><button class="btn" id="forge-plan" type="button">Free plan</button></div>
+      <div class="countdown" aria-hidden="true"><i></i></div>
+    </form>
+  </dialog>
+
+  <dialog class="plan" id="plan" aria-labelledby="plan-title">
+    <form method="dialog" class="panel" id="plan-box">
+      <button class="x" value="close" aria-label="Close">×</button>
+      <div class="seal small"><svg viewBox="0 0 24 24"><use href="#i-scroll"/></svg></div>
+      <h2 id="plan-title">A free plan</h2>
+      <p class="sub">for your business, drafted by AI in seconds</p>
+      <div class="picks" role="group" aria-label="Examples">
+        <button type="button" class="pick" data-text="I run a small clinic with 3 doctors. The front desk is buried in calls, appointment changes, no-shows and insurance paperwork.">Clinic</button>
+        <button type="button" class="pick" data-text="I run an accounting firm with about 40 small-business clients. Collecting documents, reconciling bank statements and chasing unpaid invoices take up most of our month.">Accounting firm</button>
+        <button type="button" class="pick" data-text="We are an early-stage fintech moving customer payments in several currencies. We need live exchange rates, fewer manual checks and records that auditors can trust.">Fintech</button>
+        <button type="button" class="pick" data-text="I want my personal finances on autopilot: bills, subscriptions, savings goals, and alerts when prices I care about move.">My own money</button>
       </div>
-    </div>
-    <p class="fine">Built by <a href="https://umarkhatana.com" target="_blank" rel="noopener">Umar Khatana</a> · <a href="https://calendly.com/realumargujjar/30min?utm_source=agentistan&amp;utm_medium=forge" target="_blank" rel="noopener">Book a call</a> · Map: Natural Earth</p>
-  </main>
-  <button class="reopen" id="reopen" type="button">⚒ Agentistan · being forged</button>
-
-  <script>
-    // Plate carree with a standard parallel, cropped to 39.5–90.5°E, 18.5–47.5°N (mirrors tools/map/build.py).
-    const W = 2560, H = 1736, P = ([lat, lon]) => [(lon - 39.5) / 51 * W, (47.5 - lat) / 29 * H];
-    const NS = 'http://www.w3.org/2000/svg';
-    const el = (tag, attrs, text) => {
-      const e = document.createElementNS(NS, tag);
-      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
-      if (text) e.textContent = text;
-      return e;
-    };
-
-    // Historical regions, wastes, seas and rivers, at their real places.
-    const LABELS = [
-      ['region', 'Iraq', [31.4, 45.6]], ['region', 'Jibal', [34.3, 49.4]], ['region small', 'Azerbaijan', [37.3, 47.4]], ['region small', 'Georgia', [42.4, 43.4]],
-      ['region', 'Fars', [28.75, 53.0]], ['region', 'Khorasan', [35.3, 59.6]], ['region', 'Khwarazm', [40.8, 60.0]], ['region', 'Transoxiana', [41.7, 66.4]],
-      ['region small', 'Kipchak Steppe', [45.1, 66.6]], ['region small', 'Land of Seven Rivers', [44.6, 79.6]], ['region', 'Ghor', [32.85, 65.3]],
-      ['region', 'Punjab', [31.1, 73.4]], ['region', 'Sindh', [26.0, 68.6]], ['region small', 'Makran', [26.1, 62.6]], ['region', 'Hindustan', [26.8, 81.0]],
-      ['region small', 'Gujarat', [22.4, 71.4]], ['region small', 'Malwa', [23.4, 76.4]], ['region small', 'Bengal', [24.1, 87.6]], ['region small', 'Kashmir', [34.6, 75.8]],
-      ['region waste', 'Karakum', [39.1, 59.9]], ['region waste', 'Taklamakan', [38.6, 82.4]], ['region waste', 'Roof of the World', [32.2, 84.6]], ['region waste', 'Thar', [27.0, 71.2]],
-      ['region waste', 'Dasht-e Lut', [31.2, 58.6]],
-      ['sea', 'Caspian Sea', [41.6, 50.9]], ['sea', 'Aral Sea', [45.3, 60.6]], ['sea', 'Sea of Fars', [27.0, 51.6]], ['sea', 'Arabian Sea', [20.6, 63.4]],
-      ['river', 'Oxus', [38.9, 63.6]], ['river', 'Indus', [27.9, 68.4]], ['river', 'Jaxartes', [43.6, 67.4]], ['river', 'Tigris', [35.0, 43.5]], ['river', 'Ganges', [25.6, 83.6]],
-    ];
-    const CITIES = { Baghdad: [33.31, 44.36], Tabriz: [38.08, 46.29], Tbilisi: [41.72, 44.79], Rey: [35.59, 51.43], Isfahan: [32.65, 51.67], Shiraz: [29.59, 52.58],
-      Alamut: [36.44, 50.59], Nishapur: [36.21, 58.8], Merv: [37.66, 62.19], Herat: [34.35, 62.2], Gurganj: [42.32, 59.15], Bukhara: [39.77, 64.42],
-      Samarkand: [39.65, 66.97], Balkh: [36.76, 66.9], Firuzkuh: [34.4, 64.52], Ghazni: [33.55, 68.42], Kabul: [34.53, 69.17], Lahore: [31.55, 74.34],
-      Multan: [30.2, 71.47], Delhi: [28.65, 77.23], Kashgar: [39.47, 75.99], Balasagun: [42.75, 75.25], Otrar: [42.85, 68.3], Kerman: [30.29, 57.07],
-      Hormuz: [27.18, 56.27], Thatta: [24.75, 67.92], Srinagar: [34.08, 74.8], Anhilwara: [23.85, 72.12], Basra: [30.51, 47.81], Mosul: [36.34, 43.13],
-      Lakhnauti: [24.87, 88.13], Kannauj: [27.05, 79.92], Ajmer: [26.45, 74.64] };
-    // The great powers of 1200, with their capitals.
-    const REALMS = [
-      ['Khwarazm', '#2f7d4f', 'Gurganj', 'Khwarazmshah Muhammad II'], ['Ghurids', '#c0612b', 'Firuzkuh', 'Sultan Ghiyath al-Din'],
-      ['Qara Khitai', '#6a4c9c', 'Balasagun', 'The Gurkhan Zhilugu'], ['Karakhanids', '#c9a12b', 'Samarkand', 'Uthman Khan'],
-      ['Abbasids', '#3b3b3b', 'Baghdad', 'Caliph an-Nasir'], ['Eldiguzids', '#2a6f97', 'Tabriz', 'Atabeg Abu Bakr'],
-      ['Georgia', '#a3263b', 'Tbilisi', 'Queen Tamar'], ['Alamut', '#1e5f5a', 'Alamut', 'The Lord of Alamut'],
-    ];
-    // The Silk Road and its southern branch into Hindustan.
-    const ROADS = [
-      ['Baghdad', [34.8, 48.51], 'Rey', [36.17, 54.34], 'Nishapur', 'Merv', 'Bukhara', 'Samarkand', [40.28, 69.62], [40.53, 72.8], 'Kashgar'],
-      ['Samarkand', [41.3, 69.24], [42.9, 71.37], 'Balasagun'],
-      ['Merv', 'Balkh', [34.82, 67.83], 'Kabul', [34.01, 71.58], 'Lahore', 'Delhi'],
-    ];
-
-    const pt = (p) => P(typeof p === 'string' ? CITIES[p] : p);
-    // A smooth line through the points (Catmull-Rom as cubic Béziers).
-    function curve(pts) {
-      let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-      for (let i = 0; i < pts.length - 1; i++) {
-        const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2;
-        const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
-        d += ` C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
-      }
-      return d;
-    }
-
-    const $ = (id) => document.getElementById(id);
-    for (const [cls, name, at] of LABELS) {
-      const [x, y] = P(at);
-      $('labels').append(el('text', { class: cls, x, y }, name));
-    }
-    ROADS.forEach((r, i) => {
-      const path = el('path', { class: `road${i ? ' branch' : ''}`, d: curve(r.map(pt)), id: `road-${i}` });
-      $('roads').append(path);
-      if (i === 0 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        const c = el('circle', { class: 'caravan', r: 7 });
-        const m = el('animateMotion', { dur: '80s', repeatCount: 'indefinite', rotate: 'auto' });
-        m.append(el('mpath', { href: '#road-0' }));
-        c.append(m);
-        $('roads').append(c);
-      }
-    });
-    const capitals = new Set(REALMS.map((r) => r[2]));
-    for (const [name, at] of Object.entries(CITIES)) {
-      if (capitals.has(name)) continue;
-      const [x, y] = P(at), g = el('g', { class: 'city' });
-      g.append(el('circle', { cx: x, cy: y, r: 6 }), el('text', { x: x + 11, y: y + 7 }, name));
-      $('cities').append(g);
-    }
-    // A banner on each capital: pole, swallow-tailed cloth in the realm's colour, the realm's name.
-    REALMS.forEach(([name, color, city, ruler], i) => {
-      const [x, y] = P(CITIES[city]), g = el('g', { class: 'banner', transform: `translate(${x} ${y})` });
-      g.append(el('title', {}, `${name}: ${ruler}, at ${city}`));
-      g.append(el('line', { class: 'pole', x1: 0, y1: 4, x2: 0, y2: -76 }));
-      const cloth = el('path', { class: 'cloth wave', d: 'M0 -74 h54 l-12 15 12 15 h-54 z', fill: color });
-      cloth.style.animationDelay = `${-i * 0.7}s`;
-      g.append(cloth, el('circle', { cx: 0, cy: -78, r: 4.5, fill: '#d4a94f' }), el('text', { x: 0, y: 30 }, name));
-      $('banners').append(g);
-      const li = document.createElement('li');
-      li.innerHTML = `<i style="--c:${color}"></i>${name}`;
-      li.title = `${ruler}, at ${city}`;
-      $('realm-list').append(li);
-    });
-
-    $('view-map').addEventListener('click', () => { document.body.classList.add('map-only'); $('reopen').focus(); });
-    $('reopen').addEventListener('click', () => { document.body.classList.remove('map-only'); $('view-map').focus(); });
-    addEventListener('keydown', (e) => { if (e.key === 'Escape') document.body.classList.toggle('map-only'); });
-  </script>
+      <textarea id="plan-text" rows="3" maxlength="700" placeholder="Or tell us what eats your time…" aria-label="Your business, in a sentence or two"></textarea>
+      <button class="btn main wide" id="plan-go" type="button">Draft my plan</button>
+      <div id="plan-out" aria-live="polite"></div>
+      <p class="fine">Free · no sign-up · by <a href="https://umarkhatana.com" target="_blank" rel="noopener">Umar Khatana</a></p>
+    </form>
+  </dialog>
 </body>
 </html>
