@@ -1,7 +1,7 @@
 // The cards: click anything on the map or in a panel and its card opens. A province, a realm, an army, a person,
 // a war. Each card links to the others (a king's portrait opens the king, a war chip opens the war), with a back
 // button to retrace the steps. And the great-event card, which stops the story to show what just happened.
-import { PROV, PROVINCES, LAND, baseWealth, provincesOf, armiesOf, living, atWar, friendly, yieldOf, cavalryOf, rations, isWinter, dateText, yearOf, weatherOf, seasonName, ageOf, menOf,
+import { PROV, PROVINCES, LAND, baseWealth, word, provincesOf, armiesOf, living, atWar, friendly, yieldOf, cavalryOf, rations, isWinter, dateText, yearOf, weatherOf, seasonName, ageOf, menOf,
   prosperityOf, steersman, rulingTemper, treatiesOf, INVENTIONS, fortuneOf, cityOf, placeOf, onRoad, yearLabel } from './engine.js';
 import { TEMPER_TEXT } from './names.js';
 import { isGreat } from './engine.js';
@@ -89,7 +89,7 @@ function province(id) {
     </div>
     <div class="gives">${[['wheat', y.grain, 'grain this month'], ['horse', y.horses, 'horses a month'], ['anvil', y.iron, 'iron a month']].filter(([, v]) => v > 0).map(([i, v, t]) => `<span title="${t}">${icon(i)}${Math.round(v * 10) / 10}</span>`).join('')}<small>this month</small>${onRoad(st, id) ? `<span class="trade" title="Share of the Silk Road open to the caravans">${icon('palace')}${Math.round((st.trade?.[id] ?? 0) * 100)}% road</span>` : ''}</div>
     <div class="row season">${icon(WEATHER[w]?.[0] ?? (p.climate === 'cold' ? 'snow' : p.climate === 'monsoon' ? 'rain' : 'sun'))}<span>${esc(CLIMATE[p.climate])}</span> ${esc(WEATHER[w]?.[1] ?? `${seasonName(st.month)[0].toUpperCase()}${seasonName(st.month).slice(1)}: mild`)}</div>
-    ${works.length || q.building ? `<div class="row works">${works.map((k) => `<span class="work" title="${WORKS[k][1]}">${icon(WORKS[k][0])}</span>`).join('')}${q.building ? `<span class="building">${icon('hammer')} a ${esc(q.building.kind)} rising · ${months(q.building.left)}</span>` : ''}</div>` : ''}
+    ${works.length || q.building ? `<div class="row works">${works.map((k) => `<span class="work" title="${word(st, `worklabel.${k}`, WORKS[k][1])}">${icon(WORKS[k][0])}</span>`).join('')}${q.building ? `<span class="building">${icon('hammer')} a ${esc(word(st, `workname.${q.building.kind}`, q.building.kind))} rising · ${months(q.building.left)}</span>` : ''}</div>` : ''}
     ${q.siege ? `<div class="row alarm">${icon('tower')} Besieged by ${chip(q.siege.realm)} · ${months(q.siege.left)}</div>` : ''}
     ${here.length ? `<div class="row">${icon('banner')} ${here.map((a) => `<span class="chip" data-army="${a.id}"><i class="shield" style="--c:${colorOf(a.realm)}"></i>${men(a.size)}</span>`).join(' ')}</div>` : ''}
     ${deeds.length ? `<details class="deeds-reg"><summary>${icon('seal')} The registry of deeds</summary><ol>${deeds.map((d) => `<li><b>${yearLabel(yearOf(d.m, st))}</b> ${st.realms[d.realm] ? chip(d.realm) : esc(d.realm)} <small>${esc(HOW[d.how] ?? d.how)}</small>${sealLink(d.m)}</li>`).join('')}</ol>${S.chain ? `<p class="chain-note">Sealed each year on Base Sepolia: <a href="${S.chain.explorer}/address/${S.chain.address}" target="_blank" rel="noopener">the Chronicle contract</a></p>` : ''}</details>` : ''}

@@ -383,18 +383,30 @@ function paintRealmLabels() {
   for (const r of living(s)) {
     const mine = provincesOf(s, r.id);
     if (!mine.length) continue;
-    let area = 0, x = 0, y = 0;
+    const own = new Set(mine.map((p) => p.id)), seen = new Set(), blocks = [];
     for (const p of mine) {
-      area += p.area;
-      x += p.label[0] * p.area;
-      y += p.label[1] * p.area;
+      if (seen.has(p.id)) continue;
+      const block = [], stack = [p.id];
+      seen.add(p.id);
+      while (stack.length) {
+        const id = stack.pop();
+        block.push(PROV[id]);
+        for (const n of PROV[id].neighbors) if (own.has(n) && !seen.has(n)) { seen.add(n); stack.push(n); }
+      }
+      blocks.push(block);
     }
-    x /= area;
-    y /= area;
-    const size = Math.max(17, Math.min(64, Math.sqrt(area) / 6.4));
+    const areaOf = (b) => b.reduce((t, p) => t + p.area, 0);
+    blocks.sort((a, b) => areaOf(b) - areaOf(a));
+    const home = blocks.find((b) => b.some((p) => p.id === r.capital)) ?? blocks[0];
     const g = el('g', { 'data-realm': r.id, class: r.golden > s.month ? 'golden' : '' });
-    g.append(el('text', { class: 'realm-label', x, y, 'font-size': size, fill: ink(r.color, 0.62) }, r.short));
-    if (r.fa && size > 22) g.append(el('text', { class: 'realm-fa', x, y: y + size * 0.72, 'font-size': size * 0.55, fill: ink(r.color, 0.7) }, r.fa));
+    const at = (block) => { const area = areaOf(block); return [block.reduce((t, p) => t + p.label[0] * p.area, 0) / area, block.reduce((t, p) => t + p.label[1] * p.area, 0) / area]; };
+    const [hx, hy] = at(home);
+    for (const block of [home, ...blocks.filter((b) => b !== home && Math.sqrt(areaOf(b)) / 6.4 >= 24 && Math.hypot(at(b)[0] - hx, at(b)[1] - hy) > 1000)].slice(0, 3)) { // far-off dominions only
+      const area = areaOf(block), [x, y] = at(block);
+      const size = Math.max(17, Math.min(64, Math.sqrt(area) / 6.4));
+      g.append(el('text', { class: 'realm-label', x, y, 'font-size': size, fill: ink(r.color, 0.62) }, r.short));
+      if (r.fa && size > 22 && block === home) g.append(el('text', { class: 'realm-fa', x, y: y + size * 0.72, 'font-size': size * 0.55, fill: ink(r.color, 0.7) }, r.fa));
+    }
     layer.realms.append(g);
   }
 }

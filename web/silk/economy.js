@@ -1,7 +1,7 @@
 // What a realm lives on: gold, grain, horses and iron; how prosperous each province is; the caravans of the Silk
 // Road, which pay only along its open stretches; and the works rulers build.
 import { RULES as R } from './rules.js';
-import { PROV, PROVINCES, baseWealth, onRoad, provincesOf, armiesOf, menOf, living, atWar, allied, harvestOf, weatherOf, clamp, round1, rngFor, newChar, newArmy, say, poss, nameOf, cityOf, usedNames, yearOf, key, menText } from './core.js';
+import { PROV, PROVINCES, baseWealth, word, onRoad, provincesOf, armiesOf, menOf, living, atWar, allied, harvestOf, weatherOf, clamp, round1, rngFor, newChar, newArmy, say, poss, nameOf, cityOf, usedNames, yearOf, key, menText } from './core.js';
 import { personName, pickTemper } from './names.js';
 
 const T = (s, c, role, k) => R.temper[role]?.[s.chars[c]?.temper]?.[k];
@@ -239,7 +239,7 @@ function works(s, emit) {
     q.building = null;
     const who = s.chars[b.by];
     if (who) who.deeds.works++;
-    emit('built', `${who?.alive ? nameOf(s, who.id) : say(s, q.owner, 'completes')} ${who?.alive ? WORK_TEXT[b.kind] : `a ${b.kind} at`} ${cityOf(s, pr.id)}`, { realms: [q.owner], at: pr.id, chars: who ? [who.id] : [], work: b.kind });
+    emit('built', `${who?.alive ? nameOf(s, who.id) : say(s, q.owner, 'completes')} ${who?.alive ? word(s, `work.${b.kind}`, WORK_TEXT[b.kind]) : `a ${word(s, `workname.${b.kind}`, b.kind)} at`} ${cityOf(s, pr.id)}`, { realms: [q.owner], at: pr.id, chars: who ? [who.id] : [], work: b.kind });
   }
 }
 

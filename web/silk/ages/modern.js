@@ -142,15 +142,15 @@ const g = (name, skill, traits, at, born, title) => ({ name, skill, traits, at, 
 
 const REALMS = [
   // the great powers
-  r('uk', 'British Empire', 'Britain', '#d0657a', 'london', k('George V', 'King', 1865, 1910, ['steadfast', 'cautious'], 3), { seats: ['delhi', 'bengal', 'konkan', 'kanchi', 'pegu', 'kedah', 'soba', 'mombasa', 'ife', 'zimbabwe'], dynasty: 'Saxe-Coburg', fa: 'Britannia', heir: { name: 'Edward', title: 'Prince of Wales', born: 1894, traits: ['restless', 'proud'], relation: 'son' },
+  r('uk', 'British Empire', 'Britain', '#d0657a', 'london', k('George V', 'King', 1865, 1910, ['steadfast', 'cautious'], 3), { seats: ['delhi', 'bengal', 'konkan', 'kanchi', 'pegu', 'kedah', 'soba', 'mombasa', 'ife', 'zimbabwe'], dynasty: 'Saxe-Coburg', fa: 'Britannia', heir: { name: 'Edward', title: 'Prince', born: 1894, traits: ['restless', 'proud'], relation: 'son' },
     generals: [g('John French', 3, ['proud'], 'london', 1852, 'Field Marshal'), g('Douglas Haig', 3, ['steadfast', 'cruel'], 'london', 1861, 'General'), g('Horatio Kitchener', 4, ['steadfast'], 'soba', 1850, 'Field Marshal'),
       g('Charles Townshend', 3, ['ambitious', 'bold'], 'konkan', 1861, 'General'), g('Edmund Allenby', 4, ['bold'], 'delhi', 1861, 'General')] }),
   r('france', 'French Republic', 'France', '#3d5fa8', 'paris', k('Raymond Poincaré', 'President', 1860, 1913, ['shrewd', 'proud'], 3), { elective: true, seats: ['bejaia', 'takrur', 'kangaba', 'angkor'], fa: 'République française', dynasty: 'Third Republic',
     generals: [g('Joseph Joffre', 4, ['steadfast'], 'champagne', 1852, 'General'), g('Ferdinand Foch', 5, ['bold'], 'burgundy', 1851, 'General'), g('Philippe Pétain', 4, ['cautious'], 'paris', 1856, 'General'),
       g('Joseph Gallieni', 4, ['shrewd'], 'paris', 1849, 'General'), g('Hubert Lyautey', 4, ['shrewd'], 'tlemcen', 1854, 'General')] }),
-  r('germany', 'German Empire', 'Germany', '#6a6a6a', 'brandenburg', k('Wilhelm II', 'Kaiser', 1859, 1888, ['proud', 'restless'], 2), { dynasty: 'Hohenzollern', fa: 'Deutsches Reich', seats: ['kilwa', 'jinan', 'njimi'], heir: { name: 'Wilhelm of Prussia', title: 'Crown Prince', born: 1882, traits: ['proud', 'bold'], relation: 'son' },
+  r('germany', 'German Empire', 'Germany', '#6a6a6a', 'brandenburg', k('Wilhelm II', 'Kaiser', 1859, 1888, ['proud', 'restless'], 2), { dynasty: 'Hohenzollern', fa: 'Deutsches Reich', seats: ['kilwa', 'jinan', 'njimi'], heir: { name: 'Wilhelm', title: 'Crown Prince', born: 1882, traits: ['proud', 'bold'], relation: 'son' },
     generals: [g('Helmuth von Moltke', 3, ['cautious'], 'cologne', 1848, 'General'), g('Paul von Hindenburg', 5, ['steadfast'], 'prussia', 1847, 'Field Marshal'), g('Erich Ludendorff', 5, ['ambitious', 'scheming'], 'cologne', 1865, 'General'),
-      g('Erich von Falkenhayn', 4, ['cruel'], 'lorraine', 1861, 'General'), { ...g('Wilhelm of Prussia', 2, ['proud'], 'alsace'), heir: true }, g('Paul von Lettow-Vorbeck', 5, ['bold'], 'kilwa', 1870, 'Colonel'),
+      g('Erich von Falkenhayn', 4, ['cruel'], 'lorraine', 1861, 'General'), { ...g('Wilhelm', 2, ['proud'], 'alsace'), heir: true }, g('Paul von Lettow-Vorbeck', 5, ['bold'], 'kilwa', 1870, 'Colonel'),
       g('Alfred Meyer-Waldeck', 2, ['steadfast'], 'jinan', 1864, 'Captain')] }),
   r('austria', 'Austria-Hungary', 'Austria', '#c9a84a', 'austria', k('Franz Joseph', 'Emperor', 1830, 1848, ['steadfast', 'cautious'], 2), { dynasty: 'Habsburg', fa: 'Österreich-Ungarn', heir: { name: 'Franz Ferdinand', title: 'Archduke', born: 1863, traits: ['proud', 'cautious'], relation: 'nephew' },
     generals: [g('Franz Conrad von Hötzendorf', 3, ['ambitious', 'bold'], 'austria', 1852, 'General'), g('Oskar Potiorek', 2, ['proud'], 'dalmatia', 1853, 'General'), g('Svetozar Boroević', 4, ['steadfast'], 'croatia', 1856, 'General'),
@@ -158,7 +158,7 @@ const REALMS = [
   r('russia', 'Russian Empire', 'Russia', '#5e8f4e', 'novgorod', k('Nicholas II', 'Tsar', 1868, 1894, ['timid', 'steadfast'], 2), { dynasty: 'Romanov', fa: 'Россія', levy: 1.15, seats: ['vladimir', 'kiev', 'kartli', 'shash', 'barga'], heir: { name: 'Alexei', title: 'Tsarevich', born: 1904, traits: ['ailing'], relation: 'son' },
     generals: [g('Grand Duke Nicholas', 3, ['proud'], 'masovia', 1856, 'Grand Duke'), g('Alexei Brusilov', 5, ['bold'], 'volhynia', 1853, 'General'), g('Alexander Samsonov', 2, ['bold'], 'lithuania', 1859, 'General'),
       g('Paul von Rennenkampf', 2, ['cautious'], 'livonia', 1854, 'General'), g('Nikolai Yudenich', 4, ['steadfast'], 'kartli', 1862, 'General'), g('Mikhail Alekseyev', 4, ['wise'], 'kiev', 1857, 'General')] }),
-  r('italy', 'Kingdom of Italy', 'Italy', '#4a9a5e', 'rome', k('Victor Emmanuel III', 'King', 1869, 1900, ['cautious', 'shrewd'], 3), { dynasty: 'Savoy', fa: 'Italia', seats: ['tripolitania'], heir: { name: 'Umberto', title: 'Prince of Piedmont', born: 1904, traits: ['proud'], relation: 'son' },
+  r('italy', 'Kingdom of Italy', 'Italy', '#4a9a5e', 'rome', k('Victor Emmanuel III', 'King', 1869, 1900, ['cautious', 'shrewd'], 3), { dynasty: 'Savoy', fa: 'Italia', seats: ['tripolitania'], heir: { name: 'Umberto', title: 'Prince', born: 1904, traits: ['proud'], relation: 'son' },
     generals: [g('Luigi Cadorna', 3, ['cruel', 'proud'], 'venice', 1850, 'General'), g('Armando Diaz', 4, ['steadfast'], 'milan', 1861, 'General'), g('Pietro Badoglio', 3, ['ambitious'], 'tripolitania', 1871, 'General')] }),
   r('ottoman', 'Ottoman Empire', 'Ottomans', '#9a3030', 'constantinople', k('Mehmed V', 'Sultan', 1844, 1909, ['timid'], 1), { plural: true, seats: ['damascus', 'baghdad', 'erzurum'], dynasty: 'House of Osman', fa: 'Devlet-i Aliyye', heir: { name: 'Mehmed Vahideddin', title: 'Prince', born: 1861, traits: ['scheming'], relation: 'brother' },
     generals: [g('Mustafa Kemal', 5, ['bold', 'proud'], 'thrace', 1881, 'Colonel'), g('Djemal Pasha', 3, ['cruel'], 'damascus', 1872, 'Pasha'), g('Otto Liman von Sanders', 4, ['steadfast'], 'constantinople', 1855, 'General'),
@@ -169,21 +169,21 @@ const REALMS = [
     generals: [g('Duan Qirui', 3, ['ambitious'], 'zhongdu', 1865), g('Feng Guozhang', 3, ['cautious'], 'jiankang', 1859), g('Cao Kun', 2, ['greedy'], 'kaifeng', 1862), g('Zhang Zuolin', 3, ['ambitious', 'scheming'], 'liaoyang', 1875),
       g('Cai E', 4, ['bold', 'just'], 'dali', 1882), g('Yang Zengxin', 3, ['shrewd'], 'qocho', 1864)] }),
   // the rest of Europe
-  r('spain', 'Kingdom of Spain', 'Spain', '#d6a94e', 'toledo', k('Alfonso XIII', 'King', 1886, 1886, ['proud', 'shrewd'], 3), { dynasty: 'Bourbon', fa: 'España', heir: { name: 'Alfonso', title: 'Prince of Asturias', born: 1907, traits: ['ailing'], relation: 'son' },
+  r('spain', 'Kingdom of Spain', 'Spain', '#d6a94e', 'toledo', k('Alfonso XIII', 'King', 1886, 1886, ['proud', 'shrewd'], 3), { dynasty: 'Bourbon', fa: 'España', heir: { name: 'Alfonso', title: 'Prince', born: 1907, traits: ['ailing'], relation: 'son' },
     generals: [g('Miguel Primo de Rivera', 3, ['ambitious'], 'seville', 1870, 'General'), g('Dámaso Berenguer', 3, ['cautious'], 'granada', 1873, 'General')] }),
   r('portugal', 'Portuguese Republic', 'Portugal', '#3f7f46', 'lisbon', k('Manuel de Arriaga', 'President', 1840, 1911, ['wise'], 2), { elective: true, seats: ['sofala'], fa: 'Portugal', dynasty: 'First Republic',
     generals: [g('Sidónio Pais', 3, ['ambitious'], 'lisbon', 1872, 'Major'), g('Fernando Tamagnini', 2, ['steadfast'], 'portugal', 1856, 'General'), g('Pereira de Eça', 3, ['bold'], 'sofala', 1852, 'General')] }),
   r('netherlands', 'Kingdom of the Netherlands', 'Netherlands', '#e0812e', 'frisia', k('Wilhelmina', 'Queen', 1880, 1890, ['steadfast', 'wise'], 3), { dynasty: 'Orange-Nassau', fa: 'Nederland', seats: ['kediri'], heir: { name: 'Juliana', title: 'Princess', born: 1909, traits: ['just'], relation: 'daughter' },
     generals: [g('Cornelis Snijders', 2, ['cautious'], 'frisia', 1852, 'General'), g('Johan van Heutsz', 3, ['cruel'], 'kediri', 1851, 'General')] }),
-  r('belgium', 'Kingdom of Belgium', 'Belgium', '#b39a35', 'flanders', k('Albert I', 'King', 1875, 1909, ['bold', 'just'], 4), { dynasty: 'Saxe-Coburg', fa: 'Belgique', heir: { name: 'Leopold', title: 'Duke of Brabant', born: 1901, traits: ['proud'], relation: 'son' },
+  r('belgium', 'Kingdom of Belgium', 'Belgium', '#b39a35', 'flanders', k('Albert I', 'King', 1875, 1909, ['bold', 'just'], 4), { dynasty: 'Saxe-Coburg', fa: 'Belgique', heir: { name: 'Leopold', title: 'Prince', born: 1901, traits: ['proud'], relation: 'son' },
     generals: [g('Gérard Leman', 3, ['steadfast'], 'flanders', 1851, 'General')] }),
   r('denmark', 'Kingdom of Denmark', 'Denmark', '#b03a44', 'zealand', k('Christian X', 'King', 1870, 1912, ['proud', 'steadfast'], 3), { dynasty: 'Glücksburg', fa: 'Danmark', heir: { name: 'Frederik', title: 'Crown Prince', born: 1899, traits: ['restless'], relation: 'son' } }),
   r('sweden', 'Kingdom of Sweden', 'Sweden', '#3a6ab0', 'uppland', k('Gustaf V', 'King', 1858, 1907, ['cautious'], 3), { dynasty: 'Bernadotte', fa: 'Sverige', heir: { name: 'Gustaf Adolf', title: 'Crown Prince', born: 1882, traits: ['wise'], relation: 'son' } }),
   r('norway', 'Kingdom of Norway', 'Norway', '#8a3a5a', 'viken', k('Haakon VII', 'King', 1872, 1905, ['steadfast', 'just'], 3), { dynasty: 'Glücksburg', fa: 'Norge', heir: { name: 'Olav', title: 'Crown Prince', born: 1903, traits: ['bold'], relation: 'son' } }),
-  r('serbia', 'Kingdom of Serbia', 'Serbia', '#9a4466', 'ras', k('Peter I', 'King', 1844, 1903, ['steadfast'], 3), { dynasty: 'Karađorđević', fa: 'Србија', levy: 2.4, heir: { name: 'Alexander', title: 'Prince Regent', born: 1888, traits: ['ambitious', 'bold'], relation: 'son' },
+  r('serbia', 'Kingdom of Serbia', 'Serbia', '#9a4466', 'ras', k('Peter I', 'King', 1844, 1903, ['steadfast'], 3), { dynasty: 'Karađorđević', fa: 'Србија', levy: 2.4, heir: { name: 'Alexander', title: 'Prince', born: 1888, traits: ['ambitious', 'bold'], relation: 'son' },
     generals: [g('Radomir Putnik', 5, ['steadfast', 'wise'], 'ras', 1847, 'Vojvoda'), g('Živojin Mišić', 4, ['bold'], 'ras', 1855, 'General'), g('Dragutin Dimitrijević', 3, ['scheming'], 'ras', 1876, 'Colonel')],
     court: [{ name: 'Nikola Pašić', role: 'prime minister', born: 1845 }] }),
-  r('bulgaria', 'Kingdom of Bulgaria', 'Bulgaria', '#5a9a6e', 'sofia', k('Ferdinand I', 'Tsar', 1861, 1887, ['shrewd', 'scheming'], 3), { dynasty: 'Saxe-Coburg', fa: 'България', levy: 1.5, heir: { name: 'Boris', title: 'Prince of Tarnovo', born: 1894, traits: ['cautious'], relation: 'son' },
+  r('bulgaria', 'Kingdom of Bulgaria', 'Bulgaria', '#5a9a6e', 'sofia', k('Ferdinand I', 'Tsar', 1861, 1887, ['shrewd', 'scheming'], 3), { dynasty: 'Saxe-Coburg', fa: 'България', levy: 1.5, heir: { name: 'Boris', title: 'Prince', born: 1894, traits: ['cautious'], relation: 'son' },
     generals: [g('Nikola Žekov', 3, ['steadfast'], 'sofia', 1864, 'General')] }),
   r('romania', 'Kingdom of Romania', 'Romania', '#c9a23a', 'wallachia', k('Carol I', 'King', 1839, 1866, ['wise', 'cautious'], 3), { dynasty: 'Hohenzollern-Sigmaringen', fa: 'România', levy: 1.5, heir: { name: 'Ferdinand', title: 'Crown Prince', born: 1865, traits: ['timid'], relation: 'nephew' },
     generals: [g('Alexandru Averescu', 4, ['ambitious'], 'wallachia', 1859, 'General')] }),
@@ -355,6 +355,10 @@ export default {
     guild: 'An anarchist cell gathers in the back streets of',
     siege: 'besieges',
     storm: 'storms the forts of',
+    'work.canal': 'builds a dam and canals to water the fields of', 'workname.canal': 'dam', 'worklabel.canal': 'Dam and canals: more grain',
+    'work.caravanserai': 'opens a railway junction at', 'workname.caravanserai': 'railway junction', 'worklabel.caravanserai': 'Railway junction: more trade',
+    'work.market': 'opens a great factory in', 'workname.market': 'factory', 'worklabel.market': 'Factory: more gold',
+    'work.library': 'founds a university in', 'workname.library': 'university', 'worklabel.library': 'University: more learning',
   },
   setup(s) {
     // Widowers: the world gave them a wife; history did not.
@@ -422,11 +426,11 @@ function crisis(s, rng, emit) {
   const onAt = (a, ...foes) => foes.some((b) => atWar(s, a, b));
   if (m === monthOf(s, 1914, 5) && !f.sarajevo) { // 28 June 1914
     f.sarajevo = true;
-    const A = s.realms.austria, ff = s.chars[A?.heir];
-    if (alive(s, 'austria') && ff?.alive && ff.name === 'Franz Ferdinand' && s.provinces.dalmatia.owner === 'austria' && alive(s, 'serbia')) {
-      die(s, ff.id, 'assassin', emit, rng, `is shot dead with his wife Sophie in the streets of ${cityOf(s, 'dalmatia')} by Gavrilo Princip, a Bosnian Serb student`);
+    const A = s.realms.austria, ff = Object.values(s.chars).find((c) => c.alive && c.realm === 'austria' && c.name === 'Franz Ferdinand');
+    if (alive(s, 'austria') && ff && s.provinces.dalmatia.owner === 'austria' && alive(s, 'serbia')) {
       const karl = Object.values(s.chars).find((c) => c.alive && c.realm === 'austria' && c.name === 'Archduke Karl');
-      if (karl) { Object.assign(karl, { role: 'heir', relation: 'great-nephew' }); A.heir = karl.id; }
+      if (karl && (A.heir === ff.id || A.ruler === ff.id)) { Object.assign(karl, { role: 'heir', relation: 'great-nephew' }); A.heir = karl.id; } // the crown passes to Karl
+      die(s, ff.id, 'assassin', emit, rng, `is shot dead with his wife Sophie in the streets of ${cityOf(s, 'dalmatia')} by Gavrilo Princip, a Bosnian Serb student`);
       f.crisis = m;
     }
   }
