@@ -9,3 +9,4 @@ contracts/cache/
 contracts/lib/
 deployments/local.json
 __pycache__/
+tools/art-raw/

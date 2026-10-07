@@ -15,6 +15,9 @@
   "durable_objects": { "bindings": [{ "name": "WORLD", "class_name": "World" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["World"] }],
 
+  // Workers AI (free: 10,000 neurons a day): the paintings in web/art/, made once by tools/art.js.
+  "ai": { "binding": "AI" },
+
   // Every 10 minutes: keep n8n awake, and read prices or weather directly if n8n has gone quiet.
   "triggers": { "crons": ["*/10 * * * *"] },
 
