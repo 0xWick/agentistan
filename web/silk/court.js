@@ -299,7 +299,7 @@ export function split(s, id, gid, rng, emit, why = 'breaks away', said) {
   if (!taken.length) return;
   const seat = taken[0].id, culture = cultureOf(seat, s);
   if (a.battle) return;
-  const nid = newRealm(s, rng, { name: kingdomName(culture, placeOf(s, seat)), short: placeOf(s, seat), capital: seat, ruler: gid, origin: 'split', color: colorFor(rng) });
+  const nid = newRealm(s, rng, { name: kingdomName(culture, placeOf(s, seat)), short: placeOf(s, seat), capital: seat, ruler: gid, origin: 'split', color: colorFor(rng), from: id });
   Object.assign(g, { title: titleFor(culture), temper: R.temper.ruler[g.temper] ? g.temper : 'conqueror', landAtStart: taken.length });
   for (const p of taken) { setOwner(s, p.id, nid, 'secession'); Object.assign(s.provinces[p.id], { loyalty: Math.max(40, s.provinces[p.id].loyalty), siege: null }); }
   a.realm = nid;

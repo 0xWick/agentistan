@@ -2,7 +2,7 @@
 // inventions that spread across borders and by conquest; and each realm's fortune, read every January: golden ages,
 // decline and poverty.
 import { RULES as R } from './rules.js';
-import { PROVINCES, PROV, baseWealth, onRoad, provincesOf, living, atWar, weatherOf, clamp, round1, chance, pick, short, ofR, say, vb, poss, fullName, cityOf, placeOf, yearOf } from './core.js';
+import { PROVINCES, PROV, baseWealth, word, onRoad, provincesOf, living, atWar, weatherOf, clamp, round1, chance, pick, short, ofR, say, vb, poss, fullName, cityOf, placeOf, yearOf } from './core.js';
 import { prosperityOf, steersman } from './economy.js';
 
 // The inventions an age can know. Effects live where they act (knows(realm, id) in economy.js and war.js).
@@ -42,7 +42,7 @@ export function world(s, rng, emit) {
 function seasons(s, emit) {
   const mo = s.month % 12;
   const held = (pred) => PROVINCES.filter((p) => pred(p) && s.provinces[p.id].owner);
-  if (mo === 11 && held((p) => p.climate === 'cold').length) emit('season', 'Winter: snow closes the passes of the north, the herds grow thin, and armies seek winter quarters', { weather: 'snow' });
+  if (mo === 11 && held((p) => p.climate === 'cold').length) emit('season', word(s, 'winter', 'Winter: snow closes the passes of the north, the herds grow thin, and armies seek winter quarters'), { weather: 'snow' });
   if (mo === 5 && held((p) => p.climate === 'monsoon').length) emit('season', 'The monsoon breaks over India and the south of China: rivers flood and campaigns halt until autumn', { weather: 'rains' });
   if (mo === 6 && held((p) => p.climate === 'arid').length) emit('season', 'High summer: the deserts burn, and armies caught in them wilt', { weather: 'heat', minor: true });
   if (mo === 7) emit('season', 'Harvest: the granaries of the temperate lands fill for the year', { weather: 'harvest', minor: true });
@@ -131,14 +131,14 @@ function learning(s, rng, emit) {
       const teachers = [...next].filter((o) => s.realms[o]?.known?.includes(inv));
       if (teachers.length && chance(rng, L.spread * (1 + teachers.length * 0.3) * (atWar(s, r.id, teachers[0]) ? 0.5 : 1))) {
         r.known.push(inv);
-        emit('invention', `${INVENTIONS[inv].name} reaches ${ofR(s, r.id)} from ${ofR(s, pick(rng, teachers))}: ${INVENTIONS[inv].text.toLowerCase()}`, { realms: [r.id], invention: inv, minor: true });
+        emit('invention', `${INVENTIONS[inv].name} ${/s$|^Bills|^Aircraft/.test(INVENTIONS[inv].name) ? 'reach' : 'reaches'} ${ofR(s, r.id)} from ${ofR(s, pick(rng, teachers))}: ${INVENTIONS[inv].text.toLowerCase()}`, { realms: [r.id], invention: inv, minor: true });
         break;
       }
       if (r.learning >= INVENTIONS[inv].cost * 2.5 && chance(rng, 0.05)) {
         r.learning = round1(r.learning - INVENTIONS[inv].cost * 2);
         r.known.push(inv);
         const best = [...mine].sort((a, b) => baseWealth(s, b.id) - baseWealth(s, a.id))[0];
-        emit('invention', `The scholars of ${cityOf(s, best.id)} work out ${INVENTIONS[inv].name.toLowerCase()} for ${ofR(s, r.id)}: ${INVENTIONS[inv].text.toLowerCase()}`, { realms: [r.id], at: best.id, invention: inv, first: !living(s).some((o) => o.id !== r.id && o.known.includes(inv)) });
+        emit('invention', `${word(s, 'scholars', 'The scholars of')} ${cityOf(s, best.id)} work out ${INVENTIONS[inv].name.toLowerCase()} for ${ofR(s, r.id)}: ${INVENTIONS[inv].text.toLowerCase()}`, { realms: [r.id], at: best.id, invention: inv, first: !living(s).some((o) => o.id !== r.id && o.known.includes(inv)) });
         break;
       }
     }

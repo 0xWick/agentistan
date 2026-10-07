@@ -188,12 +188,12 @@ export function newArmy(s, realm, general, at, size) {
 const PALETTE = ['#8e4b2f', '#3d6b8c', '#7a8c3d', '#8c3d6b', '#4b8c7a', '#9a6a2a', '#5b4b8c', '#8c5b3d', '#2f6f6f', '#a0523a', '#6b7a2f', '#7a3d3d'];
 export const colorFor = (rng) => pick(rng, PALETTE);
 
-export function newRealm(s, rng, { name, short: sh, capital, ruler, origin, color, nomad = false, rebel = false, cause = null, elective = false, plural = rebel }) {
+export function newRealm(s, rng, { name, short: sh, capital, ruler, origin, color, nomad = false, rebel = false, cause = null, elective = false, plural = rebel, from = cause }) {
   const id = `${origin}${s.nextId++}`;
   s.realms[id] = {
     id, name, short: sh, plural, color: color ?? colorFor(rng), capital, ai: false, nomad, agents: false, overlord: null, gold: 10, grain: 10, horses: 2, iron: 4, tax: 'normal', ruler, heir: null,
     power: null, origin, founded: s.month, fallen: false, plan: null, rebel, cause, culture: cultureOf(capital, s), fa: s.names?.[capital]?.fa ?? PROV[capital].fa, lineage: [],
-    dynasty: ruler ? `House of ${s.chars[ruler].name}` : null, elective, rep: R.reputation.start, known: [], learning: 0, fortune: [], golden: null, reforms: [], regent: null, vizier: null,
+    dynasty: ruler ? `House of ${s.chars[ruler].name}` : null, elective, rep: R.reputation.start, known: [...(s.realms[from]?.known ?? [])], learning: 0, fortune: [], golden: null, reforms: [], regent: null, vizier: null,
   };
   if (ruler) Object.assign(s.chars[ruler], { realm: id, role: 'ruler', since: yearOf(s.month, s), family: s.realms[id].dynasty });
   realmsChanged(s);

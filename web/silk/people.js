@@ -1,7 +1,7 @@
 // The people: how loyal each province is, and what happens when they are not. Provinces revolt; distant governors
 // break away; barons force a charter on a bad king; a capital rises; rich cities make themselves communes.
 import { RULES as R } from './rules.js';
-import { PROVINCES, PROV, baseWealth, provincesOf, living, atWar, key, setOwner, hops, clamp, round1, between, chance, pick, newChar, newArmy, newRealm,
+import { PROVINCES, PROV, baseWealth, word, provincesOf, living, atWar, key, setOwner, hops, clamp, round1, between, chance, pick, newChar, newArmy, newRealm,
   short, ofR, say, vb, his, fullName, cityOf, placeOf, ageOf, usedNames, yearOf } from './core.js';
 import { wealthOf, rulerTemper, rulingTemper, prosperityOf } from './economy.js';
 import { declareWar, fall } from './war.js';
@@ -80,7 +80,7 @@ function unrest(s, r, rng, emit, dist) {
   if (!r.nomad && !r.elective && mine.length >= 5 && !(r.charter > s.month) && avg < 42 && ['tyrant', 'negligent', 'hedonist', 'miser', 'paranoid'].includes(rulingTemper(s, r)) && chance(rng, U.charter)) {
     r.charter = s.month + 120;
     for (const p of mine) s.provinces[p.id].loyalty = clamp(s.provinces[p.id].loyalty + 12, 0, 100);
-    emit('charter', `The great lords of ${ofR(s, r.id)} force ${fullName(ruler)} to seal a charter: no heavy taxes without their consent`, { realms: [r.id], chars: [ruler.id], at: r.capital });
+    emit('charter', `${word(s, 'charter.who', 'The great lords of')} ${ofR(s, r.id)} force ${fullName(ruler)} ${word(s, 'charter.what', 'to seal a charter: no heavy taxes without their consent')}`, { realms: [r.id], chars: [ruler.id], at: r.capital });
     return;
   }
   // The capital itself rises: the ruler is cast down, and a lord of the city takes the throne.
@@ -107,7 +107,7 @@ function unrest(s, r, rng, emit, dist) {
 function separatist(s, r, pid, rng, emit, dist) {
   const culture = cultureOf(pid, s);
   const gov = newChar(s, { name: personName(rng, culture, usedNames(s)), role: 'ruler', realm: null, born: yearOf(s.month, s) - 30 - Math.floor(rng() * 20), temper: pickTemper(rng, R.temper.ruler), skill: 2 + Math.floor(rng() * 3), invented: true, culture });
-  const nid = newRealm(s, rng, { name: kingdomName(culture, placeOf(s, pid)), short: placeOf(s, pid), capital: pid, ruler: gov, origin: 'separatist' });
+  const nid = newRealm(s, rng, { name: kingdomName(culture, placeOf(s, pid)), short: placeOf(s, pid), capital: pid, ruler: gov, origin: 'separatist', from: r.id });
   s.chars[gov].title = titleFor(culture);
   const with_ = PROV[pid].neighbors.filter((n) => s.provinces[n].owner === r.id && n !== r.capital && (dist?.[n] ?? 0) >= R.unrest.separatistHops - 1 && s.provinces[n].loyalty < 50).slice(0, 2);
   for (const p of [pid, ...with_]) { setOwner(s, p, nid, 'secession'); Object.assign(s.provinces[p], { loyalty: 55, conquered: 0, siege: null }); }
@@ -120,7 +120,7 @@ function separatist(s, r, pid, rng, emit, dist) {
 function commune(s, r, pid, rng, emit) {
   const culture = cultureOf(pid, s);
   const consul = newChar(s, { name: personName(rng, culture, usedNames(s)), role: 'ruler', realm: null, born: yearOf(s.month, s) - 40 - Math.floor(rng() * 15), temper: pick(rng, ['diplomat', 'builder', 'miser']), skill: 3, invented: true, culture });
-  const nid = newRealm(s, rng, { name: `Commune of ${cityOf(s, pid)}`, short: cityOf(s, pid), capital: pid, ruler: consul, origin: 'commune', elective: true });
+  const nid = newRealm(s, rng, { name: `Commune of ${cityOf(s, pid)}`, short: cityOf(s, pid), capital: pid, ruler: consul, origin: 'commune', elective: true, from: r.id });
   Object.assign(s.chars[consul], { title: culture === 'latin' ? 'Podestà' : 'Consul' });
   setOwner(s, pid, nid, 'commune');
   Object.assign(s.provinces[pid], { loyalty: 70, conquered: 0 });
