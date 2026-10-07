@@ -398,7 +398,7 @@ function endBattle(s, bt, winner, emit, quiet = false, rng = rngFor('age', s.age
     ? `${short(s, lr)} ${vb(s, lr, 'breaks')} off the battle at ${cityOf(s, bt.at)} and ${vb(s, lr, 'withdraws')}${long}: ${menText(lostL + lostW)} have fallen`
     : `${short(s, wr)} ${vb(s, wr, crushing ? 'crushes' : 'defeats')} ${ofR(s, lr)} at ${cityOf(s, bt.at)}${long}: ${menText(lostL)} of ${ofR(s, lr)} fall, ${menText(lostW)} of ${ofR(s, wr)}`
       + planNote(s, bt, winner);
-  emit('battle', text, { realms: [wr, lr], at: bt.at, chars: [...W, ...L].map((x) => x.general).filter(Boolean).concat(fallen), winner: wr, war: bt.war, battle: bt.id, lost: [round1(lostW), round1(lostL)], rounds: bt.rounds, tactics: plans(s, bt), commanded: (bt.tactic?.[winner]?.by === 'ruler' ? [wr] : []), minor: bt.start[0] + bt.start[1] < 8 && bt.rounds === 1 });
+  emit('battle', text, { realms: [wr, lr], at: bt.at, chars: [...W, ...L].map((x) => x.general).filter(Boolean).concat(fallen), winner: wr, war: bt.war, battle: bt.id, lost: [round1(lostW), round1(lostL)], rounds: bt.rounds, tactics: plans(s, bt), sides: [bt.ra[0], bt.rd[0]], commanded: (bt.tactic?.[winner]?.by === 'ruler' ? [wr] : []), minor: bt.start[0] + bt.start[1] < 8 && bt.rounds === 1 });
   const c = s.conflicts[bt.war];
   if (c) {
     c.battles++;

@@ -9,7 +9,7 @@ import { hire, ask } from './court.js';
 import { nameHeir, abdicate } from './players.js';
 import { tacticsOf, generalsChoice } from './tactics.js';
 
-export const ACTS = ['war', 'peace', 'ally', 'submit', 'independence', 'power', 'hire', 'build', 'claim', 'heir', 'abdicate', 'tactic', 'army'];
+export const ACTS = ['war', 'peace', 'ally', 'submit', 'independence', 'power', 'hire', 'build', 'claim', 'heir', 'abdicate', 'tactic', 'army', 'demand'];
 
 export function act(s, id, a, rng, emit) {
   const r = s.realms[id];
@@ -67,6 +67,16 @@ export function act(s, id, a, rng, emit) {
     case 'claim': return arbitrate(s, id, a.place, rng, emit);
     case 'heir': return nameHeir(s, id, a.char, emit);
     case 'abdicate': return abdicate(s, id, emit);
+    case 'demand': { // an ultimatum: bow to us as our client state, or face war
+      if (!t || t.fallen || t.overlord || atWar(s, id, t.id) || allied(s, id, t.id) || r.overlord === t.id) return false;
+      if (s.players?.[t.id]) {
+        const them = steersman(s, t);
+        if (!them) return false;
+        ask(s, { kind: 'ultimatum', char: them.id, realm: t.id, from: id, options: ['bow', 'refuse'], question: `${ofR(s, id).replace(/^./, (c) => c.toUpperCase())} ${vb(s, id, 'demands')} that you bow as ${s.realms[id].plural ? 'their' : 'its'} client state, and pay tribute. Bow, or refuse and face war?` });
+        return true;
+      }
+      return ultimatum(s, id, t.id, acceptsUltimatum(s, t.id, id), emit);
+    }
     case 'tactic': { // the ruler orders his side's plan in a battle under way, or leaves it to the general
       const bt = s.battles[a.battle], side = bt?.ra.includes(id) ? 'a' : bt?.rd.includes(id) ? 'd' : null;
       if (!bt || !side || !(tacticsOf(s).includes(a.tactic) || a.tactic === 'general')) return false;
@@ -100,6 +110,17 @@ export function acceptsPeace(s, them, us) {
   const conqueror = ['conqueror', 'tyrant'].includes(rulingTemper(s, t));
   const together = living(s).some((x) => x.id !== them && allied(s, x.id, them) && atWar(s, x.id, us)); // allies still in the field
   return sideStrength(s, them, us) < sideStrength(s, us, them) * (conqueror ? 1.1 : 1.6) * (together ? 0.5 : 1) || long > (conqueror ? 72 : 48) * (together ? 1.5 : 1);
+}
+// A ruler faced with an ultimatum bows only to crushing strength, and never if he lives for war.
+export const acceptsUltimatum = (s, them, us) => strength(s, them) < strength(s, us) * R.submission.bows && !['conqueror', 'tyrant'].includes(rulingTemper(s, s.realms[them]));
+export function ultimatum(s, from, to, bows, emit) {
+  if (bows) {
+    s.realms[to].overlord = from;
+    const tid = treaty(s, 'vassal', [to, from], { name: `Submission of ${cityOf(s, s.realms[to].capital)}` });
+    emit('vassal', `${say(s, to, 'bows')} to the ultimatum of ${ofR(s, from)} and ${vb(s, to, 'becomes')} ${s.realms[from].plural ? 'their' : 'its'} client state`, { realms: [to, from], treaty: tid });
+    return true;
+  }
+  return declareWar(s, from, to, emit, { cause: 'border', breakTruce: true, text: `${say(s, to, 'refuses')} the ultimatum of ${ofR(s, from)}: war` });
 }
 export const acceptsAlliance = (s, them, us) => !s.realms[them].nomad && !s.realms[them].rebel && !atWar(s, them, us) && (s.realms[us].rep ?? 60) >= 35;
 

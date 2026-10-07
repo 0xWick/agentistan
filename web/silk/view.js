@@ -58,7 +58,7 @@ const SPEED = { 1: 3000, 4: 900, 16: 220 }; // ms per month
 const HOLD = { 1: 1800, 4: 900, 16: 0 }; // extra pause after a great event, so it can be read
 const shown = []; // the feed
 const setState = (x) => { s = x; S.s = x; };
-const total = () => s?.months ?? 672;
+const total = () => (s?.rule === 'hegemony' ? Math.min(s.months, Math.max(240, Math.ceil(((story.frontier || s.month) + 60) / 120) * 120)) : s?.months ?? 672); // a long era: the track grows a decade at a time
 
 // ---------- the map, drawn once ----------
 const map = $('#map');
@@ -78,7 +78,7 @@ async function boot() {
   ({ width: W, height: H } = geo);
   xyOf = projector(geo.proj);
   map.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  for (const name of ['base', 'tiles', 'rivers', 'provs', 'weather', 'edges', 'road', 'regions', 'realms', 'cities', 'seats', 'marks', 'sieges', 'arrows', 'battles', 'armies', 'pulses']) map.append((layer[name] = el('g', { class: `l-${name}` })));
+  for (const name of ['base', 'tiles', 'rivers', 'provs', 'weather', 'edges', 'road', 'regions', 'realms', 'cities', 'seats', 'marks', 'sieges', 'arrows', 'fields', 'battles', 'armies', 'pulses']) map.append((layer[name] = el('g', { class: `l-${name}` })));
   // The parchment: a small picture of the whole world at once, then sharper tiles as the view closes in.
   layer.base.append(el('image', { href: '/world/base.webp', width: W, height: H, preserveAspectRatio: 'none' }));
   for (let lv = 1; lv < 4; lv++) layer.tiles.append((tileLayers[lv] = el('g')));
@@ -297,6 +297,7 @@ function step(months) {
 }
 
 function render(events, { quiet = false } = {}) {
+  if (total() !== last.total) { last.total = total(); ticks(); $('#track-events').innerHTML = ''; for (const evs of story.events) markTrack(evs ?? []); }
   const owner = PROVINCES.map((p) => s.provinces[p.id].owner);
   const ownerKey = owner.join(',');
   if (ownerKey !== last.owner) {
@@ -308,6 +309,7 @@ function render(events, { quiet = false } = {}) {
   paintSeats();
   paintArmies();
   paintBattles();
+  paintFields();
   paintSieges();
   paintMarks();
   if (!quiet) for (const e of events) pulse(e);
@@ -452,11 +454,12 @@ function paintArmies() {
   for (const [pid, list] of Object.entries(byPlace)) {
     list.forEach((a, i) => {
       live.add(a.id);
-      const [cx, cy] = PROV[pid].xy, dx = (i - (list.length - 1) / 2) * 34;
+      const bt = a.battle && s.battles[a.battle], side = bt ? (bt.a.includes(a.id) ? 'a' : 'd') : null;
+      const [cx, cy] = PROV[pid].xy, dx = side ? (side === 'a' ? -42 : 42) - (i % 2) * (side === 'a' ? 16 : -16) : (i - (list.length - 1) / 2) * 34; // in battle: the two sides face each other
       let g = layer.armies.querySelector(`[data-army="${a.id}"]`);
       if (!g) { // a standard over a medallion that shows who leads, and the army's size beneath
         g = el('g', { class: 'army', 'data-army': a.id });
-        g.innerHTML = '<line class="pole" x1="0" y1="-12" x2="0" y2="-46"/><path class="cloth" d="M0 -45h24l-5 6 5 6H0z"/><circle r="2.6" cy="-47" fill="#b3852c"/><circle class="medal" r="13"/><use class="leader" x="-9" y="-9" width="18" height="18"/><text y="28"></text>';
+        g.innerHTML = '<g class="body"><line class="pole" x1="0" y1="-12" x2="0" y2="-46"/><path class="cloth" d="M0 -45h24l-5 6 5 6H0z"/><circle r="2.6" cy="-47" fill="#b3852c"/><circle class="medal" r="13"/><use class="leader" x="-9" y="-9" width="18" height="18"/><text y="28"></text></g>';
         g.style.opacity = 0;
         layer.armies.append(g);
         requestAnimationFrame(() => (g.style.opacity = 1));
@@ -468,6 +471,8 @@ function paintArmies() {
       g.querySelector('.leader').setAttribute('href', `#i-${lead}`);
       g.classList.toggle('royal', lead !== 'helmet');
       g.classList.toggle('fighting', !!a.battle);
+      g.classList.toggle('side-a', side === 'a');
+      g.classList.toggle('side-d', side === 'd');
       g.querySelector('text').textContent = men(a.size);
       if (a.path[0] && a.mode === 'march') arrow(PROV[pid].xy, PROV[a.path[0]].xy, colorOf(a.realm));
     });
@@ -495,12 +500,32 @@ function paintBattles() {
   layer.battles.innerHTML = '';
   for (const b of Object.values(s.battles ?? {})) {
     const [x, y] = PROV[b.at].xy;
-    const g = el('g', { class: 'battle', 'data-war': b.war ?? '', 'data-prov': b.at });
-    g.append(el('circle', { cx: x, cy: y - 14, r: 34, class: 'battle-ring' }));
-    g.append(el('circle', { cx: x - 20, cy: y - 64, r: 9, fill: colorOf(b.ra[0]), class: 'battle-side' }), el('circle', { cx: x + 20, cy: y - 64, r: 9, fill: colorOf(b.rd[0]), class: 'battle-side' }));
-    g.append(el('use', { href: '#i-swords', x: x - 15, y: y - 79, width: 30, height: 30, class: 'battle-swords' }));
-    g.append(el('text', { x, y: y + 44, class: 'battle-text' }, `month ${b.rounds + 1}`));
+    const g = el('g', { class: `battle${b.waited && !b.rounds ? ' waiting' : ''}`, 'data-battle': b.id, 'data-war': b.war ?? '', 'data-prov': b.at });
+    const men2 = (ids) => ids.map((id) => s.armies[id]).filter((a) => a && a.at === b.at).reduce((t, a) => t + a.size, 0);
+    g.append(el('circle', { cx: x, cy: y - 14, r: 40, class: 'battle-ring' }));
+    g.append(el('circle', { cx: x - 22, cy: y - 66, r: 10, fill: colorOf(b.ra[0]), class: 'battle-side a' }), el('circle', { cx: x + 22, cy: y - 66, r: 10, fill: colorOf(b.rd[0]), class: 'battle-side d' }));
+    g.append(el('use', { href: '#i-swords', x: x - 16, y: y - 82, width: 32, height: 32, class: 'battle-swords' }));
+    for (const [dx, dy, i] of [[-8, -20, 0], [10, -6, 1], [-2, 4, 2]]) g.append(el('circle', { cx: x + dx, cy: y - 14 + dy, r: 3, class: `spark s${i}` })); // steel on steel
+    g.append(el('text', { x: x - 34, y: y - 92, class: 'battle-men a' }, men(men2(b.a))), el('text', { x: x + 34, y: y - 92, class: 'battle-men d' }, men(men2(b.d))));
+    g.append(el('text', { x, y: y + 50, class: 'battle-text' }, b.waited && b.rounds <= b.waited ? 'facing off' : `month ${b.rounds + 1}`));
     layer.battles.append(g);
+  }
+}
+
+// The fields of the last ten years' battles, fading with the years: click one for its story.
+function paintFields() {
+  layer.fields.innerHTML = '';
+  const seen = new Set(), now = s.month;
+  for (let m = now - 1; m >= Math.max(0, now - 120); m--) {
+    (story.events[m] ?? []).forEach((e, i) => {
+      if (e.type !== 'battle' || !e.at || seen.has(e.at) || s.battles && Object.values(s.battles).some((b) => b.at === e.at)) return;
+      seen.add(e.at);
+      const [x, y] = PROV[e.at].xy, age = (now - m) / 120;
+      const g = el('g', { class: 'field', 'data-field': `${m}:${i}`, style: `opacity:${(0.95 - age * 0.6).toFixed(2)}` });
+      g.append(el('circle', { cx: x + 26, cy: y + 4, r: 11, class: 'field-dot', fill: colorOf(e.winner) }), el('use', { href: '#i-swords', x: x + 18, y: y - 4, width: 16, height: 16, class: 'field-swords' }));
+      g.append(el('text', { x: x + 26, y: y + 27, class: 'field-year' }, String(yearLabel(yearOf(m, s)))));
+      layer.fields.append(g);
+    });
   }
 }
 
@@ -767,9 +792,11 @@ function setupPanZoom() {
 function click(e) {
   const t = document.elementFromPoint(e.clientX, e.clientY);
   const at = { x: e.clientX, y: e.clientY };
-  const army = t?.closest('[data-army]')?.dataset.army, battle = t?.closest('.battle'), realm = t?.closest('[data-realm]')?.dataset.realm, prov = t?.closest('.prov')?.dataset.id;
+  const army = t?.closest('[data-army]')?.dataset.army, battle = t?.closest('.battle'), field = t?.closest('[data-field]')?.dataset.field, realm = t?.closest('[data-realm]')?.dataset.realm, prov = t?.closest('.prov')?.dataset.id;
   if (army && s.armies[army]) return openCard('army', army, at);
+  if (battle?.dataset.battle && s.battles[battle.dataset.battle]) return openCard('battle', battle.dataset.battle, at);
   if (battle?.dataset.war) return openCard('war', battle.dataset.war, at);
+  if (field) return openCard('field', field, at);
   if (realm) return openCard('realm', realm, at);
   if (prov) return openCard('province', prov, at);
   closeCard();

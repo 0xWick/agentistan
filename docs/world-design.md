@@ -154,7 +154,7 @@ be exported, or the player can give his own address. ERC-721 tokens on Base Sepo
 of the Throne, battle honours, the Reign Scroll, the Era Crown. Minted in one batch a game year. A Treasury page lists
 them. Each historic realm gets a painted picture and a drawn crest.
 
-**The end of an era (phase 5).** Only when one power, with its client states, holds more than half the world's land
+**The end of an era (phase 5).** Only when one power, with its client states, holds 40% of the world's land
 or wealth and every other great power is its vassal or gone. A safety cap of 200 game years ends a stalemate, with the
 strongest coalition as victor.
 
@@ -170,7 +170,7 @@ Build:
 - [x] 2. Army orders, battle plans and tactics, resources
 - [x] 3. Letters, the viziers' counsel, dashboards
 - [x] 4. Wallet and NFTs (Regalia 0x265efc0a8cfde6a97e5c89fb6317c96e8b202cb2 on Base Sepolia); painted kingdom art still to come
-- [ ] 5. Hegemony ends the era, battle animation, Discord
+- [x] 5. Hegemony ends the era (40% of the land or wealth with client states, no rival bloc half as big; 200-year cap), battle animation and past battles, Discord
 
 ## Progress
 

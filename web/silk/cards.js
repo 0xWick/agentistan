@@ -9,6 +9,7 @@ export { isGreat };
 import { S, $, esc, icon, kindOf, worth, chip, personChip, pips, meter, sign, months, men, loyalColor, colorOf } from './ui.js';
 import { portrait, paintedFor } from './portrait.js';
 import { RESOURCES } from './resources.js';
+import { TACTICS } from './tactics.js';
 
 export const card = { kind: null, id: null, trail: [] };
 const s = () => S.s;
@@ -55,7 +56,7 @@ export function backCard() {
 }
 
 export function refreshCard() {
-  const c = $('#card'), html = { province, realm, army, char: person, war }[card.kind]?.(card.id);
+  const c = $('#card'), html = { province, realm, army, char: person, war, battle: battleCard, field: fieldCard }[card.kind]?.(card.id);
   if (html === null || html === undefined) return closeCard();
   c.innerHTML = `<div class="card-top">${card.trail.length ? `<button class="back" aria-label="Back">${icon('prev')}</button>` : '<span></span>'}<button class="x" aria-label="Close">×</button></div>${html}`;
   c.dataset.kind = card.kind;
@@ -230,6 +231,34 @@ export function warFromStory(cid) {
   return { id: cid, name: `The war of ${first.realms?.map((x) => s().realms[x]?.short).filter(Boolean).join(' and ')}`, why: '', by: first.realms?.[0], vs: first.realms?.[1], side: { [first.realms?.[0]]: 'a', [first.realms?.[1]]: 'b' }, since: first.month, ended: evs.find((e) => e.type === 'peace')?.month ?? null, score: { a: 0, b: 0 }, gains: {}, deaths: [] };
 }
 const BIG = new Set(['war', 'clash', 'battle', 'capture', 'storm', 'turncoat', 'peace', 'fallen', 'split', 'army.destroyed', 'death', 'revolt', 'siege']);
+// A battle under way: who stands where, on what ground, and how it goes.
+function battleCard(id) {
+  const st = s(), bt = st.battles[id];
+  if (!bt) return null;
+  const P = PROV[bt.at], w = weatherOf(bt.at, st.month), side = (ids) => ids.map((x) => st.armies[x]).filter((a) => a && a.at === bt.at);
+  const list = (ids, realm) => `<div class="b-side"><p>${chip(realm)}</p>${side(ids).map((a) => `<p>${men(a.size)}${st.chars[a.general] ? ` · ${personChip(st.chars[a.general])}` : ''}</p>`).join('')}</div>`;
+  const mine = S.mine && (bt.ra.includes(S.mine) || bt.rd.includes(S.mine));
+  return `<div class="who">${icon('swords')} A battle ${bt.waited && bt.rounds <= bt.waited ? '<b>facing off</b>: the armies wait for their rulers' : `in its ${ordinal(bt.rounds + 1)} month`}</div>
+    <h3>The battle at ${esc(cityOf(st, bt.at))}</h3>
+    <div class="b-sides">${list(bt.a, bt.ra[0])}<span class="vs">${icon('swords')}</span>${list(bt.d, bt.rd[0])}</div>
+    <p class="row">${icon('hill')} ${esc(P.terrain)} · ${esc(!w || w === 'clear' ? 'fair weather' : w)}${st.provinces[bt.at].walls ? ` · walls ${st.provinces[bt.at].walls}` : ''}</p>
+    <p class="row">${icon('skull')} Fallen so far: ${men(bt.lost[0])} attacking, ${men(bt.lost[1])} defending</p>
+    ${bt.war ? `<p class="row">Part of ${warChip(bt.war)}</p>` : ''}
+    ${mine ? `<button class="btn main" data-council>${icon('crown')} Give your orders at the council</button>` : ''}`;
+}
+const ordinal = (n) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
+// A battle of the past, from the chronicle: its story, the plans of each side, the fallen.
+function fieldCard(key) {
+  const st = s(), [m, i] = key.split(':').map(Number), e = S.story?.events?.[m]?.[i];
+  if (!e) return null;
+  const plan = (t) => (t ? `${esc(TACTICS[t.id]?.name ?? t.id)}${t.by === 'ruler' ? ' (the ruler\'s order)' : t.by === 'plan' ? ' (a standing plan)' : ' (the general\'s choice)'}${t.fit >= 0.5 ? ', and it fitted' : t.fit <= -0.3 ? ', and it did not fit' : ''}` : 'none told');
+  return `<div class="who">${icon('swords')} ${esc(e.date)}</div>
+    <h3>A battle at ${esc(cityOf(st, e.at))}</h3>
+    <p>${esc(e.text)}</p>
+    ${e.tactics && e.sides ? `<p class="row"><b>Attacking</b>: ${chip(e.sides[0])} ${plan(e.tactics.a)}</p><p class="row"><b>Defending</b>: ${chip(e.sides[1])} ${plan(e.tactics.d)}</p>` : ''}
+    ${e.lost ? `<p class="row">${icon('skull')} ${men(e.lost[0])} of the victors and ${men(e.lost[1])} of the vanquished fell${e.rounds > 1 ? `, over ${e.rounds} months` : ''}</p>` : ''}
+    ${e.war ? `<p class="row">Part of ${warChip(e.war)}</p>` : ''}`;
+}
 function war(cid) {
   const st = s(), w = st.conflicts[cid] ?? warFromStory(cid);
   if (!w) return null;

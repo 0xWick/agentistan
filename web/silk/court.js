@@ -8,6 +8,7 @@ import { PROV, baseWealth, word, provincesOf, armiesOf, armiesChanged, living, a
 import { strength, incomeOf } from './economy.js';
 import { waitsForCouncil, resolveMatter, pact } from './players.js';
 import { declareWar, disband, fall } from './war.js';
+import { ultimatum } from './acts.js';
 import { cultureOf, personName, womanName, titleFor, kingdomName, consortTitle, vizierTitle, pickTemper } from './names.js';
 
 const TEMPER = (s, id, role) => R.temper[role]?.[s.chars[id]?.temper] ?? {};
@@ -44,6 +45,8 @@ function answer(s, d, choice, rng, emit) {
     if (!from || from.fallen || !bride?.alive || !groom?.alive || bride.spouse || groom.spouse) return;
     if (choice !== 'accept') return emit('match.refused', `${fullName(c)} of ${ofR(s, c.realm)} turns down a match with ${ofR(s, d.from)}`, { realms: [c.realm, d.from], chars: [c.id] });
     marry(s, groom.id, bride.id, emit, d.said);
+  } else if (d.kind === 'ultimatum') {
+    ultimatum(s, d.from, d.realm, choice === 'bow', emit);
   } else if (d.kind === 'alliance') {
     if (choice === 'accept') pact(s, { kind: 'alliance', from: d.from, to: d.realm }, emit);
     else emit('alliance.refused', `${short(s, d.realm)} ${vb(s, d.realm, 'turns')} down an alliance with ${ofR(s, d.from)}`, { realms: [d.realm, d.from], minor: true });

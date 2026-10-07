@@ -3,6 +3,8 @@
 export const RULES = {
   start: { year: 1200, month: 0 }, // January 1200 (an age pack may start elsewhere)
   months: 672, // 56 years: an age ends in 1256, the year Alamut fell
+  hegemony: { share: 0.4, rival: 0.5, rivalMin: 8, cap: 2400, pull: 0.2, bandwagon: 0.12 }, // 40% of the land or wealth, no rival bloc half as big; a bloc of 20% draws small neighbours to bow // the living world: half the land or wealth with the client states, no rival bloc of 15% of it; 200 years at most
+  submission: { absorbAfter: 240, absorb: 1 / 120, ultimatum: 2.5, bows: 0.4 }, // a client state of 30 years may be absorbed; a ruler 3.5 times stronger may demand that a neighbour bow
   unite: { alone: 0.55, withVassals: 0.7 }, // a realm holding 55% of the provinces (70% counting its vassals) ends the age
 
   economy: {

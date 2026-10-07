@@ -4,6 +4,7 @@
 // The engine is pure, so the browser's replay and the server's world are the same history.
 import { DurableObject } from 'cloudflare:workers';
 import { newAge, tick, frame, ENGINE, AGES, QUARTER, ledgerOf } from '../web/silk/engine.js';
+import { RULES } from '../web/silk/rules.js';
 import { brain } from '../web/silk/doctrine.js';
 import { makeCast } from './cast.js';
 import { makeSealer, DEPLOYED, EXPLORER } from './seal.js';
@@ -72,6 +73,7 @@ export class Era extends DurableObject {
   // ---------- the turn of the month ----------
   begin({ seed = 1 + Math.floor(Math.random() * 99999), ageId = this.meta?.ageId ?? '1200', pace = this.meta?.pace ?? PACE, game = this.meta?.game } = {}) {
     const s = newAge(seed, ageId), age = (this.meta?.age ?? 0) + 1;
+    if (!game) Object.assign(s, { rule: 'hegemony', months: RULES.hegemony.cap }); // the living world: an era ends only when one power masters the world
     const quarter = !game, every = quarter ? QUARTER_MS : pace;
     this.meta = { ...(this.meta ?? {}), age, seed, ageId, pace: every, quarter, councilOpens: Date.now(), opened: Date.now(), game: game ?? null, engine: ENGINE, started: Date.now(), next: Date.now() + every, restUntil: null, ages: this.meta?.ages ?? [] };
     this.put('seats', {}); // a new age: every throne is free again

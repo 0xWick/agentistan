@@ -430,7 +430,8 @@ export async function councilOpen(era) {
   for (const [realm, x] of Object.entries(seats)) {
     if (!x.webhook) continue;
     const waiting = decisionsFor(s, realm).length, missed = s.players?.[realm]?.missed ?? 0;
-    await n8nPost(era.env, 'reminder', { webhook: x.webhook, title: `${s.realms[realm]?.short ?? realm}: your council is open`, text: [`${waiting ? `${waiting} matter${waiting > 1 ? 's' : ''} wait for you.` : 'No matters wait; your orders, though, do.'} The quarter turns at ${when} UTC.`, missed > R.absence.grace ? `You have been away ${missed} councils: your vizier grows bold.` : ''].filter(Boolean).join('\n'), url: site(era.env) });
+    const fights = Object.values(s.battles ?? {}).filter((b) => b.ra.includes(realm) || b.rd.includes(realm)).map((b) => cityOf(s, b.at));
+    await n8nPost(era.env, 'reminder', { webhook: x.webhook, title: `${s.realms[realm]?.short ?? realm}: your council is open`, text: [`${waiting ? `${waiting} matter${waiting > 1 ? 's' : ''} wait for you.` : 'No matters wait; your orders, though, do.'} The quarter turns at ${when} UTC.`, fights.length ? `Your armies are in battle at ${fights.join(', ')}: they wait for your plan.` : '', missed > R.absence.grace ? `You have been away ${missed} councils: your vizier grows bold.` : ''].filter(Boolean).join('\n'), url: site(era.env) });
   }
 }
 

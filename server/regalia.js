@@ -88,6 +88,12 @@ export function awardsFor(era, s, events, seats, lost = []) {
     }
   }
   for (const { seat, realm, ruler, since, why } of lost) award(era, seat, 'scroll', { ...base(realm, ruler), from: since, story: why, provinces: provincesOf(s, realm).length });
+  const ended = events.find((e) => e.type === 'age.ended');
+  if (ended) { // the end of an era: a crown for its master, a scroll for every reign it closes
+    const winner = ended.realms?.[0];
+    if (seats[winner]) award(era, seats[winner], 'crown', { ...base(winner, seats[winner].name), provinces: provincesOf(s, winner).length });
+    for (const [realm, seat] of Object.entries(seats)) award(era, seat, 'scroll', { ...base(realm, seat.name), from: seat.sinceYear ?? '?', story: 'the era ended', provinces: provincesOf(s, realm).length });
+  }
 }
 
 // After the quarter: confirm what was sent, and send the next batch (the game never waits for the chain).

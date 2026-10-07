@@ -2,14 +2,14 @@
 // month can be replayed exactly from the same state and the same inputs. Decisions come in three ways, all checked
 // by the same rules: the brain (doctrine.js, or the AI later), and inputs (players, AI answers, AI plans).
 import { RULES as R } from './rules.js';
-import { PROVINCES, PROV, LAND, placeOf, yearLabel, rngFor, living, provincesOf, armiesOf, armiesChanged, realmsChanged, setOwner, key, newChar, newArmy, round1, clamp, dateText, yearOf, ofR, vb, cityOf, word, baseWealth } from './core.js';
-import { economy, prosperity, incomeOf, suppliesOf, strength, prosperityOf } from './economy.js';
+import { PROVINCES, PROV, LAND, placeOf, yearLabel, rngFor, living, provincesOf, armiesOf, armiesChanged, realmsChanged, setOwner, key, newChar, newArmy, round1, clamp, dateText, yearOf, ofR, vb, cityOf, word, baseWealth, allied } from './core.js';
+import { economy, prosperity, incomeOf, suppliesOf, strength, prosperityOf, wealthOf } from './economy.js';
 import { march, battles, sieges, weatherToll, fall, homeless } from './war.js';
 import { court, settleDecisions, setupCourt } from './court.js';
 import { people } from './people.js';
 import { world, realSkies } from './world.js';
 import { act, applyAnswers, treaty } from './acts.js';
-import { thrones, attendance, absence, matters, QUARTER } from './players.js';
+import { thrones, attendance, absence, matters, absorb, QUARTER } from './players.js';
 import { resourcesFor } from './resources.js';
 export { QUARTER, isPlayer } from './players.js';
 import { cultureOf, personName, kingdomName, titleFor, pickTemper, temperFromTraits, isWomanName } from './names.js';
@@ -18,7 +18,7 @@ import AGE_ANCIENT from './ages/ancient.js';
 import AGE_MODERN from './ages/modern.js';
 
 export const AGES = { 1200: AGE_1200, ancient: AGE_ANCIENT, modern: AGE_MODERN };
-export const ENGINE = 7; // bump when a change to the rules would make old records replay differently
+export const ENGINE = 8; // bump when a change to the rules would make old records replay differently
 export * from './core.js';
 export { wealthOf, yieldOf, suppliesOf, yearlyGrain, rations, cavalryOf, garrisonOf, wallPower, strength, manpower, incomeOf, prosperityOf, steersman, rulingTemper, knows, canBuild, tradeOpen, treatiesOf, pairTreaties } from './economy.js';
 export { moveCost, route, declareWar, makePeace, peaceTerms, capture, conflictOf } from './war.js';
@@ -136,6 +136,7 @@ export function tick(s0, brain, inputs = {}, { inPlace = false } = {}) {
   prosperity(s);
   people(s, rng('people'), emit);
   court(s, rng('court'), emit);
+  absorb(s, rng('absorb'), emit);
   absence(s, rng('absence'), emit);
   AGES[s.ageId]?.month?.(s, rng, emit);
   world(s, rng('world'), emit);
@@ -201,7 +202,30 @@ function settle(s, rng, emit) {
 }
 
 // ---------- the end of an age ----------
+// Hegemony: one power with its client states holds half the world's land or wealth, and no great power stands apart.
+export function hegemon(s) {
+  const all = living(s), H = R.hegemony;
+  const bloc = (id) => [id, ...all.filter((v) => v.overlord === id).map((v) => v.id)];
+  const landOf = (ids) => ids.reduce((t, id) => t + provincesOf(s, id).length, 0);
+  const goldOf = (ids) => ids.reduce((t, id) => t + provincesOf(s, id).reduce((u, p) => u + wealthOf(s, p.id), 0), 0);
+  const free = all.filter((r) => !r.overlord), blocs = free.map((r) => ({ id: r.id, ids: bloc(r.id) })).map((b) => ({ ...b, land: landOf(b.ids) })).sort((a, b) => b.land - a.land);
+  const lead = blocs[0];
+  if (!lead) return null;
+  const share = lead.land / PROVINCES.length, wealth = goldOf(lead.ids) / Math.max(1, goldOf(all.map((r) => r.id)));
+  if (share < H.share && wealth < H.share) return null;
+  const rival = blocs.slice(1).find((b) => b.land >= Math.max(H.rivalMin, lead.land * H.rival));
+  return rival ? null : { id: lead.id, share, wealth };
+}
 function ageEnd(s, emit) {
+  if (s.rule === 'hegemony') {
+    const h = hegemon(s);
+    if (h) return end(s, h.id, `${ofR(s, h.id).replace(/^./, (c) => c.toUpperCase())} ${vb(s, h.id, 'masters')} the world: with ${s.realms[h.id].plural ? 'their' : 'its'} client states, ${Math.round(Math.max(h.share, h.wealth) * 100)}% of the ${h.share >= h.wealth ? 'land' : 'wealth'} bows to ${s.realms[h.id].plural ? 'them' : 'it'}, and no great power stands apart`, emit);
+    if (s.month >= (s.months ?? R.hegemony.cap)) { // the safety cap: the strongest coalition is the victor
+      const top = living(s).filter((r) => !r.overlord).map((r) => [r.id, strength(s, r.id) + living(s).filter((o) => allied(s, r.id, o.id) || o.overlord === r.id).reduce((t, o) => t + strength(s, o.id), 0)]).sort((a, b) => b[1] - a[1])[0]?.[0];
+      return end(s, top, `After ${Math.round(s.month / 12)} years no power masters the world; ${ofR(s, top)} and ${s.realms[top]?.plural ? 'their' : 'its'} friends stand strongest as the era closes`, emit);
+    }
+    return;
+  }
   const counts = living(s).map((r) => {
     const own = provincesOf(s, r.id).length;
     return [r.id, own, own + living(s).filter((v) => v.overlord === r.id).reduce((t, v) => t + provincesOf(s, v.id).length, 0)];

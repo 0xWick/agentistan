@@ -5,10 +5,20 @@ import { RULES as R } from './rules.js';
 import { PROV, PROVINCES, baseWealth, hops, onRoad, atWar, allied, warOf, truceUntil, friendly, living, provincesOf, armiesOf, isWinter, weatherOf, ageOf } from './core.js';
 import { strength, sideStrength, wealthOf, wallPower, rulingTemper, steersman, canBuild, prosperityOf } from './economy.js';
 import { route } from './war.js';
-import { claimsOf, acceptsPeace, acceptsAlliance } from './acts.js';
+import { claimsOf, acceptsPeace, acceptsAlliance, acceptsUltimatum } from './acts.js';
 import { decideMatter } from './players.js';
 
 const has = (c, ...t) => t.some((x) => c?.traits?.includes(x));
+// The bloc (a free realm and its client states) that holds the most land.
+function leadingBloc(s) {
+  let best = null;
+  for (const r of living(s)) {
+    if (r.overlord) continue;
+    const land = provincesOf(s, r.id).length + living(s).filter((v) => v.overlord === r.id).reduce((t, v) => t + provincesOf(s, v.id).length, 0);
+    if (!best || land > best.land) best = { id: r.id, land };
+  }
+  return best && { ...best, share: best.land / PROVINCES.length };
+}
 
 // The realms that share a border with this one, and whether unclaimed land lies next door.
 export function neighbours(s, id) {
@@ -58,6 +68,12 @@ export function plan(s, id, rng) {
     return { ...p, acts: [{ kind: 'submit', target: horde.id }], targets: wars.filter((w) => w !== horde.id) };
   }
 
+  // The pull of an empire (the living world): a small realm next to the leading bloc may bow to it unasked.
+  if (s.rule === 'hegemony' && !r.overlord && !s.players?.[id] && provincesOf(s, id).length <= 4) {
+    const lead = leadingBloc(s);
+    if (lead && lead.id !== id && lead.share >= R.hegemony.pull && next.some((n) => n === lead.id || s.realms[n]?.overlord === lead.id) && strength(s, id) < strength(s, lead.id) * 0.15 && !atWar(s, id, lead.id) && rng() < R.hegemony.bandwagon)
+      return { ...p, acts: [{ kind: 'submit', target: lead.id }], targets: wars };
+  }
   // Vassals break free when they outgrow their master; the weak bow to a crushing enemy.
   if (r.overlord && s.realms[r.overlord] && me > strength(s, r.overlord) * 0.9 && rng() < (bold ? 0.4 : 0.15)) p.acts.push({ kind: 'independence' });
   for (const w of wars) if (!r.overlord && me < strength(s, w) * 0.2 && provincesOf(s, id).length <= 3 && rng() < 0.08 && !s.realms[w].rebel) p.acts.push({ kind: 'submit', target: w });
@@ -75,7 +91,8 @@ export function plan(s, id, rng) {
     const prey = next.filter((n) => !atWar(s, id, n) && !friendly(s, id, n) && (!r.overlord || atWar(s, r.overlord, n)) && (truceUntil(s, id, n) <= s.month || (bold && rng() < 0.15)) && !s.realms[n].nomad && (strength(s, n) + (s.realms[n].overlord && s.realms[n].overlord !== id ? strength(s, s.realms[n].overlord) : 0)) * R.diplomacy.warRatio * (cautious ? 1.4 : 1) < me)
       .map((n) => ({ n, score: provincesOf(s, n).reduce((t, q) => t + baseWealth(s, q.id), 0) / Math.max(1, strength(s, n)) + rng() + (s.kin[[id, n].sort().join('|')] ? -2 : 0) + ((s.players?.[n]?.missed ?? 0) > R.absence.grace ? 2 : 0) })) // an absent king is easy prey
       .sort((a, b) => b.score - a.score)[0];
-    if (prey) p.acts.push({ kind: 'war', target: prey.n }), p.targets.push(prey.n);
+    if (prey && bold && !s.realms[prey.n].overlord && strength(s, prey.n) * R.submission.ultimatum < me && rng() < 0.5) p.acts.push({ kind: 'demand', target: prey.n }); // bow, or else
+    else if (prey) p.acts.push({ kind: 'war', target: prey.n }), p.targets.push(prey.n);
   }
   if (neutral && wars.length < 2 && !r.nomad && temper !== 'negligent') p.targets.push('neutral');
 
@@ -152,6 +169,7 @@ export function decide(s, d, rng) {
   if (d.kind === 'peace') return acceptsPeace(s, d.realm, d.from) ? 'accept' : 'refuse';
   if (d.kind === 'matter') return decideMatter(s, d);
   if (d.kind === 'alliance') return acceptsAlliance(s, d.realm, d.from) ? 'accept' : 'refuse';
+  if (d.kind === 'ultimatum') return acceptsUltimatum(s, d.realm, d.from) ? 'bow' : 'refuse';
   if (d.kind === 'verdict') {
     const t = rulingTemper(s, r), weak = strength(s, d.realm) < strength(s, d.claimant) * 1.2;
     if (['just', 'diplomat'].includes(t)) return 'accept';

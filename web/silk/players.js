@@ -3,9 +3,9 @@
 // their temperament; a long absence costs the treasury, the provinces and the generals, and in the end the throne.
 // Everything here arrives as inputs (inputs.seize, inputs.leave, inputs.councils), so a record replays exactly.
 import { RULES as R } from './rules.js';
-import { provincesOf, living, newChar, clamp, round1, chance, pick, ofR, short, say, vb, cityOf, placeOf, yearOf, ageOf, realmsChanged, allied, atWar, key } from './core.js';
+import { provincesOf, living, newChar, clamp, round1, chance, pick, ofR, short, say, vb, cityOf, placeOf, yearOf, ageOf, realmsChanged, allied, atWar, key, setOwner, armiesChanged } from './core.js';
 import { treaty } from './acts.js';
-import { makePeace } from './war.js';
+import { makePeace, fall, declareWar } from './war.js';
 import { incomeOf, steersman, rulingTemper } from './economy.js';
 import { ask, crown, titled, endReign } from './court.js';
 import { titleFor } from './names.js';
@@ -208,6 +208,22 @@ export function pact(s, p, emit) {
     return true;
   }
   return false;
+}
+
+// ---------- client states of long standing are absorbed into their overlords ----------
+export function absorb(s, rng, emit) {
+  const S = R.submission;
+  for (const v of living(s)) {
+    const o = s.realms[v.overlord];
+    if (!o || o.fallen || s.players?.[v.id] || !chance(rng, S.absorb)) continue;
+    const since = Object.values(s.treaties).filter((t) => t.kind === 'vassal' && t.ended === null && t.parties.includes(v.id) && t.parties.includes(o.id)).reduce((m, t) => Math.min(m, t.signed), s.month);
+    if (s.month - since < S.absorbAfter) continue;
+    for (const p of provincesOf(s, v.id)) setOwner(s, p.id, o.id, 'inheritance');
+    for (const a of Object.values(s.armies)) if (a.realm === v.id) a.realm = o.id;
+    armiesChanged(s);
+    for (const t of Object.values(s.treaties)) if (t.kind === 'vassal' && t.ended === null && t.parties.includes(v.id)) t.ended = s.month;
+    fall(s, v.id, emit, `${v.name} ${vb(s, v.id, 'is')} absorbed into ${ofR(s, o.id)} after ${Math.round((s.month - since) / 12)} years as ${s.realms[v.id].plural ? 'its clients' : 'its client'}`, o.id);
+  }
 }
 
 // ---------- the dynasty: an heir named at any time, a crown given up at any time ----------
