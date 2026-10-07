@@ -20,7 +20,7 @@
 </head>
 <body>
   <main class="page">
-    <div class="page-top"><a href="/">← Back to the live war</a><button id="theme" class="btn" aria-pressed="false">Dark mode</button></div>
+    <div class="page-top"><a href="/classic/">← Back to the live war</a><button id="theme" class="btn" aria-pressed="false">Dark mode</button></div>
     <h1>Past seasons</h1>
     <p class="thesis">Every season is recorded turn by turn: each AI decision, automation run, oracle price and on-chain receipt. Pick one to watch it again as a timelapse.</p>
     <ol id="seasons" class="seasons"><li class="muted">Loading…</li></ol>
@@ -35,7 +35,7 @@
       <span class="name">Season ${h.season}</span>
       <span class="what">${h.live ? '<b>In progress</b>' : h.winner ? `<span class="win-${h.winner}">${realm[h.winner]} won</span>: ${esc(h.reason)}` : 'Ended'}
         <br><span class="muted">${day(h.startedAt)}${h.endedAt ? ` → ${day(h.endedAt)}` : ''}${h.turns ? ` · ${h.turns} turns` : ''}${h.partial ? ' · recording began mid-season' : ''}</span></span>
-      <a class="btn" href="/?season=${h.season}">${h.live ? 'Watch from the start' : 'Watch timelapse'}</a>
+      <a class="btn" href="/classic/?season=${h.season}">${h.live ? 'Watch from the start' : 'Watch timelapse'}</a>
     </li>`).join('') || '<li class="muted">No seasons recorded yet.</li>';
   </script>
 </body>

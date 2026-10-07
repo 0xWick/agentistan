@@ -432,7 +432,7 @@ export class World extends DurableObject {
   // ---------- news for Discord, via the n8n War Correspondent: big moments at once, and a report after every round ----------
   post(item) {
     if (!this.cfg.n8n) return;
-    this.W.newsQ = [...(this.W.newsQ ?? []), { url: this.cfg.site, color: COLOR.null, ...item, title: item.title.slice(0, 250), text: item.text.slice(0, 1800) }].slice(-20);
+    this.W.newsQ = [...(this.W.newsQ ?? []), { url: `${this.cfg.site}/classic/`, color: COLOR.null, ...item, title: item.title.slice(0, 250), text: item.text.slice(0, 1800) }].slice(-20);
     this.at('news', 0);
   }
 

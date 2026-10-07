@@ -582,7 +582,7 @@ document.querySelector('.tl-speed').addEventListener('click', (ev) => {
   TL.speed = +ev.target.dataset.speed;
   renderTimeline();
 });
-$('#tl-live').addEventListener('click', () => (TL.past ? location.assign('/') : goLive()));
+$('#tl-live').addEventListener('click', () => (TL.past ? location.assign('/classic/') : goLive()));
 document.querySelectorAll('.replay').forEach((b) => b.addEventListener('click', () => {
   TL.speed = 1;
   play(TL.turns.at(-1) ?? 0);

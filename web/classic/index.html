@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentistan</title>
+  <meta name="description" content="A war nobody is playing, run entirely by AI generals, business automations, real market data and a public ledger. Just watch.">
+  <meta property="og:title" content="Agentistan: a war nobody is playing, run by AI agents, n8n, Chainlink and a blockchain">
+  <meta property="og:description" content="Two AI generals fight a live war nobody plays. Automations run every turn, real ETH prices move the economy, and every capture is written on-chain. Just watch.">
+  <meta property="og:image" content="https://agentistan.umarkhatana.com/og.png">
+  <meta property="og:url" content="https://agentistan.umarkhatana.com/classic/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 28V10h4V5h5v5h6V5h5v5h4v18z' fill='%23e8590c'/%3E%3C/svg%3E">
+  <script>try { const t = localStorage.getItem('np-theme'); if (t) document.documentElement.dataset.theme = t; if (localStorage.getItem('np-view') === 'nerd') document.documentElement.dataset.view = 'nerd'; if (localStorage.getItem('np-lens') === 'biz') document.documentElement.dataset.lens = 'biz'; } catch {}</script>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand" data-relabel>
+      <h1>Agentistan</h1>
+      <p class="thesis">Two AI generals fight a war on their own, day and night. Nobody is playing: six technologies run it all.</p>
+    </div>
+    <div class="status">
+      <span id="live" class="pill">Connecting…</span>
+      <button id="next" class="pill" disabled></button>
+      <span id="clock" class="pill nerd-only"></span>
+      <span class="pill tag nerd-only">Testnet</span>
+      <span id="ai-mode" class="pill nerd-only"></span>
+      <button id="intro-open" class="btn nerd-only">What am I looking at?</button>
+      <span class="see-as simple-only" role="group" aria-label="See it as"><button class="btn" data-lens="war">⚔️ War</button><button class="btn" data-lens="biz">💼 As a business</button></span>
+      <a class="btn" href="/classic/history">History</a>
+      <button id="view" class="btn" aria-pressed="false">Nerd view</button>
+      <button id="theme" class="btn icon" aria-pressed="false" aria-label="Dark mode">🌙</button>
+      <a id="site" class="btn" href="https://umarkhatana.com" target="_blank" rel="noopener">By Umar Khatana ↗</a>
+    </div>
+    <dl id="counters" class="counters nerd-only"></dl>
+  </header>
+
+  <section class="tech simple-only" aria-label="What's running the show" data-relabel>
+    <ol id="flow"></ol>
+  </section>
+
+  <div id="timeline" class="timeline nerd-only" role="group" aria-label="Timeline of the season">
+    <div>
+      <button id="tl-play" class="btn">Play</button>
+      <span class="tl-speed" role="group" aria-label="Playback speed"><button class="btn" data-speed="1">1×</button><button class="btn" data-speed="4">4×</button><button class="btn" data-speed="16">16×</button></span>
+      <input id="tl-range" type="range" min="0" max="0" value="0" step="1" list="tl-turns" aria-label="Move through the season: drag, use the arrow keys, or scroll here (Shift + arrow jumps a turn)">
+      <datalist id="tl-turns"></datalist>
+      <span id="tl-label" class="tl-label">Loading the season…</span>
+      <button id="tl-live" class="btn">Live</button>
+    </div>
+  </div>
+
+  <main id="simple" class="simple simple-only" data-relabel>
+    <section class="panel narrator">
+      <div class="panel-head"><h2>🎙️ What's happening</h2><button class="btn replay">Replay last turn</button></div>
+      <div aria-live="polite">
+        <p id="n-big" class="n-big">Loading the war…</p>
+        <h3 id="n-when" class="n-when"></h3>
+        <p id="n-lines" class="n-lines"></p>
+        <blockquote id="n-quote" class="n-quote" hidden></blockquote>
+        <p id="n-next" class="n-next"></p>
+      </div>
+      <form id="ask" class="ask">
+        <div class="ask-who" role="group" aria-labelledby="ask-title"><h3 id="ask-title">💬 Ask a general</h3><button type="button" class="btn" data-k="red"></button><button type="button" class="btn" data-k="blue"></button></div>
+        <div class="ask-chips"><button type="button" class="chip" data-q="Why did you make your last move?">Why that move?</button><button type="button" class="chip" data-q="What is your plan for the next few turns?">What's your plan?</button><button type="button" class="chip" data-q="How are the real prices and weather affecting you right now?">Prices and weather?</button></div>
+        <div class="ask-row"><input id="ask-q" maxlength="200" autocomplete="off" aria-label="Your question"><button class="btn primary">Ask</button></div>
+        <p id="ask-out" class="ask-out" aria-live="polite" data-keep hidden></p>
+      </form>
+    </section>
+
+    <section class="panel score" aria-label="Score">
+      <h2 id="s-round">Score</h2>
+      <div id="tug" class="tug" role="img"></div>
+      <p id="tug-legend" class="tug-legend"></p>
+      <p class="muted goal">Win by holding 5 of the 7 castles for 3 rounds in a row.</p>
+      <div id="sides" class="sides"></div>
+    </section>
+
+    <section class="panel moments">
+      <h2>Key moments this season</h2>
+      <ol id="moments"></ol>
+    </section>
+  </main>
+
+  <main id="nerd" class="grid nerd-only">
+    <section class="panel board" aria-label="Battle map">
+      <svg id="map" viewBox="0 0 500 500" role="img" aria-label="10 by 10 battle map">
+        <defs>
+          <radialGradient id="burst"><stop offset="0" stop-color="#fff7d6"/><stop offset=".5" stop-color="#ffb347"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+          <pattern id="p-rain" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(18)"><rect width="7" height="7" class="wx-tint-rain"/><line x1="0" y1="0" x2="0" y2="7" class="wx-line"/></pattern>
+          <pattern id="p-snow" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" class="wx-tint-snow"/><circle cx="3" cy="3" r="1.5" class="wx-dot"/><circle cx="9" cy="9" r="1.5" class="wx-dot"/></pattern>
+          <pattern id="p-wind" width="26" height="12" patternUnits="userSpaceOnUse"><path d="M3 4h12M10 9h12" class="wx-line"/></pattern>
+          <pattern id="p-cold" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 0L10 10M10 0L0 10" class="wx-frost"/></pattern>
+        </defs>
+        <g id="terrain"></g><g id="owners"></g><g id="weather"></g><g id="strongholds"></g><g id="armies"></g><g id="labels"></g><g id="fx"></g>
+      </svg>
+      <p class="stale-note">The map wasn't recorded this early in the season. It catches up later in the timeline.</p>
+      <ul class="legend">
+        <li><i class="sw sw-castle"></i>Castle (number: defenders)</li>
+        <li><i class="sw sw-army"></i>Army (number: soldiers)</li>
+        <li><i class="sw sw-weather"></i>Weather (5 real cities)</li>
+        <li><i class="sw sw-red"></i>Emberreach land</li>
+        <li><i class="sw sw-blue"></i>Frostmere land</li>
+        <li class="nerd-only"><i class="sw sw-forest"></i>Forest</li>
+        <li class="nerd-only"><i class="sw sw-mountain"></i>Mountain</li>
+        <li class="nerd-only"><i class="sw sw-river"></i>River</li>
+      </ul>
+    </section>
+
+    <section class="panel theater" aria-live="polite">
+      <div class="theater-head"><h2>Decision theater</h2><button class="btn replay">Replay last turn</button></div>
+      <p id="theater-who" class="who">Waiting for the next turn…</p>
+      <ol id="theater" class="theater-log"></ol>
+    </section>
+
+    <section class="panel pipeline" aria-label="Pipeline for the current turn">
+      <ol id="pipeline"></ol>
+    </section>
+
+    <section class="panel log">
+      <div class="log-head">
+        <h2>Event log</h2>
+        <div id="filters" class="filters" role="group" aria-label="Filter by technology"></div>
+      </div>
+      <ol id="events" class="events"></ol>
+    </section>
+
+    <section class="panel lens" aria-live="polite">
+      <h2>Tech Lens</h2>
+      <div id="lens"></div>
+    </section>
+
+    <section class="panel kingdoms" id="kingdoms"></section>
+
+    <section class="panel proof">
+      <div class="proof-head">
+        <h2>Proof: on-chain receipts</h2>
+        <p id="contract" class="muted"></p>
+      </div>
+      <ol id="proofs" class="proofs"></ol>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Built by <a id="hire" href="#"><strong id="owner">the builder</strong></a> · <a class="book-link" href="#" target="_blank" rel="noopener">Book a meeting</a> · <a href="/classic/how">How it's built</a> · <a href="/classic/history">Past seasons</a><span id="repo-wrap" hidden> · <a id="repo" href="#">Source code</a></span></p>
+    <p class="muted">Test network only. No real money. Not financial advice. Real prices and weather hit the game hard on purpose, so you can see them.</p>
+  </footer>
+
+  <div class="cta-rail">
+    <button class="cta plan-open" type="button">✨ Free plan<span class="long"> for your business</span></button>
+    <a class="cta book-link" href="#" target="_blank" rel="noopener" hidden>📅 Book<span class="long"> a meeting</span></a>
+  </div>
+
+  <dialog id="plan" aria-labelledby="plan-title">
+    <form method="dialog" class="plan-x"><button class="btn" aria-label="Close">✕</button></form>
+    <h2 id="plan-title">✨ A free plan for your business</h2>
+    <p class="muted">Tell us what eats your team's time. An AI drafts how <span class="owner-name">Umar Khatana</span> could automate it with the same tech that runs this war: AI agents, n8n automations, live data and blockchain records.</p>
+    <div class="plan-picks" role="group" aria-label="Examples">
+      <button type="button" class="chip" data-text="I run a small clinic with 3 doctors. The front desk is buried in calls, appointment changes, no-shows and insurance paperwork.">🏥 A clinic</button>
+      <button type="button" class="chip" data-text="I run an accounting firm with about 40 small-business clients. Collecting documents, reconciling bank statements and chasing unpaid invoices take up most of our month.">📊 An accounting firm</button>
+      <button type="button" class="chip" data-text="We are an early-stage fintech moving customer payments in several currencies. We need live exchange rates, fewer manual checks and records that auditors can trust.">💳 A fintech</button>
+      <button type="button" class="chip" data-text="I want my personal finances on autopilot: bills, subscriptions, savings goals, and alerts when prices I care about move.">🏠 My personal finances</button>
+    </div>
+    <form id="plan-form">
+      <textarea id="plan-text" rows="3" maxlength="700" aria-label="Your business, in a sentence or two" placeholder="Or write your own, e.g. “We're a 5-person bookkeeping firm. Chasing clients for receipts every month takes days.”"></textarea>
+      <div class="plan-row"><button class="btn primary">Draft my plan</button><small class="muted">Free, no sign-up. What you write is only used to draft this plan.</small></div>
+    </form>
+    <div id="plan-out" aria-live="polite"></div>
+  </dialog>
+
+  <dialog id="intro" aria-labelledby="intro-title">
+    <h2 id="intro-title">Meet the cast</h2>
+    <p class="muted">Nobody is playing this game. Four technologies run it on their own, one turn every 30 minutes, around the clock. Drag the timeline to look back through the season; press Live to catch up.</p>
+    <div class="cast">
+      <article><h3><span class="badge b-agent">AI</span> The Generals</h3><p>Two AI agents with their own personalities read the battlefield through tools, give one order per turn and keep a journal.</p><p class="biz">In your business: an assistant that checks your data before it acts, and remembers what happened last time.</p></article>
+      <article><h3><span class="badge b-n8n">n8n</span> The Automations</h3><p>Workflows run every turn: they ask the general for orders, deliver them to the game, and reorder food when it runs low.</p><p class="biz">In your business: form → CRM → invoice → welcome email, with nobody clicking.</p></article>
+      <article><h3><span class="badge b-oracle">Oracle</span> The Oracle</h3><p>Real ETH, BTC and LINK prices come in from Chainlink. Each treasury is held in a coin, so every move of ETH or BTC wins or loses gold, and the season's trend sets fighting spirit; LINK sets the price of soldiers. Five real cities' weather changes five regions of the battlefield too.</p><p class="biz">In your business: prices, payouts or budgets that follow live market data.</p></article>
+      <article><h3><span class="badge b-chain">Chain</span> The Ledger</h3><p>Every capture is written to a public blockchain, stamped with the ETH price at that moment. Nobody, including the builder, can edit it.</p><p class="biz">In your business: tamper-proof certificates, supply-chain records or payouts.</p></article>
+    </div>
+    <form method="dialog"><button class="btn primary">Start watching</button></form>
+  </dialog>
+
+  <div id="results" class="results" hidden></div>
+</body>
+</html>
