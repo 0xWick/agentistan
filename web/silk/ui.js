@@ -1,6 +1,6 @@
 // What every part of the page shares: the ink glyphs, how each kind of event looks, small bits of markup, and the
 // world the page is showing right now (S.s), so the map, the cards and the panels all read the same moment.
-export const S = { s: null, story: null, prev: null };
+export const S = { s: null, story: null, prev: null, chain: null };
 export const $ = (q) => document.querySelector(q);
 export const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 

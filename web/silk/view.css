@@ -453,3 +453,7 @@ dialog.event::backdrop { background: rgba(43, 33, 22, 0.42); }
 .powers { top: 172px; max-height: calc(100dvh - 272px); }
 @media (max-width: 760px) { .powers { top: 146px; } .title .live { font-size: 11px; } }
 .feed q { font-style: italic; color: var(--ink-soft); }
+
+.deeds-reg .sealed { display: inline-flex; color: var(--turquoise); }
+.deeds-reg .sealed svg { width: 14px; height: 14px; }
+.chain-note { margin: 6px 0 0; font: 12px var(--kufi); color: var(--ink-soft); }

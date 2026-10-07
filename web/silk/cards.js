@@ -60,6 +60,11 @@ export function refreshCard() {
 
 // ---------- a province ----------
 const WORKS = { canal: ['rain', 'Canal: more grain'], caravanserai: ['palace', 'Caravanserai: more trade'], market: ['coin', 'Market: more gold'], library: ['book', 'Library: more learning'] };
+// A deed already sealed on the chain links to the transaction that sealed it.
+const sealLink = (m) => {
+  const seal = S.chain?.seals?.find((x) => m >= x.from && m < x.to);
+  return seal ? ` <a class="sealed" href="${S.chain.explorer}/tx/${seal.hash}" target="_blank" rel="noopener" title="Sealed on Base Sepolia">${icon('seal')}</a>` : '';
+};
 const CLIMATE = { cold: 'Cold lands', monsoon: 'Monsoon lands', arid: 'Dry lands', temperate: 'Temperate lands' };
 const WEATHER = { snow: ['snow', 'Snow: slow marches, frostbite abroad, thin herds'], rains: ['rain', 'The rains: rivers flood, no campaigns'], heat: ['sun', 'Summer heat: armies in the desert wilt'] };
 const HOW = { start: 'held in 1200', conquest: 'by conquest', revolt: 'by revolt', secession: 'broke away', bribe: 'by a bribe', inheritance: 'by inheritance', verdict: 'by verdict', commune: 'self-rule', treaty: 'by treaty' };
@@ -85,7 +90,7 @@ function province(id) {
     ${works.length || q.building ? `<div class="row works">${works.map((k) => `<span class="work" title="${WORKS[k][1]}">${icon(WORKS[k][0])}</span>`).join('')}${q.building ? `<span class="building">${icon('hammer')} a ${esc(q.building.kind)} rising · ${months(q.building.left)}</span>` : ''}</div>` : ''}
     ${q.siege ? `<div class="row alarm">${icon('tower')} Besieged by ${chip(q.siege.realm)} · ${months(q.siege.left)}</div>` : ''}
     ${here.length ? `<div class="row">${icon('banner')} ${here.map((a) => `<span class="chip" data-army="${a.id}"><i class="shield" style="--c:${colorOf(a.realm)}"></i>${men(a.size)}</span>`).join(' ')}</div>` : ''}
-    ${deeds.length ? `<details class="deeds-reg"><summary>${icon('seal')} The registry of deeds</summary><ol>${deeds.map((d) => `<li><b>${yearOf(d.m, st)}</b> ${st.realms[d.realm] ? chip(d.realm) : esc(d.realm)} <small>${esc(HOW[d.how] ?? d.how)}</small></li>`).join('')}</ol></details>` : ''}
+    ${deeds.length ? `<details class="deeds-reg"><summary>${icon('seal')} The registry of deeds</summary><ol>${deeds.map((d) => `<li><b>${yearOf(d.m, st)}</b> ${st.realms[d.realm] ? chip(d.realm) : esc(d.realm)} <small>${esc(HOW[d.how] ?? d.how)}</small>${sealLink(d.m)}</li>`).join('')}</ol>${S.chain ? `<p class="chain-note">Sealed each year on Base Sepolia: <a href="${S.chain.explorer}/address/${S.chain.address}" target="_blank" rel="noopener">the Chronicle contract</a></p>` : ''}</details>` : ''}
     <p class="fact">${esc(p.fact)}</p>`;
 }
 

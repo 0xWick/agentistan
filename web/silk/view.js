@@ -134,6 +134,7 @@ async function joinLive() {
   try {
     era = await getJSON('/api/era');
     if (!era || era.status === 'none') return false;
+    S.chain = era.chain ?? null;
     const [first, months, now] = await Promise.all([getJSON(`/api/era/snap?m=0&age=${era.age}`), getJSON(`/api/era/months?age=${era.age}`), getJSON(`/api/era/snap?m=${era.month}&age=${era.age}`)]);
     mode = 'live';
     resetStory(first.state);
@@ -162,6 +163,7 @@ function connect() {
     if (d.t === 'age' && d.era?.age !== era.age) return location.reload(); // a new age has begun
     if (d.t === 'hello' && d.era) {
       Object.assign(era, d.era);
+      S.chain = d.era.chain ?? S.chain;
       if (d.era.month > story.frontier) catchUp();
     }
     if (d.t === 'month' && d.m >= story.frontier) {
@@ -193,6 +195,7 @@ function liveChip() {
     c.innerHTML = `<span class="own">${icon('dice')} Your own age</span><button class="link" data-go="live">The living world</button>`;
     return;
   }
+  if (Date.now() - (S.chainAt ?? 0) > 5 * 60_000) { S.chainAt = Date.now(); getJSON('/api/era').then((e) => { S.chain = e.chain ?? S.chain; }).catch(() => {}); }
   const behind = story.frontier - s.month, mins = Math.max(0, Math.round(((era?.next ?? Date.now()) - Date.now()) / 60000));
   c.innerHTML = behind <= 0
     ? `<span class="on"><i></i>Live</span><small>${era?.status === 'running' ? `next month in ${mins} min` : 'the age has ended'}</small>${s.month > 12 ? '<button class="link" data-go="start">Watch from the start</button>' : ''}`

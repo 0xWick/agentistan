@@ -6,6 +6,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { newAge, tick, frame, ENGINE } from '../web/silk/engine.js';
 import { brain } from '../web/silk/doctrine.js';
 import { makeCast } from './cast.js';
+import { makeSealer, DEPLOYED, EXPLORER } from './seal.js';
 
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' };
 const json = (status, body, cache = 'no-store') => new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': cache } });
@@ -28,6 +29,8 @@ export class Era extends DurableObject {
     ctx.blockConcurrencyWhile(async () => {
       this.load();
       if (env.LLM_API_KEY && env.CAST !== 'off') this.hooks.push(makeCast(env, this));
+      const sealer = makeSealer(env, this);
+      if (sealer) this.hooks.push(sealer);
     });
   }
 
@@ -49,7 +52,12 @@ export class Era extends DurableObject {
     const s = this.state(), m = this.meta;
     if (!s || !m) return { status: 'none' };
     return { age: m.age, seed: m.seed, ageId: m.ageId, engine: m.engine, month: s.month, months: s.months, startYear: s.startYear, status: s.status, pace: m.pace, next: m.next, restUntil: m.restUntil ?? null,
-      viewers: this.ctx.getWebSockets().length, endReason: s.endReason, past: (m.ages ?? []).slice(-6) };
+      viewers: this.ctx.getWebSockets().length, endReason: s.endReason, past: (m.ages ?? []).slice(-6), chain: this.chain() };
+  }
+  chain() { // the registry on Base Sepolia: where it is, and the last year sealed
+    const book = this.get('seals'), done = (book?.list ?? []).filter((x) => x.status === 'done' && book.age === this.meta?.age);
+    const last = done.at(-1);
+    return { address: DEPLOYED.address, explorer: EXPLORER, sealedTo: last?.to ?? 0, last: last ? { seq: last.seq, to: last.to, hash: last.hash, block: last.block } : null, seals: done.slice(-12).map((x) => ({ seq: x.seq, from: x.from, to: x.to, hash: x.hash })) };
   }
 
   // ---------- the turn of the month ----------
@@ -71,6 +79,7 @@ export class Era extends DurableObject {
   async alarm() {
     const s = this.state();
     if (!s || !this.meta) return;
+    if (this.meta.engine !== ENGINE) return this.begin(); // new rules: an old record would replay differently, so a new age begins
     if (s.status !== 'running') { // the age is over: rest a while, then history starts again
       if (Date.now() >= (this.meta.restUntil ?? 0)) this.begin();
       else this.ctx.storage.setAlarm(this.meta.restUntil);
