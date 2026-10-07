@@ -91,7 +91,7 @@ export const RULES = {
   sustain: { war: 0.95, peace: 0.75 }, // recruit only while upkeep stays under this share of income
 
   life: { // chance of dying each month, by age band; "ailing" multiplies it
-    bands: [[5, 0.003], [40, 0.0006], [50, 0.0012], [60, 0.0024], [70, 0.0045], [80, 0.009], [200, 0.02]],
+    bands: [[5, 0.003], [40, 0.0006], [50, 0.0012], [60, 0.0024], [70, 0.0045], [80, 0.009], [90, 0.025], [200, 0.06]],
     ailing: 4,
     heirEachYear: 0.25, // a ruler with neither heir nor child names one
   },

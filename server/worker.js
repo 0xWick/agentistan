@@ -18,8 +18,12 @@ async function art(req, env) {
   if (!env.AI) return Response.json({ error: 'no AI binding' }, { status: 503 });
   const { prompt, steps = 6 } = await req.json().catch(() => ({}));
   if (typeof prompt !== 'string' || prompt.length < 10 || prompt.length > 2000) return Response.json({ error: 'a prompt, please' }, { status: 400 });
-  const out = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt, steps: Math.min(8, Math.max(1, steps | 0)) });
-  return Response.json({ image: out.image });
+  try {
+    const out = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt, steps: Math.min(8, Math.max(1, steps | 0)) });
+    return Response.json({ image: out.image });
+  } catch (err) {
+    return Response.json({ error: String(err?.message ?? err).slice(0, 300) }, { status: 502 }); // e.g. the free neurons are spent for the day
+  }
 }
 
 export default {

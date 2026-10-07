@@ -10,12 +10,15 @@ const SKIN = { latin: '#f2d4b4', greek: '#efcfac', georgian: '#eccaa6', armenian
   mande: '#5e3b26', sudanic: '#6a4329', forest: '#5a3824', ethiopian: '#7e5236', swahili: '#7a4e34', shona: '#5c3a25',
   roman: '#ecc9a2', punic: '#dcb48a', hellenic: '#e9c7a0', gaulish: '#f2d6b8', celtiberian: '#e8c39c', germanic: '#f5dcc4', thracian: '#eccaa4', illyrian: '#ecc8a2', scythian: '#e8c49c',
   iranian: '#dfb890', mauryan: '#b3804f', andhra: '#a8744b', sangam: '#9e6c45', lankan: '#a8744b', han: '#eccb98', xiongnu: '#e0b386', sabaean: '#c9986a', nabataean: '#d4a77c', kushite: '#6e4630',
-  numidian: '#c99a6e', egyptian: '#c4936a', orontid: '#e2bd96', kartvel: '#eccaa6', briton: '#f5dcc2', gojoseon: '#eccb9c', aulac: '#e0b98a', yue: '#e3bf8e', pyu: '#c99a6a', saka: '#e2b886' };
+  numidian: '#c99a6e', egyptian: '#c4936a', orontid: '#e2bd96', kartvel: '#eccaa6', briton: '#f5dcc2', gojoseon: '#eccb9c', aulac: '#e0b98a', yue: '#e3bf8e', pyu: '#c99a6a', saka: '#e2b886',
+  british: '#f4d8ba', french_m: '#f2d4b4', german_m: '#f3d6b8', russian_m: '#f2d4b4', italian_m: '#ecc9a2', iberian_m: '#ecc8a2', turkish_m: '#e2bd96', arab_m: '#d8ae86', persian_m: '#dfb890', indian_m: '#b07b52',
+  dutch_m: '#f4d8ba', slav_m: '#f2d4b4', baltic_m: '#f5dac0', caucasian_m: '#e6c19c', turkestan_m: '#e2bd92', mongol_m: '#e6c08e', tibetan_m: '#d9ae80', albanian_m: '#ecc9a2',
+  chinese_m: '#eccb98', japanese_m: '#efcf9e', korean_m: '#eccb9c', southslav_m: '#eccaa4', greek_m: '#e9c7a0', romanian_m: '#ecc8a2', magyar_m: '#f0d0ae', nordic_m: '#f6dcc4', african_m: '#5e3b26', sea_m: '#c08e60', afghan_m: '#d9ad86' };
 const HAIR = ['#2a1d14', '#3a2616', '#1d1712', '#4a3220'];
-const EAST = new Set(['chinese', 'mongol', 'steppe', 'korean', 'japanese', 'viet', 'tibetan', 'han', 'xiongnu', 'gojoseon', 'aulac', 'yue', 'saka']);
-const WEST = new Set(['latin', 'magyar', 'slavic', 'greek', 'georgian', 'armenian', 'nubian', 'frankish', 'english', 'celtic', 'iberian', 'german', 'westslav', 'norse', 'baltic', 'rus', 'alan', 'ethiopian', 'roman', 'punic', 'hellenic', 'gaulish', 'celtiberian', 'germanic', 'thracian', 'illyrian', 'scythian', 'orontid', 'kartvel', 'briton']);
+const EAST = new Set(['chinese', 'mongol', 'steppe', 'korean', 'japanese', 'viet', 'tibetan', 'han', 'xiongnu', 'gojoseon', 'aulac', 'yue', 'saka', 'chinese_m', 'japanese_m', 'korean_m', 'mongol_m', 'tibetan_m']);
+const WEST = new Set(['latin', 'magyar', 'slavic', 'greek', 'georgian', 'armenian', 'nubian', 'frankish', 'english', 'celtic', 'iberian', 'german', 'westslav', 'norse', 'baltic', 'rus', 'alan', 'ethiopian', 'roman', 'punic', 'hellenic', 'gaulish', 'celtiberian', 'germanic', 'thracian', 'illyrian', 'scythian', 'orontid', 'kartvel', 'briton', 'british', 'french_m', 'german_m', 'russian_m', 'italian_m', 'iberian_m', 'southslav_m', 'greek_m', 'romanian_m', 'magyar_m', 'nordic_m', 'dutch_m', 'slav_m', 'baltic_m', 'caucasian_m', 'albanian_m']);
 const NOMADS = new Set(['mongol', 'steppe', 'xiongnu', 'saka', 'scythian']);
-const INDIA = new Set(['rajput', 'hindustani', 'bengali', 'kashmiri', 'punjabi', 'sindhi', 'deccani', 'tamil', 'sinhala', 'burmese', 'khmer', 'malay', 'mauryan', 'andhra', 'sangam', 'lankan', 'pyu']);
+const INDIA = new Set(['rajput', 'hindustani', 'bengali', 'kashmiri', 'punjabi', 'sindhi', 'deccani', 'tamil', 'sinhala', 'burmese', 'khmer', 'malay', 'mauryan', 'andhra', 'sangam', 'lankan', 'pyu', 'indian_m', 'sea_m']);
 
 function hash(str) {
   let h = 2166136261;
@@ -27,6 +30,12 @@ const shade = (hex, k) => {
   return `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 };
 
+// The dress of 1914: uniforms for monarchs and generals, suits for presidents and ministers.
+const isModern = (cu) => cu === 'british' || cu.endsWith('_m');
+const CIVIL = /President|Minister|Premier|Chairman|Leader|Chancellor|Secretary|Commissar|Regent|Chief/;
+const UNIFORM = { british: '#7a6a45', french_m: '#6f86a6', german_m: '#6b6e5a', russian_m: '#6e6b4c', italian_m: '#7a7a62', turkish_m: '#7a6a4a', japanese_m: '#6a6440', magyar_m: '#6b6e5a' };
+const COVERED = new Set(['arab_m', 'persian_m', 'afghan_m', 'turkish_m']); // women's heads covered in public
+
 // c: a character; color: their realm's colour; age: years; uid: a unique id for gradient names.
 export function portrait(c, { color = '#6a5032', age = 40, size = 64, uid = '' } = {}) {
   const culture = c.culture ?? 'persian', h = hash(`${c.id}${c.name}`), r = (n) => ((h >>> n) & 255) / 255;
@@ -35,21 +44,29 @@ export function portrait(c, { color = '#6a5032', age = 40, size = 64, uid = '' }
   const robe = shade(color, 0.85), robe2 = shade(color, 0.6), gold = '#c9a03c', id = `p${uid}${h % 99999}`;
   const role = c.role === 'ruler' ? 'ruler' : c.role === 'heir' ? 'heir' : c.role === 'general' ? 'general' : c.role === 'vizier' ? 'vizier' : c.role === 'consort' ? 'consort' : child ? 'child' : 'noble';
   const fw = 10.5 + r(3) * 2; // face half-width
+  const modern = isModern(culture), civil = modern && CIVIL.test(c.title ?? ''), uniform = modern && !female && !child && !civil && ['ruler', 'heir', 'general'].includes(role);
+  const uni = UNIFORM[culture] ?? '#5d5a48';
   const parts = [];
   // the roundel
   parts.push(`<defs><radialGradient id="${id}g" cx="50%" cy="38%" r="65%"><stop offset="0" stop-color="#f6ecd2"/><stop offset="1" stop-color="${shade(color, 1.25)}"/></radialGradient><clipPath id="${id}c"><circle cx="32" cy="32" r="29"/></clipPath></defs>`);
   parts.push(`<circle cx="32" cy="32" r="31" fill="${gold}"/><circle cx="32" cy="32" r="29" fill="url(#${id}g)"/>`);
   const body = [];
   // shoulders and robe, with a collar
+  if (modern && !female) {
+    body.push(`<path d="M6 66c1-14 10-20 26-20s25 6 26 20z" fill="${uniform ? uni : child ? robe : '#2b2f38'}"/>`);
+    if (uniform) body.push(`<path d="M25 45h14v5h-14z" fill="${shade(uni, 0.8)}"/>`, `<path d="M10 54h8M46 54h8" stroke="${gold}" stroke-width="2.6"/>`, ...[54, 59, 64].map((y) => `<circle cx="32" cy="${y}" r="1" fill="${gold}"/>`), role === 'ruler' ? `<path d="M20 50l24 14" stroke="${shade(color, 1.1)}" stroke-width="2.4"/>` : '');
+    else if (!child) body.push(`<path d="M26 46l6 11 6-11z" fill="#f3ecdc"/>`, `<path d="M31 48.5l1 9 1-9z" fill="${shade(color, 0.6)}"/>`, `<path d="M26 46l4 14M38 46l-4 14" stroke="#1b1e25" stroke-width="1"/>`);
+  } else {
   body.push(`<path d="M6 66c1-14 10-20 26-20s25 6 26 20z" fill="${robe}"/>`);
-  body.push(`<path d="M24 47c2 5 5 8 8 8s6-3 8-8" fill="none" stroke="${gold}" stroke-width="1.6"/>`);
-  if (role === 'general') body.push(`<path d="M10 66c1-11 8-16 22-16s21 5 22 16" fill="none" stroke="${shade(robe, 0.7)}" stroke-width="1" stroke-dasharray="2 1.6"/>`, `<path d="M14 54h36" stroke="#9aa0a8" stroke-width="2.4" opacity="0.7"/>`);
-  if (role === 'ruler') body.push(`<path d="M32 50v16" stroke="${gold}" stroke-width="1.4"/>`, `<circle cx="32" cy="57" r="1.8" fill="${gold}"/>`);
+  body.push(modern ? `<path d="M24 47c2 5 5 8 8 8s6-3 8-8" fill="none" stroke="#f3ecdc" stroke-width="2.2"/>` : `<path d="M24 47c2 5 5 8 8 8s6-3 8-8" fill="none" stroke="${gold}" stroke-width="1.6"/>`);
+  }
+  if (!modern && role === 'general') body.push(`<path d="M10 66c1-11 8-16 22-16s21 5 22 16" fill="none" stroke="${shade(robe, 0.7)}" stroke-width="1" stroke-dasharray="2 1.6"/>`, `<path d="M14 54h36" stroke="#9aa0a8" stroke-width="2.4" opacity="0.7"/>`);
+  if (!modern && role === 'ruler') body.push(`<path d="M32 50v16" stroke="${gold}" stroke-width="1.4"/>`, `<circle cx="32" cy="57" r="1.8" fill="${gold}"/>`);
   // neck and face
   body.push(`<path d="M27 40h10v8c-3 2-7 2-10 0z" fill="${shade(skin, 0.9)}"/>`);
   const fy = 30, fh = 13 + r(5) * 1.5;
   // hair behind the head
-  const veiled = female && !child && !NOMADS.has(culture) && culture !== 'chinese';
+  const veiled = female && !child && (modern ? COVERED.has(culture) : !NOMADS.has(culture) && culture !== 'chinese');
   const veilColor = WEST.has(culture) ? '#f3ecdc' : shade(color, 1.15);
   if (veiled) body.push(`<path d="M${32 - fw - 4} ${fy + 2}c-1-14 ${fw + 4} -19 ${fw + 4} -19s${fw + 5} 5 ${fw + 4} 19l4 34h${-2 * fw - 16}z" fill="${veilColor}"/>`); // the veil falls behind the face
   else if (female) body.push(`<path d="M${32 - fw - 3} ${fy}c0-12 6-17 ${fw + 3} -17s${fw + 3} 5 ${fw + 3} 17v14c-3 3-6 3-8 0h${-2 * fw + 4}c-2 3-5 3-8 0z" fill="${hair}"/>`);
@@ -66,18 +83,35 @@ export function portrait(c, { color = '#6a5032', age = 40, size = 64, uid = '' }
   if (old) body.push(`<path d="M${32 - fw * 0.7} ${fy + 2}q1.6 1.4 3.2 0M${32 + fw * 0.7 - 3.2} ${fy + 2}q1.6 1.4 3.2 0" fill="none" stroke="${shade(skin, 0.75)}" stroke-width="0.6"/>`);
   // beards and moustaches by custom
   if (!female && !child && age >= 18) {
-    const beard = EAST.has(culture) ? (culture === 'chinese' ? 'goatee' : 'drooping') : WEST.has(culture) && culture !== 'greek' && r(9) < 0.5 ? 'short' : INDIA.has(culture) && r(9) < 0.4 ? 'moustache' : 'full';
+    const beard = modern ? (EAST.has(culture) ? (r(9) < 0.4 ? 'moustache' : 'none') : r(9) < 0.55 ? 'moustache' : r(9) < 0.75 ? 'short' : 'none') : EAST.has(culture) ? (culture === 'chinese' ? 'goatee' : 'drooping') : WEST.has(culture) && culture !== 'greek' && r(9) < 0.5 ? 'short' : INDIA.has(culture) && r(9) < 0.4 ? 'moustache' : 'full';
     const b = old ? hair : shade(hair, 1.05);
     if (beard === 'full') body.push(`<path d="M${32 - fw + 0.6} ${fy + 1}c0 ${9 + r(11) * 6} 6 ${14 + r(11) * 5} ${fw - 0.6} ${14 + r(11) * 5}s${fw - 0.6} -${5 + r(11) * 5} ${fw - 0.6} -${14 + r(11) * 5}c-2 4 -5 6 -${fw - 0.6} 6s-${fw - 2.6} -2 -${fw - 0.6} -6z" fill="${b}"/>`, `<path d="M28.6 ${fy + 7.6}q3.4 -1.6 6.8 0" fill="none" stroke="${shade(skin, 0.55)}" stroke-width="1"/>`);
     if (beard === 'short') body.push(`<path d="M${32 - fw + 1} ${fy + 3}c1 7 5 10 ${fw - 1} 10s${fw - 2} -3 ${fw - 1} -10c-3 3 -6 4 -${fw - 1} 4s-${fw - 2} -1 -${fw - 1} -4z" fill="${b}"/>`);
     if (beard === 'goatee') body.push(`<path d="M30 ${fy + 9.5}q2 7 4 0z" fill="${b}"/>`, `<path d="M28 ${fy + 7}q-2 3 -3 5M36 ${fy + 7}q2 3 3 5" fill="none" stroke="${b}" stroke-width="0.9"/>`);
     if (beard === 'drooping') body.push(`<path d="M28.4 ${fy + 7.2}q-1.8 2 -2.2 7M35.6 ${fy + 7.2}q1.8 2 2.2 7" fill="none" stroke="${b}" stroke-width="1.6" stroke-linecap="round"/>`, `<path d="M28.4 ${fy + 7.2}q3.6 -1.4 7.2 0" fill="none" stroke="${b}" stroke-width="1.4"/>`);
-    if (beard !== 'goatee' && beard !== 'drooping') body.push(`<path d="M28.2 ${fy + 7.4}q1.9 -1.6 3.8 -0.2q1.9 -1.4 3.8 0.2" fill="none" stroke="${b}" stroke-width="1.5" stroke-linecap="round"/>`);
+    if (beard !== 'goatee' && beard !== 'drooping' && beard !== 'none') body.push(`<path d="M28.2 ${fy + 7.4}q1.9 -1.6 3.8 -0.2q1.9 -1.4 3.8 0.2" fill="none" stroke="${b}" stroke-width="1.5" stroke-linecap="round"/>`);
   }
-  body.push(headgear({ culture, role, female, child, fw, fy, hair, gold, color, r, old, veilColor }));
+  body.push(modern ? modernHat({ culture, role, female, child, fw, fy, hair, gold, color, uniform, uni, veiled, veilColor }) : headgear({ culture, role, female, child, fw, fy, hair, gold, color, r, old, veilColor }));
   parts.push(`<g clip-path="url(#${id}c)">${body.join('')}</g>`);
   parts.push(`<circle cx="32" cy="32" r="29" fill="none" stroke="#3a2816" stroke-width="1.2"/>`);
   return `<svg class="portrait" viewBox="0 0 64 64" width="${size}" height="${size}" style="width:${size}px;height:${size}px" aria-hidden="true">${parts.join('')}</svg>`;
+}
+
+function modernHat({ culture, role, female, child, fw, fy, hair, gold, color, uniform, uni, veiled, veilColor }) {
+  const top = fy - 13.5, L = 32 - fw - 1.5, W = (fw + 1.5) * 2;
+  const hairCap = `<path d="M${L} ${top + 7}c0-9 ${W / 2} -11 ${W / 2} -11s${W / 2} 2 ${W / 2} 11c-3-4 -${W - 4} -4 -${W} 0z" fill="${hair}"/>`;
+  if (child) return hairCap;
+  if (female) {
+    const tiara = role === 'ruler' || role === 'consort' ? `<path d="M${L + 4} ${top - 1}q${W / 2 - 4} -6 ${W - 8} 0" fill="none" stroke="${gold}" stroke-width="1.8"/><circle cx="32" cy="${top - 4}" r="1.5" fill="#f3ecdc" stroke="${gold}" stroke-width="0.5"/>` : '';
+    if (veiled) return `<path d="M${L} ${top + 7}c0-9 ${W / 2} -11 ${W / 2} -11s${W / 2} 2 ${W / 2} 11c-4-4 -${W - 4} -4 -${W} 0z" fill="${veilColor}"/>` + tiara;
+    return `<ellipse cx="32" cy="${top + 1}" rx="${fw + 2}" ry="6.5" fill="${hair}"/><ellipse cx="32" cy="${top - 5}" rx="${fw - 3}" ry="5" fill="${hair}"/>` + tiara; // hair pinned up, 1910s
+  }
+  if (culture === 'turkish_m') return `<path d="M${L + 3} ${top + 5}l2-12h${W - 10}l2 12z" fill="#a3261f"/><path d="M${L + W - 6} ${top - 7}q4 4 3 10" fill="none" stroke="#1d1712" stroke-width="1.2"/>`; // the fez
+  if (culture === 'arab_m') return `<path d="M${L - 3} ${top + 7}c0-11 ${W / 2 + 3} -13 ${W / 2 + 3} -13s${W / 2 + 3} 2 ${W / 2 + 3} 13l2 24h${-W - 10}z" fill="#f3ecdc"/><path d="M${L} ${top + 1}q${W / 2} -4 ${W} 0" fill="none" stroke="#1d1712" stroke-width="2.2"/>`; // keffiyeh and agal
+  if (culture === 'persian_m' || culture === 'afghan_m') return `<path d="M${L + 2} ${top + 5}c0-9 ${W / 2 - 2} -12 ${W / 2 - 2} -12s${W / 2 - 2} 3 ${W / 2 - 2} 12z" fill="#2a2420"/>${role === 'ruler' ? `<circle cx="32" cy="${top - 2}" r="1.8" fill="#a3361f" stroke="${gold}" stroke-width="0.6"/>` : ''}`; // the lambskin hat
+  if (culture === 'indian_m') return `<path d="M${L - 1} ${top + 5}c0-9 ${W / 2 + 1} -12 ${W / 2 + 1} -12s${W / 2 + 1} 3 ${W / 2 + 1} 12c-2 3 -${W / 2 - 1} 4 -${W / 2 + 1} 4s-${W / 2 - 1} -1 -${W / 2 + 1} -4z" fill="${role === 'ruler' ? '#e2a23c' : '#e8dcc4'}"/>`;
+  if (uniform) return hairCap + `<path d="M${L - 1} ${top + 4}c0-7 ${W / 2 + 1} -10 ${W / 2 + 1} -10s${W / 2 + 1} 3 ${W / 2 + 1} 10z" fill="${uni}"/><path d="M${L - 1} ${top + 4}h${W + 2}" stroke="${role === 'general' ? '#a3361f' : gold}" stroke-width="2.2"/><path d="M${L + 2} ${top + 6}q${W / 2 - 2} 4 ${W - 4} 0" fill="#1d1712"/>`; // a peaked cap
+  return hairCap; // bare-headed
 }
 
 function headgear({ culture, role, female, child, fw, fy, hair, gold, color, r, old, veilColor }) {

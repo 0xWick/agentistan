@@ -2,7 +2,7 @@
 // inventions that spread across borders and by conquest; and each realm's fortune, read every January: golden ages,
 // decline and poverty.
 import { RULES as R } from './rules.js';
-import { PROVINCES, PROV, onRoad, provincesOf, living, atWar, weatherOf, clamp, round1, chance, pick, short, ofR, say, vb, poss, fullName, cityOf, placeOf, yearOf } from './core.js';
+import { PROVINCES, PROV, baseWealth, onRoad, provincesOf, living, atWar, weatherOf, clamp, round1, chance, pick, short, ofR, say, vb, poss, fullName, cityOf, placeOf, yearOf } from './core.js';
 import { prosperityOf, steersman } from './economy.js';
 
 // The inventions an age can know. Effects live where they act (knows(realm, id) in economy.js and war.js).
@@ -21,6 +21,13 @@ export const INVENTIONS = {
   elephants: { name: 'War elephants', icon: 'castle', text: 'Elephants that break lines in open country', cost: 90 },
   legion: { name: 'The legion', icon: 'banner', text: 'Drilled maniples that win more battles', cost: 120 },
   crossbow: { name: 'Crossbows', icon: 'bow', text: 'Bolts that pierce armour: stronger infantry', cost: 90 },
+  railways: { name: 'Railways', icon: 'banner', text: 'Armies ride the trains through friendly land', cost: 120 },
+  machineguns: { name: 'Machine guns', icon: 'swords', text: 'Defenders mow down attackers: fronts stall in trenches', cost: 100 },
+  artillery: { name: 'Heavy artillery', icon: 'tower', text: 'Guns that break forts: shorter sieges, stronger attacks', cost: 110 },
+  industry: { name: 'Heavy industry', icon: 'anvil', text: 'Factories and coal: more revenue', cost: 140 },
+  aircraft: { name: 'Aircraft', icon: 'eye', text: 'Eyes and guns in the sky: stronger armies', cost: 150 },
+  tanks: { name: 'Tanks', icon: 'castle', text: 'Armour that crosses the trenches in open country', cost: 170 },
+  radio: { name: 'Radio', icon: 'quill', text: 'Orders and news by wireless: faster learning', cost: 120, learn: 1.3 },
 };
 
 export function world(s, rng, emit) {
@@ -111,7 +118,7 @@ function learning(s, rng, emit) {
     let gain = 0;
     for (const p of mine) {
       const q = s.provinces[p.id];
-      gain += (q.prosperity ?? 50) * p.wealth * L.perProsperity + (q.works?.library ? L.library : 0);
+      gain += (q.prosperity ?? 50) * baseWealth(s, p.id) * L.perProsperity + (q.works?.library ? L.library : 0);
     }
     for (const k of r.known) gain *= INVENTIONS[k]?.learn ?? 1;
     if (r.golden > s.month) gain *= 1.5;
@@ -130,7 +137,7 @@ function learning(s, rng, emit) {
       if (r.learning >= INVENTIONS[inv].cost * 2.5 && chance(rng, 0.05)) {
         r.learning = round1(r.learning - INVENTIONS[inv].cost * 2);
         r.known.push(inv);
-        const best = [...mine].sort((a, b) => b.wealth - a.wealth)[0];
+        const best = [...mine].sort((a, b) => baseWealth(s, b.id) - baseWealth(s, a.id))[0];
         emit('invention', `The scholars of ${cityOf(s, best.id)} work out ${INVENTIONS[inv].name.toLowerCase()} for ${ofR(s, r.id)}: ${INVENTIONS[inv].text.toLowerCase()}`, { realms: [r.id], at: best.id, invention: inv, first: !living(s).some((o) => o.id !== r.id && o.known.includes(inv)) });
         break;
       }

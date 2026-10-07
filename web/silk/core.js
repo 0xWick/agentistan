@@ -141,6 +141,8 @@ export function onRoad(s, pid) {
 const EMPTY = [];
 
 // ---------- words ----------
+// An age's own words for some events (s.words, from its pack); fallback is the medieval phrasing.
+export const word = (s, k, fallback) => s.words?.[k] ?? fallback;
 export const cityOf = (s, pid) => s.names?.[pid]?.city ?? PROV[pid].city;
 export const placeOf = (s, pid) => s.names?.[pid]?.name ?? PROV[pid].name;
 export const short = (s, id) => (id ? s.realms[id]?.short ?? id : 'the locals');
@@ -156,6 +158,8 @@ export const him = (c) => (c?.female ? 'her' : 'him');
 export const he = (c) => (c?.female ? 'she' : 'he');
 export const fullName = (c) => (c ? `${c.title ? `${c.title} ` : ''}${c.name}${c.epithet ? ` ${c.epithet}` : ''}` : 'someone');
 export const nameOf = (s, id) => (id && s.chars[id] ? fullName(s.chars[id]) : 'an unknown captain');
+// A province's wealth in this age: the pack's own figure, or the map's.
+export const baseWealth = (s, pid) => s.wealth?.[pid] ?? PROV[pid].wealth;
 export const ageOf = (s, c) => yearOf(s.month, s) - (c?.born ?? yearOf(s.month, s));
 export const usedNames = (s) => new Set(Object.values(s.chars).map((c) => c.name));
 export const menText = (k) => (k < 0.95 ? `${Math.max(1, Math.round(k * 10)) * 100}` : `${Math.round(k).toLocaleString("en-US")},000`);

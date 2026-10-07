@@ -3,7 +3,7 @@
 // Temujin, who may or may not unite the steppe.
 import realms from '../realms.json' with { type: 'json' };
 import { RULES as R } from '../rules.js';
-import { provincesOf, armiesOf, armiesChanged, living, friendly, setOwner, newChar, newArmy, round1, chance, pick, short, ofR, say, cityOf, placeOf, atWar, PROV } from '../core.js';
+import { provincesOf, armiesOf, armiesChanged, living, friendly, setOwner, newChar, newArmy, round1, chance, pick, short, ofR, say, cityOf, placeOf, atWar, PROV, baseWealth } from '../core.js';
 import { strength } from '../economy.js';
 import { fall, declareWar } from '../war.js';
 
@@ -184,9 +184,9 @@ function steppe(s, rng, emit) {
     const targets = from.flatMap((p) => p.neighbors).filter((n) => s.provinces[n].owner && s.provinces[n].owner !== 'kipchak' && !friendly(s, 'kipchak', s.provinces[n].owner));
     if (targets.length) {
       const t = pick(rng, targets), p = s.provinces[t], victim = s.realms[p.owner];
-      const loot = Math.min(victim.gold, PROV[t].wealth * 4);
+      const loot = Math.min(victim.gold, baseWealth(s, t) * 4);
       victim.gold = round1(victim.gold - loot);
-      victim.grain = round1(Math.max(0, (victim.grain ?? 0) - PROV[t].wealth * 6));
+      victim.grain = round1(Math.max(0, (victim.grain ?? 0) - baseWealth(s, t) * 6));
       kip.gold = round1(kip.gold + loot);
       p.ravaged = Math.max(p.ravaged, 4);
       emit('raid', `Kipchak riders raid ${placeOf(s, t)}, burning villages and carrying off ${Math.round(loot)} gold`, { realms: ['kipchak', victim.id], at: t });

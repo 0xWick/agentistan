@@ -3,7 +3,7 @@
 // A character's big choices (to betray, to rebel, to accept a match) are asked as decisions and answered next month by
 // whoever speaks for them: a player, the AI, or doctrine.
 import { RULES as R } from './rules.js';
-import { PROV, provincesOf, armiesOf, armiesChanged, living, atWar, allied, friendly, key, setOwner, hops, clamp, round1, chance, pick, rngFor, newChar, newArmy, newRealm, colorFor,
+import { PROV, baseWealth, word, provincesOf, armiesOf, armiesChanged, living, atWar, allied, friendly, key, setOwner, hops, clamp, round1, chance, pick, rngFor, newChar, newArmy, newRealm, colorFor,
   short, ofR, say, vb, poss, his, him, nameOf, fullName, cityOf, placeOf, ageOf, usedNames, yearOf, menText } from './core.js';
 import { strength, incomeOf } from './economy.js';
 import { declareWar, disband, fall } from './war.js';
@@ -85,7 +85,7 @@ export function court(s, rng, emit) {
 
 function lives(s, rng, emit) {
   for (const c of Object.values(s.chars)) {
-    if (!c.alive) continue;
+    if (!c.alive || c.spared > s.month) continue; // history keeps some alive until their hour
     const age = ageOf(s, c);
     const p = (R.life.bands.find(([upTo]) => age < upTo)?.[1] ?? 0.02) * (c.traits.includes('ailing') ? R.life.ailing : 1);
     if (chance(rng, p)) die(s, c.id, 'age', emit, rng);
@@ -377,6 +377,7 @@ function intrigue(s, rng, emit) {
 
 // ---------- generals who betray ----------
 function betrayals(s, rng, emit) {
+  if (s.month < 12) return;
   for (const c of Object.values(s.chars)) {
     if (!c.alive || c.role !== 'general' || !s.armies[c.army] || s.armies[c.army].battle) continue;
     const r = s.realms[c.realm];
@@ -398,7 +399,7 @@ function betrayals(s, rng, emit) {
     if (!T.betray) continue;
     const ruler = s.chars[r.ruler];
     const troubled = r.broke || r.regent || ['negligent', 'hedonist', 'tyrant'].includes(ruler?.temper) || (ruler && ageOf(s, ruler) < 18);
-    if (!chance(rng, R.betrayal.chance * T.betray * (troubled ? 3 : 1) * (c.loyalty < 50 ? 2 : 0.6))) continue;
+    if (!chance(rng, R.betrayal.chance * T.betray * (troubled ? 3 : 1) * (c.loyalty < 50 ? 2 : 0.6) * (s.mods?.betrayal ?? 1))) continue;
     ask(s, { kind: 'betray', char: c.id, realm: r.id, options: ['serve', 'seize', 'break'],
       question: `${fullName(ruler)} of ${ofR(s, r.id)} ${troubled ? 'is weak' : 'trusts you'}. You command ${menText(s.armies[c.army].size)} men at ${cityOf(s, s.armies[c.army].at)}. Serve, seize the throne, or break away?` });
   }
@@ -417,15 +418,15 @@ function plots(s, rng, emit) {
     const ok = chance(rng, odds), exposed = chance(rng, ok ? A.exposed : A.exposed + 0.3);
     if (ok) {
       s.record.assassinations++;
-      die(s, t.id, 'assassin', emit, rng, `is struck down by ${c.by === 'alamut' ? 'the hidden agents of Alamut' : 'hired daggers'}${exposed && r.id !== 'alamut' ? `, paid by ${ofR(s, r.id)}` : ''}`);
+      die(s, t.id, 'assassin', emit, rng, `is struck down by ${c.by === 'alamut' ? 'the hidden agents of Alamut' : word(s, 'daggers', 'hired daggers')}${exposed && r.id !== 'alamut' ? `, paid by ${ofR(s, r.id)}` : ''}`);
     } else emit('plot', `A plot against ${nameOf(s, t.id)} of ${ofR(s, t.realm)} fails${exposed ? `: the trail leads to ${ofR(s, r.id)}` : ''}`, { realms: [t.realm, ...(exposed ? [r.id] : [])], chars: [t.id] });
     if (exposed && t.realm && t.realm !== r.id) declareWar(s, t.realm, r.id, emit, { cause: 'revenge', text: `${say(s, t.realm, 'declares')} war on ${ofR(s, r.id)} to avenge the plot` });
   }
   for (const P of Object.values(PROV)) {
-    if (P.wealth >= 5 && s.provinces[P.id].loyalty < 50 && !Object.values(s.groups).some((g) => g.at === P.id) && chance(rng, A.guildChance)) {
+    if (baseWealth(s, P.id) >= 5 && s.provinces[P.id].loyalty < 50 && !Object.values(s.groups).some((g) => g.at === P.id) && chance(rng, A.guildChance)) {
       const id = `g${s.nextId++}`;
       s.groups[id] = { id, kind: 'guild', at: P.id, since: s.month, name: `the Daggers of ${cityOf(s, P.id)}` };
-      emit('guild', `A guild of hired daggers gathers in the back streets of ${cityOf(s, P.id)}`, { at: P.id });
+      emit('guild', `${word(s, 'guild', 'A guild of hired daggers gathers in the back streets of')} ${cityOf(s, P.id)}`, { at: P.id });
     }
   }
 }

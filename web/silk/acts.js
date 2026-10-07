@@ -1,9 +1,9 @@
 // The acts a ruler can take. Doctrine, the AI and players all ask through act(); each act checks the rules before it
 // changes anything, so no voice, human or machine, can do what the world does not allow.
 import { RULES as R } from './rules.js';
-import { PROV, PROVINCES, onRoad, provincesOf, armiesOf, living, atWar, allied, friendly, truceUntil, key, setOwner, clamp, round1, chance, pick,
+import { PROV, PROVINCES, baseWealth, onRoad, word, provincesOf, armiesOf, living, atWar, allied, friendly, truceUntil, key, setOwner, clamp, round1, chance, pick,
   short, ofR, say, vb, poss, nameOf, fullName, cityOf, yearOf } from './core.js';
-import { strength, incomeOf, startWork, canBuild, steersman, rulingTemper, pairTreaties } from './economy.js';
+import { strength, sideStrength, incomeOf, startWork, canBuild, steersman, rulingTemper, pairTreaties } from './economy.js';
 import { declareWar, makePeace, peaceTerms, fall, breakTreaty } from './war.js';
 import { hire, ask } from './court.js';
 
@@ -72,7 +72,8 @@ export function acceptsPeace(s, them, us) {
   if (t?.nomad && long <= 60 && !t.horde) return strength(s, them) < strength(s, us) * 0.8;
   if (t?.horde) return false;
   const conqueror = ['conqueror', 'tyrant'].includes(rulingTemper(s, t));
-  return strength(s, them) < strength(s, us) * (conqueror ? 1.1 : 1.6) || long > (conqueror ? 72 : 48);
+  const together = living(s).some((x) => x.id !== them && allied(s, x.id, them) && atWar(s, x.id, us)); // allies still in the field
+  return sideStrength(s, them, us) < sideStrength(s, us, them) * (conqueror ? 1.1 : 1.6) * (together ? 0.5 : 1) || long > (conqueror ? 72 : 48) * (together ? 1.5 : 1);
 }
 export const acceptsAlliance = (s, them, us) => !s.realms[them].nomad && !s.realms[them].rebel && !atWar(s, them, us) && (s.realms[us].rep ?? 60) >= 35;
 
@@ -163,29 +164,29 @@ export function powerMove(s, id, kind, rng, emit) {
   if (kind === 'levy') {
     for (const a of armiesOf(s, id)) a.size = round1(a.size * 1.5);
     for (const p of mine) s.provinces[p.id].loyalty = Math.max(0, s.provinces[p.id].loyalty - 10);
-    emit('power', `${who} of ${ofR(s, id)} calls a Great Levy: every village sends its sons`, { realms: [id], chars: [r.ruler], power: kind });
+    emit('power', `${who} of ${ofR(s, id)} ${word(s, 'levy', 'calls a Great Levy: every village sends its sons')}`, { realms: [id], chars: [r.ruler], power: kind });
   } else if (kind === 'walls') {
-    const frontier = mine.filter((p) => p.neighbors.some((n) => s.provinces[n].owner !== id)).sort((a, b) => b.wealth - a.wealth)[0];
+    const frontier = mine.filter((p) => p.neighbors.some((n) => s.provinces[n].owner !== id)).sort((a, b) => baseWealth(s, b.id) - baseWealth(s, a.id))[0];
     for (const p of [s.provinces[r.capital], frontier && s.provinces[frontier.id]].filter(Boolean)) p.walls = Math.min(4, p.walls + 1);
-    emit('power', `${who} of ${ofR(s, id)} raises Mighty Walls around ${cityOf(s, r.capital)}${frontier ? ` and ${cityOf(s, frontier.id)}` : ''}`, { realms: [id], chars: [r.ruler], power: kind, at: r.capital });
+    emit('power', `${who} of ${ofR(s, id)} ${word(s, 'walls', 'raises Mighty Walls around')} ${cityOf(s, r.capital)}${frontier ? ` and ${cityOf(s, frontier.id)}` : ''}`, { realms: [id], chars: [r.ruler], power: kind, at: r.capital });
   } else if (kind === 'bribe') {
-    const t = mine.flatMap((p) => p.neighbors).filter((n) => s.provinces[n].owner !== id && s.provinces[n].loyalty < 55 && s.realms[s.provinces[n].owner]?.capital !== n).sort((a, b) => PROV[b].wealth - PROV[a].wealth)[0];
+    const t = mine.flatMap((p) => p.neighbors).filter((n) => s.provinces[n].owner !== id && s.provinces[n].loyalty < 55 && s.realms[s.provinces[n].owner]?.capital !== n).sort((a, b) => baseWealth(s, b) - baseWealth(s, a))[0];
     if (!t || r.gold < 40) return false;
     r.gold -= 40;
     const old = s.provinces[t].owner;
     setOwner(s, t, id, 'bribe');
     Object.assign(s.provinces[t], { loyalty: 45, siege: null });
-    emit('power', `${who} of ${ofR(s, id)} bribes the governor of ${cityOf(s, t)}, who opens the gates${old ? ` to spite ${ofR(s, old)}` : ''}`, { realms: [id, old].filter(Boolean), chars: [r.ruler], power: kind, at: t });
+    emit('power', `${who} of ${ofR(s, id)} ${word(s, 'bribe', 'bribes the governor of')} ${cityOf(s, t)}, ${word(s, 'bribed', 'who opens the gates')}${old ? ` to spite ${ofR(s, old)}` : ''}`, { realms: [id, old].filter(Boolean), chars: [r.ruler], power: kind, at: t });
     if (old && s.realms[old] && !provincesOf(s, old).length) fall(s, old, emit, `${s.realms[old].name} ${vb(s, old, 'is')} no more`, id);
   } else if (kind === 'feast') {
     for (const p of mine) s.provinces[p.id].loyalty = Math.min(100, s.provinces[p.id].loyalty + 20);
-    emit('power', `${who} of ${ofR(s, id)} holds a Royal Feast: the people cheer their ruler`, { realms: [id], chars: [r.ruler], power: kind });
+    emit('power', `${who} of ${ofR(s, id)} ${word(s, 'feast', 'holds a Royal Feast: the people cheer their ruler')}`, { realms: [id], chars: [r.ruler], power: kind });
   } else if (kind === 'silktax') {
     const silk = mine.filter((p) => onRoad(s, p.id));
     if (!silk.length) return false;
     r.gold = round1(r.gold + 20 * silk.length);
     for (const p of silk) s.provinces[p.id].loyalty = Math.max(0, s.provinces[p.id].loyalty - 12);
-    emit('power', `${who} of ${ofR(s, id)} levies a Silk Tax on the caravans: ${20 * silk.length} gold, and angry merchants`, { realms: [id], chars: [r.ruler], power: kind });
+    emit('power', `${who} of ${ofR(s, id)} ${word(s, 'silktax', 'levies a Silk Tax on the caravans')}: ${20 * silk.length} gold, and angry merchants`, { realms: [id], chars: [r.ruler], power: kind });
   }
   r.power = kind;
   return true;

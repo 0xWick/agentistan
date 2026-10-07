@@ -62,3 +62,19 @@ test('the realms of 1200 start where history put them', () => {
   assert.ok(s.realms.karakhanid.overlord === 'qarakhitai');
   assert.ok(Object.keys(s.wars).includes('ghurid|khwarazm'));
 });
+
+
+test('the other ages start whole, and 1914 goes to war as it did', () => {
+  for (const ageId of ['ancient', 'modern']) {
+    const s = newAge(3, ageId);
+    for (const p of PROVINCES) { const o = s.provinces[p.id].owner; assert.ok(o === null || s.realms[o], `${ageId}: ${p.id} held by ${o}`); }
+    assert.ok(living(s).length > 30, `${ageId}: realms`);
+  }
+  let s = newAge(3, 'modern');
+  const seen = [];
+  for (let m = 0; m < 12; m++) { const r = tick(s, brain, {}, { inPlace: true }); s = r.state; seen.push(...r.events); }
+  const war = (a, b) => seen.some((e) => e.type === 'war' && e.realms?.includes(a) && e.realms?.includes(b)); // declared, though it may be over already
+  assert.ok(seen.some((e) => e.type === 'death' && /Franz Ferdinand/.test(e.text)), 'Sarajevo');
+  for (const [a, b] of [['austria', 'serbia'], ['germany', 'russia'], ['germany', 'france'], ['uk', 'germany'], ['ottoman', 'russia']]) assert.ok(war(a, b), `${a} and ${b} went to war in 1914`);
+  assert.ok(!war('italy', 'france') && !war('italy', 'germany'), 'Italy waits');
+});

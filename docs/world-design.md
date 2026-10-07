@@ -26,7 +26,9 @@ Sepolia, n8n). Rebuild the engine's structure inside it, and build every phase b
 | Module | What it owns |
 |---|---|
 | `core.js` | map data, randomness, calendar, climate, indexes, lookups, text helpers, ids |
-| `ages/1200.js` | the age pack: realms, starting wars and alliances, roads, inventions, scripted forces (the steppe, Alamut) |
+| `ages/1200.js` | the age of 1200: realms, starting wars and alliances, roads, inventions, scripted forces (the steppe, Alamut, the Venetian expedition) |
+| `ages/ancient.js` | 200 BC: the owners, cities and peoples of every province, Rome's consuls, the Xiongnu raids |
+| `ages/modern.js` | 1914: the empires and their colonies, wealth from industry, the July Crisis and the powers that join the war, the Russian revolutions and the borderlands, presidents and prime ministers, the Great Depression, strongmen |
 | `economy.js` | gold, grain, horses, iron, prosperity, trade, works (canals, caravanserais, markets, libraries) |
 | `war.js` | conflicts (wars as stories), marching, battles over 1–3 months, sieges, captures, the fall of realms |
 | `court.js` | characters: temperaments, families, marriages, offices (consort, heir, vizier, generals), succession, betrayal, plots, intrigue, epithets |
@@ -91,16 +93,30 @@ Monthly pipeline: inputs → plans/acts → economy → orders → march → bat
   player's realm is played by its AI or by doctrine. n8n carries heralds (great events), turn reminders and daily
   digests.
 - **Ages.** The Old World of 1200 filled with playable realms; the ancient world of 200 BC; the age of world wars
-  from 1914.
+  from 1914. Each age is a pack on the same map. A pack gives:
+  - the realms and their people (rulers, heirs, consorts, viziers, generals and their temperaments);
+  - every province's owner, city, name, people and, if it differs from the map, its wealth and walls;
+  - the wars and alliances already under way, the roads that carry trade, and what is already known;
+  - its own words for some events ("orders a general mobilisation" in 1914, "calls a Great Levy" in 1200);
+  - its tempo (`mods`: how soon wars end in peace, how often generals betray, how eager rulers are for war);
+  - seats of government for empires (a viceroy in Delhi governs India, not London);
+  - `setup` and `month` hooks for the forces of the age, which act only while history still allows them
+    (Italy joins in 1915 only if it is free to, Russia's revolution needs Russia still at war).
+- **Coalitions.** A side in a war is a realm with its allies, vassals and overlord. Allies make no separate peace
+  while they fight on, unless the war is lost; an overlord defends its vassal; a vassal makes war only beside its
+  overlord.
 
 ## Progress
 
-- [x] 0. Old World map, resources, crossings, lineages, timeline, chronicler (2026-10-07)
-- [ ] 1. Engine split, acts, characters and temperaments, families, wars as stories, battles over months, seasons,
+- [x] 0. Old World map, resources, crossings, lineages, timeline, chronicler
+- [x] 1. Engine split, acts, characters and temperaments, families, wars as stories, battles over months, seasons,
       war/army/character cards, event cards, portraits, art
-- [ ] 2. Prosperity, trade, works, inventions, unrest, golden ages, treaties, registry, disputes, legends
-- [ ] 3. Shared world on the server (Era DO), page as its window, classic war retired
-- [ ] 4. AI cast: personas and batched decisions
-- [ ] 5. Chronicle.sol: yearly seals of deeds and treaties
-- [ ] 6. Multiplayer games, delegation, n8n heralds and reminders
-- [ ] 7. Ages: full 1200 map, 200 BC, 1914
+- [x] 2. Prosperity, trade, works, inventions, unrest, golden ages, treaties, registry, disputes, legends
+- [x] 3. Shared world on the server (Era DO), page as its window, classic war retired
+- [x] 4. AI cast: personas and batched decisions
+- [x] 5. Chronicle.sol: yearly seals of deeds and treaties
+- [x] 6. Multiplayer games, delegation, n8n heralds and reminders
+- [x] 7. Ages: full 1200 map, 200 BC, 1914 (all built by 2026-10-07)
+
+Open: balance tuning across ages; painted portraits for the famous of 200 BC and 1914; region labels for ages other
+than 1200; a fresh og image.

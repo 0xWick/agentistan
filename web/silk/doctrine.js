@@ -2,8 +2,8 @@
 // on it; the AI cast and players replace its plans and answers, and the armies still march by its rules.
 // Temperament drives it: a conqueror wants war, a builder canals, a negligent king nothing at all.
 import { RULES as R } from './rules.js';
-import { PROV, PROVINCES, onRoad, atWar, warOf, truceUntil, friendly, living, provincesOf, armiesOf, isWinter, weatherOf, ageOf } from './core.js';
-import { strength, wealthOf, wallPower, rulingTemper, steersman, canBuild, prosperityOf } from './economy.js';
+import { PROV, PROVINCES, baseWealth, onRoad, atWar, allied, warOf, truceUntil, friendly, living, provincesOf, armiesOf, isWinter, weatherOf, ageOf } from './core.js';
+import { strength, sideStrength, wealthOf, wallPower, rulingTemper, steersman, canBuild, prosperityOf } from './economy.js';
 import { route } from './war.js';
 import { claimsOf, acceptsPeace } from './acts.js';
 
@@ -30,9 +30,12 @@ export function plan(s, id, rng) {
   const p = { until: s.month + 6 + Math.floor(rng() * 7), tax: 'normal', recruit: 0.5, targets: [...wars], acts: [], by: 'doctrine', temper };
 
   // Peace when a war goes badly or drags on with nothing to show; sooner for those who never wanted it.
+  // Allies still fighting the same enemy: no separate peace unless the war is lost.
   for (const w of wars) {
-    const them = strength(s, w), since = warOf(s, id, w)?.since ?? s.month;
-    if ((them > me * 1.4 && s.month - since > 10) || (s.month - since > R.diplomacy.peaceAfter * (bold ? 1.5 : cautious ? 0.6 : 1) && rng() < 0.4)) p.acts.push({ kind: 'peace', target: w });
+    const them = sideStrength(s, w, id), ours = sideStrength(s, id, w), since = warOf(s, id, w)?.since ?? s.month;
+    const together = living(s).some((x) => x.id !== id && allied(s, x.id, id) && atWar(s, x.id, w));
+    const after = (s.mods?.peaceAfter ?? R.diplomacy.peaceAfter) * (bold ? 1.5 : cautious ? 0.6 : 1) * (together ? 2 : 1);
+    if ((them > ours * 1.4 && s.month - since > 10) || (s.month - since > after && rng() < 0.4)) p.acts.push({ kind: 'peace', target: w });
   }
 
   if (r.rebel) return { ...p, recruit: 0.9, targets: wars.filter((w) => w === r.cause), acts: [] };
@@ -67,9 +70,9 @@ export function plan(s, id, rng) {
   }
 
   // War on a weaker neighbour, if the ruler has the stomach for it. A conqueror may even break a truce.
-  if (!r.nomad && wars.length < (bold ? 2 : 1) && rng() < 0.14 * (T.war ?? 1)) {
-    const prey = next.filter((n) => !atWar(s, id, n) && !friendly(s, id, n) && (truceUntil(s, id, n) <= s.month || (bold && rng() < 0.15)) && !s.realms[n].nomad && strength(s, n) * R.diplomacy.warRatio * (cautious ? 1.4 : 1) < me)
-      .map((n) => ({ n, score: provincesOf(s, n).reduce((t, q) => t + q.wealth, 0) / Math.max(1, strength(s, n)) + rng() + (s.kin[[id, n].sort().join('|')] ? -2 : 0) }))
+  if (!r.nomad && wars.length < (bold ? 2 : 1) && rng() < 0.14 * (T.war ?? 1) * (s.mods?.war ?? 1)) {
+    const prey = next.filter((n) => !atWar(s, id, n) && !friendly(s, id, n) && (!r.overlord || atWar(s, r.overlord, n)) && (truceUntil(s, id, n) <= s.month || (bold && rng() < 0.15)) && !s.realms[n].nomad && (strength(s, n) + (s.realms[n].overlord && s.realms[n].overlord !== id ? strength(s, s.realms[n].overlord) : 0)) * R.diplomacy.warRatio * (cautious ? 1.4 : 1) < me)
+      .map((n) => ({ n, score: provincesOf(s, n).reduce((t, q) => t + baseWealth(s, q.id), 0) / Math.max(1, strength(s, n)) + rng() + (s.kin[[id, n].sort().join('|')] ? -2 : 0) }))
       .sort((a, b) => b.score - a.score)[0];
     if (prey) p.acts.push({ kind: 'war', target: prey.n }), p.targets.push(prey.n);
   }
@@ -122,7 +125,7 @@ export function bestWork(s, id) {
   for (const p of provincesOf(s, id)) {
     for (const kind of Object.keys(R.works)) {
       if (!canBuild(s, id, p.id, kind) || r.gold < R.works[kind].cost + 30) continue;
-      const value = kind === 'caravanserai' ? 4 * (s.trade?.[p.id] ?? 0.3) + 1 : kind === 'canal' ? wealthOf(s, p.id) * (p.terrain === 'river' ? 1.2 : 0.8) : kind === 'market' ? wealthOf(s, p.id) * 0.9 : (p.id === r.capital ? 3 : 1) + p.wealth * 0.4;
+      const value = kind === 'caravanserai' ? 4 * (s.trade?.[p.id] ?? 0.3) + 1 : kind === 'canal' ? wealthOf(s, p.id) * (p.terrain === 'river' ? 1.2 : 0.8) : kind === 'market' ? wealthOf(s, p.id) * 0.9 : (p.id === r.capital ? 3 : 1) + baseWealth(s, p.id) * 0.4;
       options.push({ place: p.id, work: kind, value });
     }
   }

@@ -1,7 +1,7 @@
 // War: every war is a conflict with a cause, sides and a story. Armies march along the cheapest road the seasons
 // allow; when they meet, a battle runs for one to three months until a side breaks; towns fall to siege or storm.
 import { RULES as R } from './rules.js';
-import { PROV, PROVINCES, provincesOf, armiesOf, armiesChanged, realmsChanged, living, atWar, warOf, truceUntil, friendly, allied, key, setOwner, weatherOf, isWinter, clamp, round1, between, chance, rngFor,
+import { PROV, PROVINCES, baseWealth, word, provincesOf, armiesOf, armiesChanged, realmsChanged, living, atWar, warOf, truceUntil, friendly, allied, key, setOwner, weatherOf, isWinter, clamp, round1, between, chance, rngFor,
   short, ofR, say, vb, poss, nameOf, cityOf, placeOf, months, logWar, yearOf, menText } from './core.js';
 import { cavalryOf, wallPower, garrisonOf, strength, incomeOf, knows, pairTreaties } from './economy.js';
 import { carryOff } from './world.js';
@@ -61,13 +61,14 @@ export function declareWar(s, a, b, emit, o = {}) {
   const text = o.text ?? `${say(s, a, 'declares')} war on ${ofR(s, b)}`;
   emit('war', text, { realms: [a, b], war: cid });
   logWar(s, cid, { k: o.join ? 'join' : 'begun', text, realms: [a, b] });
-  // Allies honour the alliance.
-  for (const k of Object.keys(s.allies)) {
-    const [x, y] = k.split('|'), friend = x === b ? y : y === b ? x : null;
-    if (friend && friend !== a && !atWar(s, friend, a) && !s.realms[friend].fallen && !allied(s, friend, a)) {
+  // Allies honour the alliance, and an overlord defends its vassal.
+  const friends = Object.keys(s.allies).map((k) => { const [x, y] = k.split('|'); return x === b ? y : y === b ? x : null; }).filter(Boolean);
+  if (B.overlord && !friends.includes(B.overlord)) friends.push(B.overlord);
+  for (const friend of friends) {
+    if (friend !== a && s.realms[friend] && !atWar(s, friend, a) && !s.realms[friend].fallen && !allied(s, friend, a) && s.realms[friend].overlord !== a) {
       s.wars[key(friend, a)] = { since: s.month, conflict: cid };
       if (s.conflicts[cid] && !s.conflicts[cid].side[friend]) s.conflicts[cid].side[friend] = s.conflicts[cid].side[b];
-      const t = `${say(s, friend, 'joins')} the war at the side of ${ofR(s, b)}`;
+      const t = `${say(s, friend, 'joins')} the war at the side of ${ofR(s, b)}, against ${ofR(s, a)}`;
       emit('war', t, { realms: [friend, a], war: cid });
       logWar(s, cid, { k: 'join', text: t, realms: [friend, b] });
       for (const tr of pairTreaties(s, friend, a)) breakTreaty(s, tr, friend, emit, true);
@@ -142,6 +143,7 @@ export function moveCost(s, realm, from, pid) {
   if (isWinter(s.month) && (t === 'mountains' || way.pass)) c += X.winter;
   const w = weatherOf(pid, s.month);
   if (w === 'snow' && !nomad) c += R.seasons.snow.move;
+  if (knows(r, 'railways') && !way.sea && friendly(s, realm, s.provinces[pid].owner)) c = Math.max(0.34, c - 0.8); // the trains
   if (w === 'rains' && ['plains', 'river', 'forest'].includes(t)) c += R.seasons.rains.move + (way.river ? 1 : 0); // the rivers burst their banks
   return c;
 }
@@ -217,10 +219,10 @@ export function beginSiege(s, a, emit) {
   if (owner === a.realm || friendly(s, a.realm, owner) || (owner !== null && !atWar(s, a.realm, owner))) return false;
   if (Object.values(s.armies).some((b) => b.at === pid && atWar(s, a.realm, b.realm) && b.mode !== 'garrison')) return false;
   if (!p.siege || !s.armies[p.siege.army]) {
-    const r = s.realms[a.realm], craft = (knows(r, 'trebuchet') || knows(r, 'torsion') ? 1 : 0) + (knows(r, 'gunpowder') ? 1 : 0);
+    const r = s.realms[a.realm], craft = (knows(r, 'trebuchet') || knows(r, 'torsion') || knows(r, 'artillery') ? 1 : 0) + (knows(r, 'gunpowder') ? 1 : 0);
     p.siege = { realm: a.realm, army: a.id, left: Math.max(1, R.walls.baseMonths + p.walls * R.walls.siegeMonths - ((s.chars[a.general]?.skill ?? 2) >= 4 ? 1 : 0) - craft), since: s.month };
     const cid = warOf(s, a.realm, owner)?.conflict;
-    emit('siege', `${say(s, a.realm, 'lays')} siege to ${cityOf(s, pid)}`, { realms: [a.realm, owner].filter(Boolean), at: pid, chars: [a.general].filter(Boolean), war: cid });
+    emit('siege', `${say(s, a.realm, word(s, 'siege', 'lays siege to'))} ${cityOf(s, pid)}`, { realms: [a.realm, owner].filter(Boolean), at: pid, chars: [a.general].filter(Boolean), war: cid });
   }
   a.mode = 'siege';
   a.path = [];
@@ -264,7 +266,8 @@ export function battles(s, rng, emit) {
     const horse = (x) => 1 + R.supply.cavalry * cavalryOf(s, x.realm) * (['mountains', 'forest'].includes(P.terrain) ? 0.4 : 1); // riders count most in the open
     const ground = (x) => (owner === x.realm || friendly(s, x.realm, owner) ? (B.terrain[P.terrain] ?? 1) * B.home : 1);
     const open = ['plains', 'river', 'desert', 'steppe'].includes(P.terrain);
-    const drill = (x) => { const r = s.realms[x.realm]; return (knows(r, 'legion') ? 1.08 : 1) * (knows(r, 'crossbow') ? 1.06 : 1) * (open && knows(r, 'elephants') ? 1.08 : 1); };
+    const drill = (x) => { const r = s.realms[x.realm]; return (knows(r, 'legion') ? 1.08 : 1) * (knows(r, 'crossbow') ? 1.06 : 1) * (open && knows(r, 'elephants') ? 1.08 : 1)
+      * (knows(r, 'artillery') ? 1.05 : 1) * (knows(r, 'aircraft') ? 1.06 : 1) * (open && knows(r, 'tanks') ? 1.1 : 1) * (knows(r, 'machineguns') && (owner === x.realm || friendly(s, x.realm, owner)) ? 1.25 : 1); };
     const power = (side) => side.reduce((t, x) => t + x.size * skill(x) * x.morale * horse(x) * ground(x) * drill(x), 0) * (1 + between(rng, [-B.luck, B.luck]));
     const pa = power(A), pd = power(D);
     bt.rounds++;
@@ -428,7 +431,7 @@ export function sieges(s, rng, emit) {
     const defence = wallPower(s, pid) + inside.reduce((t, b) => t + b.size, 0);
     const daring = T(s, a.general, 'storm') ?? 1;
     if (sg.left > 1 && a.size >= defence * R.walls.stormRatio / daring && chance(rng, 0.3 * daring)) {
-      emit('storm', `${say(s, a.realm, 'storms')} the walls of ${cityOf(s, pid)}`, { realms: [a.realm, p.owner].filter(Boolean), at: pid, chars: [a.general].filter(Boolean), war: warOf(s, a.realm, p.owner)?.conflict });
+      emit('storm', `${say(s, a.realm, word(s, 'storm', 'storms the walls of'))} ${cityOf(s, pid)}`, { realms: [a.realm, p.owner].filter(Boolean), at: pid, chars: [a.general].filter(Boolean), war: warOf(s, a.realm, p.owner)?.conflict });
       if (storm(s, rng, emit, a, pid)) capture(s, pid, a.realm, emit, rng, 'storm');
       continue;
     }
@@ -450,7 +453,7 @@ export function capture(s, pid, realm, emit, rng, how) {
   if (R2.horde || (gen && T(s, gen.id, 'ravage'))) { // the horde loots what it takes; a butcher burns it
     Object.assign(p, { ravaged: R2.horde ? 24 : 12, loyalty: 25 });
     p.prosperity = Math.max(0, (p.prosperity ?? 50) - 25);
-    R2.gold = round1(R2.gold + PROV[pid].wealth * (R2.horde ? 12 : 6));
+    R2.gold = round1(R2.gold + baseWealth(s, pid) * (R2.horde ? 12 : 6));
   }
   if (gen) gen.deeds.captures++;
   const ruler = s.chars[R2.ruler];
@@ -472,7 +475,7 @@ export function capture(s, pid, realm, emit, rng, how) {
   }
   if (old) carryOff(s, realm, old, pid, rng, emit);
   if (capital) moveCapital(s, old, emit);
-  if (lost && !provincesOf(s, old).length && !homeless(s, old)) fall(s, old, emit, `${lost.name} ${vb(s, old, 'is')} no more: ${R2.short} ${vb(s, realm, 'has')} taken its last city`, realm);
+  if (lost && !provincesOf(s, old).length && !homeless(s, old)) fall(s, old, emit, `${lost.rebel ? `The ${lost.short}` : lost.name} ${vb(s, old, 'is')} no more: ${R2.short} ${vb(s, realm, 'has')} taken its last city`, realm);
 }
 
 // A nomad realm that has lost every city lives on while its armies ride.
@@ -481,7 +484,7 @@ export const homeless = (s, id) => s.realms[id]?.nomad && armiesOf(s, id).length
 export function moveCapital(s, id, emit) {
   const r = s.realms[id], left = [...provincesOf(s, id)];
   if (!left.length) return;
-  r.capital = left.sort((a, b) => b.wealth - a.wealth || (b.walls - a.walls))[0].id;
+  r.capital = left.sort((a, b) => baseWealth(s, b.id) - baseWealth(s, a.id) || (b.walls - a.walls))[0].id;
   for (const p of left) s.provinces[p.id].loyalty = Math.max(0, s.provinces[p.id].loyalty - 8);
   emit('capital', `${say(s, id, 'moves')} the court to ${cityOf(s, r.capital)}`, { realms: [id], at: r.capital });
 }

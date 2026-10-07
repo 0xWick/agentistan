@@ -1,7 +1,7 @@
 // What a realm lives on: gold, grain, horses and iron; how prosperous each province is; the caravans of the Silk
 // Road, which pay only along its open stretches; and the works rulers build.
 import { RULES as R } from './rules.js';
-import { PROV, PROVINCES, onRoad, provincesOf, armiesOf, menOf, living, atWar, harvestOf, weatherOf, clamp, round1, rngFor, newChar, newArmy, say, poss, nameOf, cityOf, usedNames, yearOf, key, menText } from './core.js';
+import { PROV, PROVINCES, baseWealth, onRoad, provincesOf, armiesOf, menOf, living, atWar, allied, harvestOf, weatherOf, clamp, round1, rngFor, newChar, newArmy, say, poss, nameOf, cityOf, usedNames, yearOf, key, menText } from './core.js';
 import { personName, pickTemper } from './names.js';
 
 const T = (s, c, role, k) => R.temper[role]?.[s.chars[c]?.temper]?.[k];
@@ -16,7 +16,7 @@ export const knows = (r, invention) => !!r?.known?.includes(invention);
 
 export const wealthOf = (s, pid) => {
   const p = s.provinces[pid];
-  const base = PROV[pid].wealth * (0.6 + (p.prosperity ?? 50) / 125);
+  const base = baseWealth(s, pid) * (0.6 + (p.prosperity ?? 50) / 125);
   return Math.max(0.5, base - (p.ravaged > 0 ? 1.5 : 0) - (p.plague > 0 ? 1 : 0) - (p.famine > 0 ? 1 : 0));
 };
 
@@ -52,8 +52,10 @@ export function rations(s, a) {
 // Share of a realm's soldiers that ride: horses in the stables against men under arms.
 export const cavalryOf = (s, id) => (s.realms[id]?.nomad ? 1 : clamp((s.realms[id]?.horses ?? 0) / Math.max(1, menOf(s, id) * R.supply.horsesPerK), 0, 1));
 
-export const garrisonOf = (s, pid) => (R.garrison.base + R.garrison.perWealth * PROV[pid].wealth) * (s.realms[s.provinces[pid].owner]?.nomad ? R.economy.nomad.garrison : 1); // on the steppe every herder fights
+export const garrisonOf = (s, pid) => (R.garrison.base + R.garrison.perWealth * baseWealth(s, pid)) * (s.realms[s.provinces[pid].owner]?.nomad ? R.economy.nomad.garrison : 1); // on the steppe every herder fights
 export const wallPower = (s, pid) => garrisonOf(s, pid) * (1 + s.provinces[pid].walls ** 2 * R.walls.defence) * (R.battle.terrain[PROV[pid].terrain] ?? 1) * (0.5 + s.provinces[pid].loyalty / 100);
+// A side in a war: the realm, and its allies, overlord and vassals who fight the same enemy.
+export const sideStrength = (s, a, b) => living(s).reduce((t, x) => t + (x.id === a || (x.id !== b && atWar(s, x.id, b) && (allied(s, x.id, a) || x.overlord === a || s.realms[a]?.overlord === x.id)) ? strength(s, x.id) : 0), 0);
 export function strength(s, id) {
   return menOf(s, id) + 0.3 * provincesOf(s, id).reduce((t, p) => t + garrisonOf(s, p.id), 0);
 }
@@ -94,7 +96,7 @@ export function incomeOf(s, id) {
   }
   const vizier = s.chars[r.vizier];
   g *= (rulerTemper(s, r, 'income') ?? 1) * (vizier?.alive ? T(s, vizier.id, 'vizier', 'income') ?? 1 : 1)
-    * (r.golden && r.golden > s.month ? 1.1 : 1) * (knows(r, 'credit') ? 1.08 : 1) * (r.reforms?.includes('tax') ? 1.1 : 1);
+    * (r.golden && r.golden > s.month ? 1.1 : 1) * (knows(r, 'credit') ? 1.08 : 1) * (knows(r, 'industry') ? 1.12 : 1) * (r.reforms?.includes('tax') ? 1.1 : 1);
   return round1(g);
 }
 
@@ -216,7 +218,7 @@ export function canBuild(s, id, pid, kind) {
   if (!W || q.owner !== id || q.works?.[kind] || q.building || q.siege || r.gold < W.cost + 10) return false;
   if (W.terrain && !W.terrain.includes(P.terrain)) return false;
   if (W.silk && !onRoad(s, pid)) return false;
-  if (W.wealth && P.wealth < W.wealth) return false;
+  if (W.wealth && baseWealth(s, pid) < W.wealth) return false;
   return true;
 }
 export function startWork(s, id, pid, kind, emit) {

@@ -3,7 +3,7 @@
 // fades; Euthydemus holds Greek Bactria. The same map as 1200, with the owners, cities and peoples of the time.
 // Forces of the age: Rome elects new consuls every January; the Xiongnu raid the Han frontier.
 import { RULES as R } from '../rules.js';
-import { provincesOf, living, newChar, setOwner, round1, chance, pick, ofR, say, cityOf, placeOf, PROV, usedNames, atWar } from '../core.js';
+import { provincesOf, living, newChar, setOwner, round1, chance, pick, ofR, say, cityOf, placeOf, PROV, baseWealth, usedNames, atWar } from '../core.js';
 import { personName, pickTemper } from '../names.js';
 
 // province: [owner, city, name, people]  (null owner: free land, anyone's to take)
@@ -325,7 +325,7 @@ function raids(s, rng, emit) {
   const targets = provincesOf(s, 'xiongnu').flatMap((p) => p.neighbors).filter((n) => s.provinces[n].owner && s.provinces[n].owner !== 'xiongnu' && ['han', 'yan', 'qi', 'yuezhi'].includes(s.provinces[n].owner));
   if (!targets.length) return;
   const t = pick(rng, targets), p = s.provinces[t], victim = s.realms[p.owner];
-  const loot = Math.min(victim.gold, PROV[t].wealth * 5);
+  const loot = Math.min(victim.gold, baseWealth(s, t) * 5);
   victim.gold = round1(victim.gold - loot);
   x.gold = round1(x.gold + loot);
   p.ravaged = Math.max(p.ravaged, 4);

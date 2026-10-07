@@ -1,6 +1,6 @@
 // Paints the pictures of the great-event cards and the portraits of famous people, once, with Workers AI (through
 // the Worker's /internal/art), and saves them as JPEGs for tools/art.py to crop into web/art/.
-//   node --env-file=.env tools/art.mjs [events|people|all] [only-this-key]
+//   node --env-file=.env tools/art.mjs [events|1914|people|all] [only-this-key]
 // Free tier: about 58 neurons a picture, 10,000 a day. Pictures already made are skipped.
 import { mkdirSync, existsSync, writeFileSync } from 'node:fs';
 
@@ -39,6 +39,36 @@ export const EVENTS = {
   winter: 'an army struggling through deep snow in a mountain pass, frozen banners, a blizzard',
 };
 const styleOf = (k) => (['charter', 'commune'].includes(k) ? LATIN : PERSIAN);
+
+// The same cards for the age of the world wars (saved as 1914_<key>).
+const MODERN = 'painted illustration in the style of a 1910s illustrated magazine, oil on canvas, muted khaki, grey, ochre and brick red, soft light, aged varnish, no writing anywhere, no letters or numbers, no signs or posters, plain flags without emblems or symbols, no religious symbols, no border';
+export const EVENTS_1914 = {
+  battle: 'soldiers of the First World War going over the top from muddy trenches across no man\'s land, barbed wire, shell bursts and smoke',
+  siege: 'heavy artillery guns firing at a fortress city on the horizon, gun crews in greatcoats, smoke drifting',
+  fallen: 'a shelled capital city at dusk, ruined government buildings, a torn plain flag lying in the street',
+  crowned: 'a new head of state taking the oath of office in a grand parliament hall, officials in frock coats',
+  split: 'a rebel general addressing his troops from a railway platform, an armoured train behind him',
+  uprising: 'a revolutionary crowd with plain red banners storming the gates of a palace in a winter city, soldiers joining them',
+  turncoat: 'an army column marching away from the front under a different plain flag, an officer on horseback leading them',
+  invention: 'engineers in a hangar beside an early biplane, a wireless radio set and blueprints on a workbench',
+  court: 'diplomats in morning coats around a long table at a conference, maps spread out before them',
+  war: 'crowds cheering soldiers boarding a troop train in a great railway station, soldiers waving from the carriages',
+  decline: 'a poor industrial town in the rain, closed factories, idle workers in flat caps',
+  assassin: 'a city street in 1914, an open motor car with an archduke in uniform, a young man stepping from the crowd with a pistol',
+  peace: 'statesmen signing a treaty in a gilded hall of mirrors, photographers with tripod cameras',
+  built: 'workers building a steel railway bridge beside a factory with tall chimneys, cranes and steam',
+  coup: 'soldiers with rifles surrounding a government ministry at night, an armoured car, searchlights',
+  slump: 'a long queue of jobless men in overcoats and flat caps outside a closed bank in the rain',
+  winter: 'soldiers in greatcoats trudging through deep snow on a frozen front, a blizzard',
+  famine: 'famine in a dry countryside, thin farmers beside an empty grain store, cracked fields',
+  plague: 'nurses in white masks tending rows of patients in a field hospital during an epidemic',
+  flood: 'a great river flooding a town, people in rowing boats rescuing families from rooftops',
+  earthquake: 'an earthquake striking a city, collapsed brick buildings, people fleeing into the street',
+  golden: 'a prosperous city boulevard, electric trams, cafes, electric street lights, elegant crowds',
+  raid: 'cavalry raiders sweeping through a frontier village, haystacks burning',
+  charter: 'striking workers with plain red banners in front of a parliament, a minister reading a proclamation from the steps',
+  commune: 'a workers council meeting in a factory hall, men and women voting with raised hands',
+};
 
 // name slug -> [description, style]
 export const PEOPLE = {
@@ -91,8 +121,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const [which = 'all', only] = process.argv.slice(2);
   mkdirSync(OUT, { recursive: true });
   const jobs = [];
-  if (which !== 'people') for (const [k, p] of Object.entries(EVENTS)) jobs.push(['event', k, `${p}. ${styleOf(k)}`]);
-  if (which !== 'events') for (const [k, [p, style]] of Object.entries(PEOPLE)) jobs.push(['person', k, `Portrait bust, head and shoulders, of ${p}, facing three-quarters, centred, plain gilded background. ${style}`]);
+  if (which === 'events' || which === 'all') for (const [k, p] of Object.entries(EVENTS)) jobs.push(['event', k, `${p}. ${styleOf(k)}`]);
+  if (which === '1914' || which === 'all') for (const [k, p] of Object.entries(EVENTS_1914)) jobs.push(['event', `1914_${k}`, `${p}. ${MODERN}`]);
+  if (which === 'people' || which === 'all') for (const [k, [p, style]] of Object.entries(PEOPLE)) jobs.push(['person', k, `Portrait bust, head and shoulders, of ${p}, facing three-quarters, centred, plain gilded background. ${style}`]);
   for (const [kind, key, prompt] of jobs) {
     if (only && key !== only) continue;
     console.log(kind, key, await paint(kind, key, prompt));

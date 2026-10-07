@@ -62,7 +62,7 @@ export const KIND = {
   revolt: ['flame', '#c2541f', 1], founded: ['crown', G, 1], split: ['crown', V, 1], fallen: ['skull', '#3a2816', 1], death: ['skull', '#5a4630', 1], crowned: ['crown', G, 1],
   plot: ['dagger', '#5a4630', 1], coup: ['dagger', V, 1], turncoat: ['dagger', V, 1], intrigue: ['dagger', '#5a4630', 1], horde: ['bow', V, 1], raid: ['bow', '#8c6b3f', 1],
   plague: ['skull', '#4f6b3a', 1], famine: ['wheat', '#9a7a2a', 1], hunger: ['wheat', '#9a5a2a', 1], earthquake: ['quake', I, 1], flood: ['rain', '#3d6b8c', 1],
-  power: ['star', G, 1], war: ['swords', V, 1], peace: ['scroll', T, 1], 'peace.refused': ['scroll', I, 0], alliance: ['rings', L, 1], vassal: ['scroll', I, 1], broke: ['coin', '#8c6b3f', 0],
+  slump: ['coin', '#8c6b3f', 1], power: ['star', G, 1], war: ['swords', V, 1], peace: ['scroll', T, 1], 'peace.refused': ['scroll', I, 0], alliance: ['rings', L, 1], vassal: ['scroll', I, 1], broke: ['coin', '#8c6b3f', 0],
   guild: ['dagger', '#3a2816', 1], 'army.raised': ['banner', L, 0], 'army.destroyed': ['skull', V, 1], capital: ['crown', I, 0], heir: ['crown', G, 0],
   marriage: ['rings', G, 1], 'match.refused': ['rings', I, 0], birth: ['circlet', G, 1], regency: ['crown', I, 1], vizier: ['scroll', I, 0], reform: ['seal', L, 1], feast: ['coin', G, 0],
   epithet: ['quill', I, 1], built: ['hammer', '#8c6b3f', 1], invention: ['book', L, 1], season: ['sun', L, 1], toll: ['snow', '#5d7f86', 1], golden: ['sun', G, 1], decline: ['skull', I, 1],

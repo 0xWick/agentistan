@@ -1,7 +1,7 @@
 // The cards: click anything on the map or in a panel and its card opens. A province, a realm, an army, a person,
 // a war. Each card links to the others (a king's portrait opens the king, a war chip opens the war), with a back
 // button to retrace the steps. And the great-event card, which stops the story to show what just happened.
-import { PROV, PROVINCES, LAND, provincesOf, armiesOf, living, atWar, friendly, yieldOf, cavalryOf, rations, isWinter, dateText, yearOf, weatherOf, seasonName, ageOf, menOf,
+import { PROV, PROVINCES, LAND, baseWealth, provincesOf, armiesOf, living, atWar, friendly, yieldOf, cavalryOf, rations, isWinter, dateText, yearOf, weatherOf, seasonName, ageOf, menOf,
   prosperityOf, steersman, rulingTemper, treatiesOf, INVENTIONS, fortuneOf, cityOf, placeOf, onRoad, yearLabel } from './engine.js';
 import { TEMPER_TEXT } from './names.js';
 import { isGreat } from './engine.js';
@@ -79,7 +79,7 @@ function province(id) {
   return `<div class="who">${r ? chip(r.id) : 'Unclaimed land'}</div>
     <h3>${esc(cityOf(st, id))}</h3><p class="fa">${esc(st.names?.[id]?.fa ?? p.fa)}</p>
     <div class="stats">
-      <span class="stat" title="Wealth">${icon('coin')}${pips(p.wealth, 5)}</span>
+      <span class="stat" title="Wealth">${icon('coin')}${pips(Math.min(5, baseWealth(st, id)), 5)}</span>
       <span class="stat" title="Walls">${icon('tower')}${pips(q.walls, 4)}</span>
       <span class="stat" title="Terrain">${icon('hill')}${esc(p.terrain)}</span>
     </div>
@@ -267,11 +267,14 @@ const HEAD = {
 };
 const ARTKEY = { battle: 'battle', capture: 'siege', fallen: 'fallen', founded: 'crowned', split: 'split', separatist: 'split', coup: 'coup', horde: 'horde', golden: 'golden', charter: 'charter',
   commune: 'commune', uprising: 'uprising', turncoat: 'turncoat', invention: 'invention', defied: 'court', ceded: 'court', war: 'war', 'age.ended': 'crowned', decline: 'decline', marriage: 'wedding',
-  plague: 'plague', famine: 'famine', earthquake: 'earthquake', flood: 'flood', raid: 'raid', peace: 'peace', built: 'built', toll: 'winter', revolt: 'uprising' };
+  plague: 'plague', famine: 'famine', earthquake: 'earthquake', flood: 'flood', raid: 'raid', peace: 'peace', built: 'built', toll: 'winter', revolt: 'uprising', slump: 'slump' };
 export function artFor(e) {
   const k = e.type === 'death' ? (e.cause === 'assassin' ? 'assassin' : e.cause === 'battle' ? 'battle' : 'funeral') : e.type === 'war' && /Frankish|knights/.test(e.text) ? 'expedition' : ARTKEY[e.type];
-  return k && ART.has(k) ? `/art/events/${k}.webp` : null;
+  if (!k) return null;
+  if (S.s?.ageId === 'modern') return ART.has(`1914_${k}`) ? `/art/events/1914_${k}.webp` : TIMELESS.has(k) && ART.has(k) ? `/art/events/${k}.webp` : null; // no knights in 1914
+  return ART.has(k) ? `/art/events/${k}.webp` : null;
 }
+const TIMELESS = new Set(['famine', 'flood', 'earthquake', 'plague', 'winter']);
 export function eventCard(e, before, after, sameMonth) {
   const d = $('#event'), [ic, color] = kindOf(e), art = artFor(e);
   const realms = (e.realms ?? []).filter((id) => after.realms[id] || before.realms[id]).slice(0, 2);

@@ -1,7 +1,7 @@
 // The people: how loyal each province is, and what happens when they are not. Provinces revolt; distant governors
 // break away; barons force a charter on a bad king; a capital rises; rich cities make themselves communes.
 import { RULES as R } from './rules.js';
-import { PROVINCES, PROV, provincesOf, living, atWar, key, setOwner, hops, clamp, round1, between, chance, pick, newChar, newArmy, newRealm,
+import { PROVINCES, PROV, baseWealth, provincesOf, living, atWar, key, setOwner, hops, clamp, round1, between, chance, pick, newChar, newArmy, newRealm,
   short, ofR, say, vb, his, fullName, cityOf, placeOf, ageOf, usedNames, yearOf } from './core.js';
 import { wealthOf, rulerTemper, rulingTemper, prosperityOf } from './economy.js';
 import { declareWar, fall } from './war.js';
@@ -9,7 +9,10 @@ import { cultureOf, personName, titleFor, kingdomName, pickTemper } from './name
 
 export function people(s, rng, emit) {
   const L = R.loyalty, near = {};
-  for (const r of living(s)) near[r.id] = hops(r.capital);
+  for (const r of living(s)) {
+    near[r.id] = hops(r.capital);
+    for (const seat of r.seats ?? []) if (s.provinces[seat]?.owner === r.id) { const d = hops(seat), m = { ...near[r.id] }; for (const k in d) if (d[k] < (m[k] ?? 99)) m[k] = d[k]; near[r.id] = m; }
+  }
   const armiesAt = {};
   for (const a of Object.values(s.armies)) (armiesAt[a.at] ??= []).push(a);
   for (const P of PROVINCES) {
@@ -59,7 +62,7 @@ function revolt(s, pid, rng, emit) {
   const leader = s.realms[id].ruler;
   newArmy(s, id, leader && !s.chars[leader].army ? leader : null, pid, round1(1 + wealthOf(s, pid) * 0.9));
   emit('revolt', `${placeOf(s, pid)} rises against ${ofR(s, old)}${cause ? `, joining the ${cause.short}` : `, led by ${s.chars[leader].name}`}`, { realms: [id, old], at: pid, chars: [leader], war: s.wars[key(id, old)]?.conflict });
-  if (s.realms[old] && !provincesOf(s, old).length) fall(s, old, emit, `${s.realms[old].name} ${vb(s, old, 'is')} no more: its last province has risen`, id);
+  if (s.realms[old] && !provincesOf(s, old).length) fall(s, old, emit, `${s.realms[old].rebel ? `The ${s.realms[old].short}` : s.realms[old].name} ${vb(s, old, 'is')} no more: its last province has risen`, id);
 }
 
 // Realm-wide troubles, from the edges and from the top.
@@ -95,7 +98,7 @@ function unrest(s, r, rng, emit, dist) {
   }
   // A rich, restless city governs itself.
   if (mine.length >= 4) {
-    const rich = mine.filter((p) => p.wealth >= 5 && p.id !== r.capital && s.provinces[p.id].loyalty < 45 && (s.provinces[p.id].prosperity ?? 50) >= 55 && !s.provinces[p.id].siege);
+    const rich = mine.filter((p) => baseWealth(s, p.id) >= 5 && p.id !== r.capital && s.provinces[p.id].loyalty < 45 && (s.provinces[p.id].prosperity ?? 50) >= 55 && !s.provinces[p.id].siege);
     const c = rich.length && pick(rng, rich);
     if (c && chance(rng, U.commune)) return commune(s, r, c.id, rng, emit);
   }
