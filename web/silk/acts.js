@@ -7,8 +7,9 @@ import { strength, sideStrength, incomeOf, startWork, canBuild, steersman, rulin
 import { declareWar, makePeace, peaceTerms, fall, breakTreaty } from './war.js';
 import { hire, ask } from './court.js';
 import { nameHeir, abdicate } from './players.js';
+import { tacticsOf, generalsChoice } from './tactics.js';
 
-export const ACTS = ['war', 'peace', 'ally', 'submit', 'independence', 'power', 'hire', 'build', 'claim', 'heir', 'abdicate'];
+export const ACTS = ['war', 'peace', 'ally', 'submit', 'independence', 'power', 'hire', 'build', 'claim', 'heir', 'abdicate', 'tactic', 'army'];
 
 export function act(s, id, a, rng, emit) {
   const r = s.realms[id];
@@ -59,6 +60,21 @@ export function act(s, id, a, rng, emit) {
     case 'claim': return arbitrate(s, id, a.place, rng, emit);
     case 'heir': return nameHeir(s, id, a.char, emit);
     case 'abdicate': return abdicate(s, id, emit);
+    case 'tactic': { // the ruler orders his side's plan in a battle under way, or leaves it to the general
+      const bt = s.battles[a.battle], side = bt?.ra.includes(id) ? 'a' : bt?.rd.includes(id) ? 'd' : null;
+      if (!bt || !side || !(tacticsOf(s).includes(a.tactic) || a.tactic === 'general')) return false;
+      bt.tactic = { ...(bt.tactic ?? {}), [side]: a.tactic === 'general' ? { id: generalsChoice(s, bt, side, rng), by: 'general' } : { id: a.tactic, by: 'ruler' } };
+      return true;
+    }
+    case 'army': { // standing orders for one army, and its plan for the next battle
+      const x = s.armies[a.army];
+      if (!x || x.realm !== id) return false;
+      const kind = ['attack', 'defend', 'raid', 'winter'].includes(a.order) ? a.order : null;
+      x.order = kind && (kind === 'winter' || PROV[a.place]) ? { kind, place: kind === 'winter' ? null : a.place } : null;
+      x.plan = tacticsOf(s).includes(a.plan) ? a.plan : null;
+      if (x.order && !x.battle && x.mode !== 'siege') Object.assign(x, { path: [], target: null, eta: 0 }); // the old march is called off
+      return true;
+    }
   }
   return false;
 }

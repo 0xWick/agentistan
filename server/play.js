@@ -14,7 +14,7 @@ import { clean, makeLLM } from './agent.js';
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'content-type': 'application/json', 'cache-control': 'no-store' };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: HEADERS });
 const PACES = { quick: 3 * 60_000, hour: 60 * 60_000, evening: 4 * 3600_000 };
-const KINDS = ['war', 'peace', 'ally', 'submit', 'independence', 'power', 'hire', 'build', 'claim', 'heir', 'abdicate'];
+const KINDS = ['war', 'peace', 'ally', 'submit', 'independence', 'power', 'hire', 'build', 'claim', 'heir', 'abdicate', 'tactic', 'army'];
 const DISCORD = /^https:\/\/(discord|discordapp)\.com\/api\/webhooks\/\d{5,25}\/[\w-]{20,100}$/; // the only address a reminder goes to
 const COUP_EVERY = 6 * 3600_000; // one new throne per visitor in this time
 const newToken = () => [...crypto.getRandomValues(new Uint8Array(18))].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -49,10 +49,12 @@ function advise(s, d) {
   return { choice, why: WHY[d.topic ?? d.kind]?.[choice] ?? '' };
 }
 function validActs(s, realm, list) {
-  return (Array.isArray(list) ? list : []).slice(0, 8).filter((a) => KINDS.includes(a?.kind)).map((a) => ({
+  return (Array.isArray(list) ? list : []).slice(0, 24).filter((a) => KINDS.includes(a?.kind)).map((a) => ({
     kind: a.kind, ...(typeof a.target === 'string' && s.realms[a.target] ? { target: a.target } : {}), ...(typeof a.place === 'string' && PROV[a.place] ? { place: a.place } : {}),
     ...(Object.keys(R.works).includes(a.work) ? { work: a.work } : {}), ...(R.power.includes(a.power) ? { power: a.power } : {}), ...(a.say ? { say: clean(a.say, 24) } : {}),
     ...(typeof a.char === 'string' && s.chars[a.char]?.realm === realm ? { char: a.char } : {}),
+    ...(typeof a.battle === 'string' && s.battles[a.battle] ? { battle: a.battle } : {}), ...(typeof a.tactic === 'string' ? { tactic: a.tactic.slice(0, 20) } : {}),
+    ...(typeof a.army === 'string' && s.armies[a.army]?.realm === realm ? { army: a.army } : {}), ...(typeof a.order === 'string' ? { order: a.order.slice(0, 10) } : {}), ...(typeof a.plan === 'string' ? { plan: a.plan.slice(0, 20) } : {}),
   }));
 }
 

@@ -546,7 +546,7 @@ dialog.council::backdrop { background: rgba(43, 33, 22, 0.5); }
 .c-foot .saved { margin-right: auto; font: 13px var(--kufi); color: var(--ink-soft); }
 .c-foot .link { font-size: 13px; color: #8a3a1a; }
 @media (max-width: 900px) { .c-grid { grid-template-columns: 1fr; } .c-head h2 { font-size: 22px; } }
-.c-orders .rule-form select, .c-orders .rule-form input[name] { width: 100%; min-width: 0; box-sizing: border-box; }
+.c-orders .rule-form select, .c-orders .rule-form input[name]:not([type=checkbox]):not([type=radio]) { width: 100%; min-width: 0; box-sizing: border-box; }
 .c-orders .rule-form label { min-width: 0; }
 
 /* ---------- form controls in the old-paper style ---------- */
@@ -585,3 +585,22 @@ option { background: #fbf5e4; color: var(--ink); }
 .counsel ul { margin: 0; padding-left: 16px; color: var(--ink-soft); }
 .rule-form select { padding: 8px 32px 8px 10px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%238c6b3f' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 9px center / 16px, linear-gradient(#fbf5e4, #f4ead0); }
 .rule-form input:not([type]), .rule-form input[name]:not([type=checkbox]):not([type=radio]) { padding: 8px 10px; background: linear-gradient(#fbf5e4, #f4ead0); }
+
+/* ---------- armies and battles in the council ---------- */
+.c-realm .res { gap: 6px; }
+.c-realm .rs { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border: 1px solid rgba(140, 107, 63, 0.4); border-radius: 12px; font: 13px var(--kufi); background: rgba(255, 250, 235, 0.6); }
+.armies { display: grid; gap: 8px; }
+.army { padding: 6px 8px; border: 1px solid rgba(140, 107, 63, 0.35); border-radius: 6px; background: rgba(255, 250, 235, 0.45); }
+.army p { margin: 0 0 4px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.army small { color: var(--ink-soft); }
+.army-orders { display: grid; gap: 4px; }
+.army-orders select { font-size: 13px !important; padding: 5px 28px 5px 8px !important; }
+.mcard.battle { border-left-color: #7a1f12; }
+.mcard.battle h4 small { margin-left: auto; font: 12px var(--kufi); color: var(--ink-soft); }
+.mcard .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+.mcard .sides h5 { margin: 0; font: 700 12px var(--kufi); text-transform: uppercase; color: var(--ink-soft); }
+.mcard .sides p { margin: 0; font-size: 13px; }
+.mcard .ground { font-size: 13px; color: var(--ink-soft); }
+.mcard .plans .pick { font-size: 13px; padding: 4px 10px; }
+.rule-form label.check { display: flex; align-items: flex-start; gap: 8px; font-weight: 600; }
+.rule-form label.check input { flex: none; width: 16px; margin-top: 2px; }

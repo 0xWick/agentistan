@@ -10,6 +10,7 @@ import { people } from './people.js';
 import { world, realSkies } from './world.js';
 import { act, applyAnswers, treaty } from './acts.js';
 import { thrones, attendance, absence, matters, QUARTER } from './players.js';
+import { resourcesFor } from './resources.js';
 export { QUARTER, isPlayer } from './players.js';
 import { cultureOf, personName, kingdomName, titleFor, pickTemper, temperFromTraits, isWomanName } from './names.js';
 import AGE_1200 from './ages/1200.js';
@@ -17,7 +18,7 @@ import AGE_ANCIENT from './ages/ancient.js';
 import AGE_MODERN from './ages/modern.js';
 
 export const AGES = { 1200: AGE_1200, ancient: AGE_ANCIENT, modern: AGE_MODERN };
-export const ENGINE = 6; // bump when a change to the rules would make old records replay differently
+export const ENGINE = 7; // bump when a change to the rules would make old records replay differently
 export * from './core.js';
 export { wealthOf, yieldOf, suppliesOf, yearlyGrain, rations, cavalryOf, garrisonOf, wallPower, strength, manpower, incomeOf, prosperityOf, steersman, rulingTemper, knows, canBuild, tradeOpen, treatiesOf, pairTreaties } from './economy.js';
 export { moveCost, route, declareWar, makePeace, peaceTerms, capture, conflictOf } from './war.js';
@@ -33,7 +34,7 @@ export function newAge(age = 1, ageId = '1200') {
   const s = {
     v: 2, age, ageId, startYear: pack.start, months: pack.months, month: 0, nextId: 1, status: 'running', winner: null, endReason: null,
     provinces: {}, realms: {}, chars: {}, armies: {}, groups: {}, wars: {}, allies: {}, truces: {}, conflicts: {}, battles: {}, treaties: {}, deeds: {}, kin: {},
-    pending: [], answers: [], players: {}, roads: pack.roads, inventions: pack.inventions, names: pack.names ?? null, cultures: pack.cultures ?? null, words: pack.words ?? null, mods: pack.mods ?? null, wealth: pack.wealth ?? null, trade: {},
+    pending: [], answers: [], players: {}, roads: pack.roads, inventions: pack.inventions, names: pack.names ?? null, cultures: pack.cultures ?? null, words: pack.words ?? null, mods: pack.mods ?? null, wealth: pack.wealth ?? null, resources: resourcesFor(pack), tactics: pack.tactics ?? null, trade: {},
     record: { genghis: null, founded: 0, fallen: 0, assassinations: 0, battles: 0, captures: 0, revolts: 0, splits: 0, unions: 0 },
   };
   const female = new Set(pack.female ?? []);

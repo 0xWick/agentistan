@@ -8,6 +8,7 @@ import { isGreat } from './engine.js';
 export { isGreat };
 import { S, $, esc, icon, kindOf, worth, chip, personChip, pips, meter, sign, months, men, loyalColor, colorOf } from './ui.js';
 import { portrait, paintedFor } from './portrait.js';
+import { RESOURCES } from './resources.js';
 
 export const card = { kind: null, id: null, trail: [] };
 const s = () => S.s;
@@ -82,6 +83,7 @@ function province(id) {
       <span class="stat" title="Wealth">${icon('coin')}${pips(Math.min(5, baseWealth(st, id)), 5)}</span>
       <span class="stat" title="Walls">${icon('tower')}${pips(q.walls, 4)}</span>
       <span class="stat" title="Terrain">${icon('hill')}${esc(p.terrain)}</span>
+      ${st.resources?.[id] ? `<span class="stat" title="${esc(RESOURCES[st.resources[id]].text)}">${icon(RESOURCES[st.resources[id]].icon)}${esc(RESOURCES[st.resources[id]].name)}</span>` : ''}
     </div>
     <div class="bars">
       <span title="Loyalty of the people">${icon('people')}${meter(loyal, loyalColor(loyal))}<small>loyalty</small></span>

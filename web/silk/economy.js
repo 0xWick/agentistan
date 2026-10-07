@@ -3,6 +3,7 @@
 import { RULES as R } from './rules.js';
 import { PROV, PROVINCES, baseWealth, word, onRoad, provincesOf, armiesOf, menOf, living, atWar, allied, harvestOf, weatherOf, clamp, round1, rngFor, newChar, newArmy, say, poss, nameOf, cityOf, usedNames, yearOf, key, menText } from './core.js';
 import { personName, pickTemper } from './names.js';
+import { resourceIncome, resourceBonus } from './resources.js';
 
 const T = (s, c, role, k) => R.temper[role]?.[s.chars[c]?.temper]?.[k];
 // Whose temperament steers the realm: a regent rules in a child king's name.
@@ -35,6 +36,7 @@ export function yieldOf(s, pid, month = s.month) {
 export function suppliesOf(s, id, month = s.month) {
   const t = { grain: 0, horses: 0, iron: 0 };
   for (const p of provincesOf(s, id)) for (const [k, v] of Object.entries(yieldOf(s, p.id, month))) t[k] += v;
+  t.grain *= 1 + resourceBonus(s, id, 'grain'); // salt keeps the grain
   return t;
 }
 // A year's grain, on average: what the card shows as the realm's harvest.
@@ -85,6 +87,8 @@ export function tradeOpen(s, roads) {
   return open;
 }
 
+// What a work costs this realm: timber makes it cheaper.
+export const workCost = (s, id, kind) => round1(R.works[kind].cost * (1 - resourceBonus(s, id, 'works')));
 export function incomeOf(s, id) {
   const r = s.realms[id], tax = { low: 0.8, normal: 1, high: 1.3 }[r.tax] ?? 1;
   let g = 0;
@@ -96,7 +100,7 @@ export function incomeOf(s, id) {
   }
   const vizier = s.chars[r.vizier];
   g *= (rulerTemper(s, r, 'income') ?? 1) * (vizier?.alive ? T(s, vizier.id, 'vizier', 'income') ?? 1 : 1)
-    * (r.golden && r.golden > s.month ? 1.1 : 1) * (knows(r, 'credit') ? 1.08 : 1) * (knows(r, 'industry') ? 1.12 : 1) * (r.reforms?.includes('tax') ? 1.1 : 1);
+    * (r.golden && r.golden > s.month ? 1.1 : 1) * (knows(r, 'credit') ? 1.08 : 1) * (knows(r, 'industry') ? 1.12 : 1) * (r.reforms?.includes('tax') ? 1.1 : 1) * resourceIncome(s, id);
   return round1(g);
 }
 
@@ -215,7 +219,7 @@ export const prosperityOf = (s, id) => {
 // ---------- works: canals, caravanserais, markets, libraries ----------
 export function canBuild(s, id, pid, kind) {
   const W = R.works[kind], q = s.provinces[pid], P = PROV[pid], r = s.realms[id];
-  if (!W || q.owner !== id || q.works?.[kind] || q.building || q.siege || r.gold < W.cost + 10) return false;
+  if (!W || q.owner !== id || q.works?.[kind] || q.building || q.siege || r.gold < workCost(s, id, kind) + 10) return false;
   if (W.terrain && !W.terrain.includes(P.terrain)) return false;
   if (W.silk && !onRoad(s, pid)) return false;
   if (W.wealth && baseWealth(s, pid) < W.wealth) return false;
@@ -224,7 +228,7 @@ export function canBuild(s, id, pid, kind) {
 export function startWork(s, id, pid, kind, emit) {
   if (!canBuild(s, id, pid, kind)) return false;
   const r = s.realms[id];
-  r.gold = round1(r.gold - R.works[kind].cost);
+  r.gold = round1(r.gold - workCost(s, id, kind));
   s.provinces[pid].building = { kind, left: R.works[kind].months, by: r.ruler };
   return true;
 }

@@ -9,7 +9,10 @@ import { RULES } from './rules.js';
 import { TEMPER_TEXT } from './names.js';
 import { neighbours, bestWork } from './doctrine.js';
 import { portrait } from './portrait.js';
-import { ageOf, ofR } from './core.js';
+import { ageOf, ofR, hops, weatherOf, PROV } from './core.js';
+import { cavalryOf } from './economy.js';
+import { TACTICS, tacticsOf } from './tactics.js';
+import { RESOURCES, heldBy } from './resources.js';
 
 export const GAME = new URLSearchParams(location.search).get('game');
 export const API = GAME ? `/api/game/${encodeURIComponent(GAME)}/era` : '/api/era';
@@ -173,12 +176,13 @@ function councilHTML() {
       ${vassals.length ? `<p class="row">${icon('scroll')} Client states: ${vassals.map((o) => chip(o.id)).join(' ')}</p>` : ''}
       ${r.overlord ? `<p class="row">${icon('scroll')} You bow to ${chip(r.overlord)}</p>` : ''}
       ${threats.length ? `<p class="row warn">${icon('flame')} Enemy armies at the border: ${threats.map((a) => `${men(a.size)} of ${esc(s.realms[a.realm]?.short)} at ${esc(cityOf(s, a.at))}`).join('; ')}</p>` : ''}
-      <h3>${icon('swords')} Armies</h3>
-      <ul class="armies">${armiesOf(s, r.id).map((a) => `<li>${men(a.size)} at ${esc(cityOf(s, a.at))}${s.chars[a.general] ? ` · ${personChip(s.chars[a.general])}` : ''}${a.battle ? ` · ${icon('swords')} in battle` : a.mode === 'siege' ? ' · besieging' : a.target ? ` · marching on ${esc(cityOf(s, a.target))}` : ''}</li>`).join('') || '<li>none</li>'}</ul>
+      ${resourcesHTML(s, r)}
+      <h3>${icon('swords')} Armies${open && !c.ended ? ` ${vz('armies', 'Let the vizier order the armies')}` : ''}</h3>
+      ${armiesHTML(s, r, open && !c.ended)}
     </section>
     <section class="c-matters">
       <h3>${icon('scroll')} ${open ? 'Matters before you' : 'The quarter in review'}${open && !c.ended && c.cards.length ? ` ${vz('matters', 'Decide every matter as the vizier advises')}` : ''}</h3>
-      ${open ? mattersHTML() : reviewHTML()}
+      ${open ? battlesHTML(s, r, !c.ended) + mattersHTML() : reviewHTML()}
     </section>
     <section class="c-orders">
       <h3>${icon('quill')} Your orders${open && !c.ended ? ` ${vz('orders', 'Let the vizier draft all your orders')}` : ''}</h3>
@@ -192,6 +196,58 @@ function councilHTML() {
   </footer>`;
 }
 
+function resourcesHTML(s, r) {
+  const held = Object.entries(heldBy(s, r.id));
+  return held.length ? `<p class="row res">${held.map(([k, n]) => `<span class="rs" title="${esc(RESOURCES[k].text)}">${icon(RESOURCES[k].icon)} ${esc(RESOURCES[k].name)}${n > 1 ? ` ×${n}` : ''}</span>`).join('')}</p>` : '';
+}
+const ORDERS = { free: 'The general decides', attack: 'Attack', raid: 'Raid', defend: 'Defend', winter: 'Winter quarters' };
+// Where an army may be sent: enemy (or free) land within reach for attacks and raids; our own land to defend.
+function placesFor(s, r, a, kind) {
+  const d = hops(a.at), own = (p) => s.provinces[p].owner;
+  const ok = kind === 'defend' ? (p) => own(p) === r.id : (p) => own(p) !== r.id && (own(p) === null || atWar(s, r.id, own(p)));
+  return Object.keys(s.provinces).filter((p) => ok(p) && (d[p] ?? 99) <= (kind === 'defend' ? 9 : 6)).sort((x, y) => d[x] - d[y]).slice(0, 30);
+}
+function armyDraft(a) { return draft.acts.find((x) => x.kind === 'army' && x.army === a.id); }
+function armiesHTML(s, r, editable) {
+  const list = armiesOf(s, r.id);
+  if (!list.length) return '<p class="sub">No armies in the field.</p>';
+  return `<div class="armies">${list.map((a) => {
+    const g = s.chars[a.general], d = armyDraft(a), kind = d ? d.order ?? 'free' : a.order?.kind ?? 'free', place = d ? d.place : a.order?.place, plan = d ? d.plan ?? '' : a.plan ?? '';
+    const status = a.battle ? `${icon('swords')} in battle at ${esc(cityOf(s, a.at))}` : a.mode === 'siege' ? `besieging ${esc(cityOf(s, a.at))}` : a.target ? `marching on ${esc(cityOf(s, a.target))}` : `at ${esc(cityOf(s, a.at))}`;
+    const places = kind === 'attack' || kind === 'raid' || kind === 'defend' ? placesFor(s, r, a, kind) : [];
+    return `<div class="army">
+      <p><b>${men(a.size)}</b> ${g ? personChip(g) : '<i>no general</i>'} <small>${g ? `skill ${g.skill}, ${esc(TEMPER_TEXT[g.temper]?.[0] ?? '')}` : ''} · ${status}</small></p>
+      ${editable ? `<div class="army-orders" data-army="${a.id}">
+        <select name="order-${a.id}" title="Orders">${Object.entries(ORDERS).map(([k, t]) => `<option value="${k}"${k === kind ? ' selected' : ''}>${t}</option>`).join('')}</select>
+        ${places.length ? `<select name="place-${a.id}" title="Where">${places.map((p) => `<option value="${p}"${p === place ? ' selected' : ''}>${esc(cityOf(s, p))}${s.provinces[p].owner && s.provinces[p].owner !== r.id ? ` (${esc(s.realms[s.provinces[p].owner].short)})` : ''}</option>`).join('')}</select>` : kind === 'free' || kind === 'winter' ? '' : '<small>nowhere in reach</small>'}
+        <select name="plan-${a.id}" title="Plan for its next battle"><option value="">Next battle: the general's plan</option>${tacticsOf(s).map((t) => `<option value="${t}"${t === plan ? ' selected' : ''}>Next battle: ${esc(TACTICS[t].name)}</option>`).join('')}</select>
+      </div>` : a.order ? `<small>Orders: ${esc(ORDERS[a.order.kind])}${a.order.place ? ` ${esc(cityOf(s, a.order.place))}` : ''}</small>` : ''}
+    </div>`;
+  }).join('')}</div>`;
+}
+// Battles under way: both armies, the ground and the weather; the ruler picks the plan or trusts his general.
+function battlesHTML(s, r, editable) {
+  const mine = Object.values(s.battles).filter((bt) => bt.ra.includes(r.id) || bt.rd.includes(r.id));
+  if (!mine.length) return '';
+  const sideOf = (bt) => (bt.ra.includes(r.id) ? 'a' : 'd');
+  const armies = (bt, side) => (side === 'a' ? bt.a : bt.d).map((id) => s.armies[id]).filter((x) => x && x.at === bt.at);
+  const who = (list, realm) => `${list.map((x) => `${men(x.size)}${s.chars[x.general] ? ` under ${esc(s.chars[x.general].name)} <small>(skill ${s.chars[x.general].skill}, ${esc(TEMPER_TEXT[s.chars[x.general].temper]?.[0] ?? '')})</small>` : ''}`).join('; ')} <small>· ${Math.round(cavalryOf(s, realm) * 100)}% horse</small>`;
+  return `<div class="cards">${mine.map((bt) => {
+    const side = sideOf(bt), foe = side === 'a' ? 'd' : 'a', P = PROV[bt.at], w = weatherOf(bt.at, s.month);
+    const chosen = draft.acts.find((x) => x.kind === 'tactic' && x.battle === bt.id)?.tactic ?? (bt.tactic?.[side]?.by === 'ruler' ? bt.tactic[side].id : 'general');
+    const gen = s.chars[armies(bt, side).sort((x, y) => y.size - x.size)[0]?.general];
+    return `<article class="mcard battle">
+      <h4>${icon('swords')} The battle at ${esc(cityOf(s, bt.at))} <small>${bt.rounds ? `month ${bt.rounds + 1}` : 'begins'}</small></h4>
+      <div class="sides"><div><h5>Your side ${side === 'd' ? '(defending)' : '(attacking)'}</h5><p>${who(armies(bt, side), r.id)}</p></div>
+        <div><h5>${esc(s.realms[(foe === 'a' ? bt.ra : bt.rd)[0]]?.short ?? 'The enemy')}</h5><p>${who(armies(bt, foe), (foe === 'a' ? bt.ra : bt.rd)[0])}</p></div></div>
+      <p class="ground">${icon('hill')} ${esc(P.terrain)}${s.provinces[bt.at].walls ? ` · walls ${s.provinces[bt.at].walls}` : ''} · ${esc(w === 'clear' || !w ? 'fair weather' : w)} · fallen so far: ${men(bt.lost[side === 'a' ? 0 : 1])} of ours, ${men(bt.lost[side === 'a' ? 1 : 0])} of theirs</p>
+      ${editable ? `<div class="picks plans">
+        <button class="pick${chosen === 'general' ? ' on' : ''}" data-tactic="${bt.id}" data-plan="general">Trust ${esc(gen?.name ?? 'the general')}${bt.tactic?.[side]?.by !== 'ruler' && bt.tactic?.[side] ? ` <small>(${esc(TACTICS[bt.tactic[side].id].name)})</small>` : ''}</button>
+        ${tacticsOf(s).map((t) => `<button class="pick${chosen === t ? ' on' : ''}" data-tactic="${bt.id}" data-plan="${t}" title="${esc(TACTICS[t].hint)}, as at ${esc(TACTICS[t].example)}">${esc(TACTICS[t].name)}</button>`).join('')}
+      </div><p class="advice">${icon('vizier')} Pick a plan that fits the ground and the armies: hover a plan for when it works. A plan that fits wins battles; one that does not loses them.</p>` : ''}
+    </article>`;
+  }).join('')}</div>`;
+}
 function mattersHTML() {
   const cards = council.cards;
   if (!cards.length) return `<p class="sub">No matters wait for you this quarter. Your realm is quiet: give your orders.</p>`;
@@ -244,6 +300,14 @@ function counselHTML() {
   return `<div class="counsel">${icon('vizier')}<div>${vzDraft.counsel ? `<p><b>${esc(vizier?.name ?? 'Your vizier')}</b>: “${esc(vzDraft.counsel)}”</p>` : ''}<ul>${vzDraft.why.map((w) => `<li>${esc(w)}</li>`).join('')}</ul></div></div>`;
 }
 async function vizierFill(key, button) {
+  if (key === 'armies') {
+    readOrders();
+    const s = S.s, keep = draft.acts.filter((x) => x.kind !== 'army' && x.kind !== 'tactic');
+    draft.acts = [...keep, ...armiesOf(s, council.realm).map((a) => ({ kind: 'army', army: a.id, order: null, place: null, plan: null })),
+      ...Object.values(s.battles).filter((bt) => bt.ra.includes(council.realm) || bt.rd.includes(council.realm)).map((bt) => ({ kind: 'tactic', battle: bt.id, tactic: 'general' }))];
+    await save();
+    return openCouncil(true);
+  }
   if (key === 'matters') {
     for (const d of council.cards) if (d.advice?.choice) draft.answers[d.id] = d.advice.choice;
     await save();
@@ -258,7 +322,7 @@ async function vizierFill(key, button) {
   }
   readOrders();
   const pickAct = (k) => vzDraft.acts.find((a) => a.kind === k), keep = (k) => draft.acts.filter((a) => a.kind !== k);
-  if (key === 'orders') Object.assign(draft, { acts: [...vzDraft.acts, ...draft.acts.filter((a) => ['heir', 'abdicate'].includes(a.kind))], tax: vzDraft.tax, say: vzDraft.say ?? draft.say });
+  if (key === 'orders') Object.assign(draft, { acts: [...vzDraft.acts, ...draft.acts.filter((a) => ['heir', 'abdicate', 'army', 'tactic'].includes(a.kind))], tax: vzDraft.tax, say: vzDraft.say ?? draft.say });
   else if (key === 'tax') draft.tax = vzDraft.tax;
   else if (key === 'say') draft.say = vzDraft.say ?? draft.say;
   else draft.acts = pickAct(key) ? [...keep(key), pickAct(key)] : keep(key);
@@ -281,6 +345,12 @@ function readOrders() {
   if (v.claim) acts.push({ kind: 'claim', place: v.claim });
   if (v.heir) acts.push({ kind: 'heir', char: v.heir });
   if (v.abdicate) acts.push({ kind: 'abdicate' });
+  for (const a of armiesOf(s, r.id)) { // the armies' orders live in the same council form
+    const kind = $(`[name="order-${a.id}"]`)?.value;
+    if (kind === undefined) continue;
+    acts.push({ kind: 'army', army: a.id, order: kind === 'free' ? null : kind, place: $(`[name="place-${a.id}"]`)?.value ?? null, plan: $(`[name="plan-${a.id}"]`)?.value || null });
+  }
+  for (const t of draft.acts.filter((x) => x.kind === 'tactic')) acts.push(t);
   Object.assign(draft, { acts, tax: v.tax || null, say: v.say || null });
 }
 async function save(end = false) {
@@ -300,6 +370,13 @@ function wireCouncil(d) {
       await save();
       return openCouncil(true);
     }
+    const tb = e.target.closest('[data-tactic]');
+    if (tb) {
+      readOrders();
+      draft.acts = draft.acts.filter((x) => !(x.kind === 'tactic' && x.battle === tb.dataset.tactic)).concat([{ kind: 'tactic', battle: tb.dataset.tactic, tactic: tb.dataset.plan }]);
+      await save();
+      return openCouncil(true);
+    }
     const v = e.target.closest('[data-vz]');
     if (v) { e.preventDefault(); return vizierFill(v.dataset.vz, v); }
     if (e.target.closest('[data-end]')) { const x = await save(true); if (x.saved) openCouncil(true); return; }
@@ -315,6 +392,7 @@ function wireCouncil(d) {
   };
   const f = $('#orders');
   if (f) f.onchange = () => { clearTimeout(saving); saving = setTimeout(() => save(), 400); };
+  d.querySelectorAll('.army-orders select').forEach((x) => (x.onchange = async () => { await save(); if (x.name.startsWith('order-')) openCouncil(true); }));
 }
 
 // ---------- private games (off the menu): the month-by-month seat ----------

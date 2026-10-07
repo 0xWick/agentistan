@@ -2,7 +2,7 @@
 // on it; the AI cast and players replace its plans and answers, and the armies still march by its rules.
 // Temperament drives it: a conqueror wants war, a builder canals, a negligent king nothing at all.
 import { RULES as R } from './rules.js';
-import { PROV, PROVINCES, baseWealth, onRoad, atWar, allied, warOf, truceUntil, friendly, living, provincesOf, armiesOf, isWinter, weatherOf, ageOf } from './core.js';
+import { PROV, PROVINCES, baseWealth, hops, onRoad, atWar, allied, warOf, truceUntil, friendly, living, provincesOf, armiesOf, isWinter, weatherOf, ageOf } from './core.js';
 import { strength, sideStrength, wealthOf, wallPower, rulingTemper, steersman, canBuild, prosperityOf } from './economy.js';
 import { route } from './war.js';
 import { claimsOf, acceptsPeace } from './acts.js';
@@ -175,6 +175,7 @@ export function orders(s, id, rng) {
     if (a.mode === 'garrison' && s.provinces[a.at].siege) continue; // holding the walls
     if (a.mode === 'garrison') a.mode = 'idle';
     if (a.mode === 'siege' || a.rest > 0) continue;
+    if (a.order && follow(s, id, a)) continue; // a ruler's standing orders
     if (a.path.length && a.target && rng() < 0.85 && (s.provinces[a.target].owner === null ? targets.has('neutral') : atWar(s, id, s.provinces[a.target].owner))) continue;
     const gen = s.chars[a.general], daring = R.temper.general[gen?.temper]?.attack ?? 1;
     // An enemy army on our land, close by and not much stronger: go and meet it, whatever the season.
@@ -212,6 +213,34 @@ export function orders(s, id, rng) {
       else a.mode = 'idle';
     } else if (!a.path.length) a.mode = 'idle';
   }
+}
+
+// A ruler's standing orders for an army: attack or raid a province, defend one, or go into winter quarters.
+// Returns false (and drops the order) when it is done or can no longer be carried out; the general then decides.
+function follow(s, id, a) {
+  const o = a.order, owner = (p) => s.provinces[p]?.owner;
+  const enter = (n) => friendly(s, id, owner(n)) || (owner(n) !== null && atWar(s, id, owner(n))) || n === o.place;
+  const go = (to) => { const way = route(s, id, a.at, to, enter); if (!way) return false; Object.assign(a, { path: way.path, target: to, mode: 'march', eta: 0 }); return true; };
+  if (o.kind === 'winter') {
+    if (owner(a.at) === id && !a.path.length) { a.mode = 'idle'; return true; }
+    if (a.path.length) return true;
+    const d = hops(a.at), home = provincesOf(s, id).filter((p) => (d[p.id] ?? 99) <= 4).sort((x, y) => s.provinces[y.id].walls - s.provinces[x.id].walls || d[x.id] - d[y.id])[0] ?? provincesOf(s, id)[0];
+    return home ? go(home.id) || true : false;
+  }
+  if (o.kind === 'defend') {
+    if (owner(o.place) !== id) { a.order = null; return false; }
+    const near = [o.place, ...PROV[o.place].neighbors].filter((n) => owner(n) === id);
+    const foe = Object.values(s.armies).find((e) => atWar(s, id, e.realm) && near.includes(e.at) && e.at !== a.at);
+    if (foe) return go(foe.at) || true;
+    if (a.at !== o.place) return (a.path.length && a.target === o.place) || go(o.place) || true;
+    a.mode = 'idle';
+    return true;
+  }
+  const ow = owner(o.place); // attack or raid
+  if (!PROV[o.place] || ow === id || (ow !== null && !atWar(s, id, ow))) { a.order = null; return false; }
+  if (a.at === o.place || (a.path.length && a.target === o.place)) return true;
+  if (!go(o.place)) { a.order = null; return false; }
+  return true;
 }
 
 export const brain = { planFor: plan, ordersFor: orders, decide };

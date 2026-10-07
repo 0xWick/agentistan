@@ -79,6 +79,7 @@ export const RULES = {
     home: 1.1, // defending your own land
     bleed: 0.11, // share of a side lost in a month of even fighting
     crush: 2.3, // power ratio at which the weaker side breaks at once
+    waitAbove: 4, standoff: 0.35, // a battle of 4,000 men or more with a ruler at his council waits for his word, skirmishing at 35% of the bleeding
     breaks: 0.8, // morale below which a side flees
     rounds: 3, // a battle's longest run, in months
     rout: 0.18, // extra share the loser loses in the flight
@@ -127,6 +128,9 @@ export const RULES = {
   succession: { crisis: 0.22, perProvince: 0.006, weakHeir: 0.25, splitShare: 0.4 },
   betrayal: { chance: 0.004, coupShare: 0.4 }, // a disloyal, ambitious general each month; coup instead of defection
   rebels: { foundAfter: 12, minProvinces: 2 }, // rebels holding 2 provinces for a year found a kingdom
+  // Battle plans: the most a fitting plan adds, and an unfitting one takes away (times the general's execution).
+  tactics: { bonus: 0.2, penalty: 0.15 },
+  raids: { loot: 4, prosperity: 10 }, // a raid carries off up to wealth × loot gold
   // Players: what a coup costs at first, and the matters put to them at each council.
   players: {
     doubt: 15, unrest: 8, // generals' loyalty and provinces' loyalty lost to a usurper

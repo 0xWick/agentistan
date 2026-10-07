@@ -337,6 +337,12 @@ export default {
   cultures,
   wealth,
   wars: [],
+  tactics: ['charge', 'hold', 'envelop', 'river', 'fabian', 'night', 'barrage', 'dig', 'armour'],
+  resources: {
+    coal: ['york', 'wales', 'scotland', 'cologne', 'silesia', 'saxony', 'flanders', 'champagne', 'cumania', 'bohemia', 'dazaifu', 'liaoyang', 'taiyuan', 'bihar'],
+    oil: ['shirvan', 'khuzestan', 'wallachia', 'halych', 'shahrazur', 'palembang', 'hasa', 'zichia'],
+    rubber: ['kedah', 'kediri', 'lanka'], cotton: ['cairo', 'alexandria', 'ferghana', 'shash', 'gujarat', 'nasik'], gold: ['mapungubwe', 'zimbabwe'],
+  },
   mods: { peaceAfter: 48, betrayal: 0.5, war: 0.6 }, // the wars of 1914 are fought to exhaustion; armies of conscripts rarely follow a general against the state
   allies: [['france', 'russia'], ['germany', 'austria'], ['germany', 'italy'], ['austria', 'italy'], ['uk', 'japan'], ['uk', 'belgium'], ['russia', 'serbia']],
   known: KNOWN,

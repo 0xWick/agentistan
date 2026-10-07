@@ -5,6 +5,9 @@ import { PROV, PROVINCES, baseWealth, word, provincesOf, armiesOf, armiesChanged
   short, ofR, say, vb, poss, nameOf, cityOf, placeOf, months, logWar, yearOf, menText } from './core.js';
 import { cavalryOf, wallPower, garrisonOf, strength, incomeOf, knows, pairTreaties } from './economy.js';
 import { carryOff } from './world.js';
+import { TACTICS, tacticsOf, fitOf, generalsChoice, planFactor } from './tactics.js';
+import { resourceBonus } from './resources.js';
+import { councilMonth } from './players.js';
 import { die } from './court.js';
 
 const T = (s, c, k) => R.temper.general[s.chars[c]?.temper]?.[k];
@@ -210,7 +213,22 @@ function arrive(s, emit, a) {
     engage(s, a, foe, emit);
     return true;
   }
+  if (a.order?.kind === 'raid' && a.order.place === pid && raid(s, a, emit)) return true;
   return beginSiege(s, a, emit);
+}
+// A raid: no siege, only plunder and fire, then home.
+function raid(s, a, emit) {
+  const pid = a.at, p = s.provinces[pid], victim = s.realms[p.owner], r = s.realms[a.realm];
+  if (!victim || !atWar(s, a.realm, p.owner)) return false;
+  const loot = round1(Math.min(Math.max(0, victim.gold), baseWealth(s, pid) * R.raids.loot));
+  victim.gold = round1(victim.gold - loot);
+  r.gold = round1(r.gold + loot);
+  p.ravaged = Math.max(p.ravaged, 4);
+  p.prosperity = Math.max(0, (p.prosperity ?? 50) - R.raids.prosperity);
+  a.order = null;
+  a.mode = 'idle';
+  emit('raid', `${say(s, a.realm, 'raids')} ${placeOf(s, pid)}, burning the villages and carrying off ${Math.round(loot)} gold`, { realms: [a.realm, p.owner], at: pid, chars: [a.general].filter(Boolean), war: warOf(s, a.realm, p.owner)?.conflict });
+  return true;
 }
 
 // An army in hostile land with no army left to stop it settles down before the walls.
@@ -247,6 +265,8 @@ function engage(s, att, def, emit) {
   }
   const id = `b${s.nextId++}`, cid = warOf(s, att.realm, def.realm)?.conflict ?? null;
   s.battles[id] = { id, at: pid, war: cid, a: [att.id], d: [def.id], ra: [att.realm], rd: [def.realm], begun: s.month, rounds: 0, lost: [0, 0], start: [att.size, def.size] };
+  const bt0 = s.battles[id], trng = rngFor('age', s.age, 'tactic', id);
+  bt0.tactic = Object.fromEntries([['a', att], ['d', def]].map(([side, x]) => [side, tacticsOf(s).includes(x.plan) ? { id: x.plan, by: 'plan' } : { id: generalsChoice(s, bt0, side, trng), by: 'general' }]));
   for (const x of [att, def]) Object.assign(x, { battle: id, path: [], mode: 'battle' });
   // Siege armies leave their lines to fight.
   for (const p of Object.values(s.provinces)) if (p.siege && (p.siege.army === att.id || p.siege.army === def.id)) p.siege = null;
@@ -269,11 +289,14 @@ export function battles(s, rng, emit) {
     const drill = (x) => { const r = s.realms[x.realm]; return (knows(r, 'legion') ? 1.08 : 1) * (knows(r, 'crossbow') ? 1.06 : 1) * (open && knows(r, 'elephants') ? 1.08 : 1)
       * (knows(r, 'artillery') ? 1.05 : 1) * (knows(r, 'aircraft') ? 1.06 : 1) * (open && knows(r, 'tanks') ? 1.1 : 1) * (knows(r, 'machineguns') && (owner === x.realm || friendly(s, x.realm, owner)) ? 1.25 : 1); };
     const power = (side) => side.reduce((t, x) => t + x.size * skill(x) * x.morale * horse(x) * ground(x) * drill(x), 0) * (1 + between(rng, [-B.luck, B.luck]));
-    const pa = power(A), pd = power(D);
+    const oil = (side) => 1 + resourceBonus(s, (side === 'a' ? bt.ra : bt.rd)[0], 'power'); // engines need oil
+    const pa = power(A) * planFactor(s, bt, 'a') * oil('a'), pd = power(D) * planFactor(s, bt, 'd') * oil('d'); // and each side's battle plan
     bt.rounds++;
     // A month of fighting: each side bleeds by the other's weight.
     const bleed = (own, other) => clamp(B.bleed * (other / own) ** 0.8, 0.03, 0.35);
-    const fa = bleed(pa, pd), fd = bleed(pd, pa);
+    const waits = !councilMonth(s.month) && bt.start[0] + bt.start[1] >= R.battle.waitAbove && [...bt.ra, ...bt.rd].some((x) => s.players?.[x] && !s.players[x].missed);
+    const skirmish = waits ? R.battle.standoff : 1;
+    const fa = bleed(pa, pd) * skirmish, fd = bleed(pd, pa) * skirmish;
     for (const x of A) { bt.lost[0] = round1(bt.lost[0] + x.size * fa); x.size = round1(x.size * (1 - fa)); }
     for (const x of D) { bt.lost[1] = round1(bt.lost[1] + x.size * fd); x.size = round1(x.size * (1 - fd)); }
     const [worse, better] = fa > fd ? [A, D] : [D, A];
@@ -291,7 +314,14 @@ export function battles(s, rng, emit) {
     const ratio = pa / pd;
     const lead = (side) => s.chars[side.slice().sort((x, y) => y.size - x.size)[0]?.general];
     let loser = null, withdrew = false;
-    if (ratio >= B.crush || morale(D2) < B.breaks) loser = 'd';
+    const slips = (side) => bt.tactic?.[side]?.id === 'fabian' && fitOf(s, bt, side, 'fabian') > 0;
+    if (waits && ratio < B.crush * 1.5 && ratio > 1 / (B.crush * 1.5)) { // the armies face each other, waiting for the king's word
+      if (!bt.waited) emit('fighting', `The armies face each other at ${cityOf(s, bt.at)}, skirmishing, and wait for their rulers' word`, { realms: [...bt.ra, ...bt.rd], at: bt.at, war: bt.war, battle: bt.id });
+      bt.waited = (bt.waited ?? 0) + 1;
+      continue;
+    }
+    if (slips('d') || slips('a')) { loser = slips('d') ? 'd' : 'a'; withdrew = true; s.provinces[bt.at].ravaged = Math.max(s.provinces[bt.at].ravaged, 4); for (const x of loser === 'd' ? A2 : D2) x.morale = clamp(round1(x.morale - 0.12), 0.6, 1.3); }
+    else if (ratio >= B.crush || morale(D2) < B.breaks) loser = 'd';
     else if (ratio <= 1 / B.crush || morale(A2) < B.breaks) loser = 'a';
     else if (bt.rounds >= B.rounds) loser = pa >= pd ? 'd' : 'a';
     else if (T(s, lead(A2)?.id, 'withdraw') && ratio < 0.85) { loser = 'a'; withdrew = true; }
@@ -321,6 +351,16 @@ function turncoat(s, bt, army, toSide, emit) {
 
 // The end of a battle: the loser flees (or holds its walls, or is destroyed), generals may fall, the winner may
 // lay siege. winner: 'a' | 'd' | null (broken off).
+// Whose plan won the day, or lost it.
+function planNote(s, bt, winner) {
+  const loser = winner === 'a' ? 'd' : 'a', w = bt.tactic?.[winner], l = bt.tactic?.[loser];
+  const fw = w ? fitOf(s, bt, winner, w.id) : 0, fl = l ? fitOf(s, bt, loser, l.id) : 0;
+  const ordered = (t) => t?.by === 'ruler' ? ', as the ruler ordered' : ''; // a ruler's own plan is always told
+  if (w && (fw >= 0.6 && fl <= 0.1 || (w.by === 'ruler' && fw >= 0.3))) return `. ${TACTICS[w.id].name} won the day${ordered(w)}`;
+  if (l && (fl <= -0.4 || (l.by === 'ruler' && fl <= -0.2))) return `. ${TACTICS[l.id].name} failed the losers${ordered(l)}`;
+  return '';
+}
+const plans = (s, bt) => Object.fromEntries(['a', 'd'].map((side) => [side, bt.tactic?.[side] ? { ...bt.tactic[side], fit: Math.round(fitOf(s, bt, side, bt.tactic[side].id) * 100) / 100 } : null]));
 function endBattle(s, bt, winner, emit, quiet = false, rng = rngFor('age', s.age, 'battle-end', bt.id), withdrew = false) {
   delete s.battles[bt.id];
   const W = winner ? sideArmies(s, winner === 'a' ? bt.a : bt.d, bt.at) : [], L = winner ? sideArmies(s, winner === 'a' ? bt.d : bt.a, bt.at) : [];
@@ -356,8 +396,9 @@ function endBattle(s, bt, winner, emit, quiet = false, rng = rngFor('age', s.age
   const long = bt.rounds > 1 ? ` after ${months(bt.rounds)} of fighting` : '';
   const text = withdrew
     ? `${short(s, lr)} ${vb(s, lr, 'breaks')} off the battle at ${cityOf(s, bt.at)} and ${vb(s, lr, 'withdraws')}${long}: ${menText(lostL + lostW)} have fallen`
-    : `${short(s, wr)} ${vb(s, wr, crushing ? 'crushes' : 'defeats')} ${ofR(s, lr)} at ${cityOf(s, bt.at)}${long}: ${menText(lostL)} of ${ofR(s, lr)} fall, ${menText(lostW)} of ${ofR(s, wr)}`;
-  emit('battle', text, { realms: [wr, lr], at: bt.at, chars: [...W, ...L].map((x) => x.general).filter(Boolean).concat(fallen), winner: wr, war: bt.war, battle: bt.id, lost: [round1(lostW), round1(lostL)], rounds: bt.rounds, minor: bt.start[0] + bt.start[1] < 8 && bt.rounds === 1 });
+    : `${short(s, wr)} ${vb(s, wr, crushing ? 'crushes' : 'defeats')} ${ofR(s, lr)} at ${cityOf(s, bt.at)}${long}: ${menText(lostL)} of ${ofR(s, lr)} fall, ${menText(lostW)} of ${ofR(s, wr)}`
+      + planNote(s, bt, winner);
+  emit('battle', text, { realms: [wr, lr], at: bt.at, chars: [...W, ...L].map((x) => x.general).filter(Boolean).concat(fallen), winner: wr, war: bt.war, battle: bt.id, lost: [round1(lostW), round1(lostL)], rounds: bt.rounds, tactics: plans(s, bt), commanded: (bt.tactic?.[winner]?.by === 'ruler' ? [wr] : []), minor: bt.start[0] + bt.start[1] < 8 && bt.rounds === 1 });
   const c = s.conflicts[bt.war];
   if (c) {
     c.battles++;
