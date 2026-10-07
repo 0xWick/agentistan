@@ -35,9 +35,9 @@ if (mode === 'story') {
     const alive = living(s).length, top3 = living(s).map((x) => `${x.short} ${provincesOf(s, x.id).length}`).sort((a, b) => +b.split(' ').pop() - +a.split(' ').pop()).slice(0, 3);
     const historic = living(s).filter((x) => x.origin === 'historic').length;
     rows.push({ age, end: yearOf(s.month), alive, historic, founded: s.record.founded, fallen: s.record.fallen, splits: s.record.splits, revolts: s.record.revolts, kills: s.record.assassinations,
-      battles: s.record.battles, captures: s.record.captures, mongols: s.mongolsAt === null ? 'never' : dateText(s.mongolsAt), ms: Math.round(ms) });
+      battles: s.record.battles, captures: s.record.captures, mongols: s.record.genghis === null ? 'no Great Khan' : 'Great Khan ' + dateText(s.record.genghis), ms: Math.round(ms) });
     console.log(`age ${age}: ends ${yearOf(s.month)} | ${s.endReason}`);
-    console.log(`   alive ${alive} (historic ${historic}) | founded ${s.record.founded} fallen ${s.record.fallen} splits ${s.record.splits} revolts ${s.record.revolts} assassinations ${s.record.assassinations} | battles ${s.record.battles} captures ${s.record.captures} | mongols ${rows.at(-1).mongols}${s.realms.mongol ? ` → ${s.realms.mongol.fallen ? 'gone' : `${provincesOf(s, 'mongol').length} provinces`}` : ''}`);
+    console.log(`   alive ${alive} (historic ${historic}) | founded ${s.record.founded} fallen ${s.record.fallen} splits ${s.record.splits} revolts ${s.record.revolts} assassinations ${s.record.assassinations} | battles ${s.record.battles} captures ${s.record.captures} | ${rows.at(-1).mongols}${s.realms.mongol ? ` → ${s.realms.mongol.fallen ? 'gone' : `${provincesOf(s, 'mongol').length} provinces`}` : ''}`);
     console.log(`   top: ${top3.join(', ')} | leader by decade: ${Object.entries(share).map(([y, v]) => `${y} ${v}`).join(', ')} | ${Math.round(ms)} ms`);
     console.log(`   events: ${Object.entries(kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   }

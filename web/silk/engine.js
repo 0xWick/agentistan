@@ -6,7 +6,7 @@ import realmData from './realms.json' with { type: 'json' };
 import { RULES as R } from './rules.js';
 import { cultureOf, personName, titleFor, kingdomName, randomTraits, pick } from './names.js';
 
-export const PROVINCES = provinceData.map((p, i) => ({ ...p, i, neighbors: graph[p.id].neighbors, xy: graph[p.id].city, label: graph[p.id].label, area: graph[p.id].area }));
+export const PROVINCES = provinceData.map((p, i) => ({ ...p, i, neighbors: graph[p.id].neighbors, ways: graph[p.id].ways, xy: graph[p.id].city, label: graph[p.id].label, area: graph[p.id].area }));
 export const PROV = Object.fromEntries(PROVINCES.map((p) => [p.id, p]));
 export const REALM_DATA = Object.fromEntries(realmData.map((r) => [r.id, r]));
 
@@ -50,10 +50,12 @@ export const allied = (s, a, b) => !!(a && b && s.allies[key(a, b)]);
 export const living = (s) => Object.values(s.realms).filter((r) => !r.fallen);
 export const provincesOf = (s, id) => PROVINCES.filter((p) => s.provinces[p.id].owner === id);
 export const armiesOf = (s, id) => Object.values(s.armies).filter((a) => a.realm === id);
-export const friendly = (s, a, b) => a === b || allied(s, a, b) || s.realms[a]?.overlord === b || s.realms[b]?.overlord === a;
+// Unclaimed land (null) is nobody's friend: it can be crossed only by taking it.
+export const friendly = (s, a, b) => a === b || (!!a && !!b && (allied(s, a, b) || s.realms[a]?.overlord === b || s.realms[b]?.overlord === a));
 const short = (s, id) => (id ? s.realms[id]?.short ?? id : 'the locals');
 // "the Ghurids take", "Khwarazm takes": realms with plural names get plural verbs. poss: "Chandelas'", "Georgia's".
-const vb = (s, id, verb) => (s.realms[id]?.plural || id === null ? ({ has: 'have', is: 'are' })[verb] ?? verb.replace(/(sh|ch|ss|x)es$/, '$1').replace(/([^s])s$/, '$1') : verb);
+const plural = (w) => ({ has: 'have', is: 'are' })[w] ?? w.replace(/(sh|ch|ss|x)es$/, '$1').replace(/([^s])s$/, '$1');
+const vb = (s, id, verb) => (s.realms[id]?.plural || id === null ? verb.replace(/^\S+/, plural) : verb);
 const poss = (name) => (name.endsWith('s') ? `${name}'` : `${name}'s`);
 const say = (s, id, verb) => `${short(s, id)} ${vb(s, id, verb)}`;
 const nameOf = (s, c) => (c ? `${s.chars[c]?.title ? `${s.chars[c].title} ` : ''}${s.chars[c]?.name ?? 'someone'}` : 'an unknown captain');
@@ -63,18 +65,22 @@ export const wealthOf = (s, pid) => {
   const p = s.provinces[pid];
   return Math.max(0.5, PROV[pid].wealth - (p.ravaged > 0 ? 1.5 : 0) - (p.plague > 0 ? 1 : 0) - (p.famine > 0 ? 1 : 0));
 };
-export const garrisonOf = (s, pid) => R.garrison.base + R.garrison.perWealth * PROV[pid].wealth;
+export const garrisonOf = (s, pid) => (R.garrison.base + R.garrison.perWealth * PROV[pid].wealth) * (s.realms[s.provinces[pid].owner]?.nomad ? R.economy.nomad.garrison : 1); // on the steppe every herder fights
 export const wallPower = (s, pid) => garrisonOf(s, pid) * (1 + s.provinces[pid].walls ** 2 * R.walls.defence) * (R.battle.terrain[PROV[pid].terrain] ?? 1) * (0.5 + s.provinces[pid].loyalty / 100);
 export function strength(s, id) {
   return armiesOf(s, id).reduce((t, a) => t + a.size, 0) + 0.3 * provincesOf(s, id).reduce((t, p) => t + garrisonOf(s, p.id), 0);
 }
+// Soldiers a realm can field: settled lands by their wealth; the steppe by its riders, one host per pasture.
 export function manpower(s, id) {
-  return provincesOf(s, id).reduce((t, p) => t + wealthOf(s, p.id) * R.economy.manpower * (0.4 + s.provinces[p.id].loyalty / 160), 0);
+  const nomad = s.realms[id]?.nomad;
+  return provincesOf(s, id).reduce((t, p) => t + (nomad ? R.economy.nomad.riders : wealthOf(s, p.id) * R.economy.manpower) * (0.4 + s.provinces[p.id].loyalty / 160), 0);
 }
+const recruitPrice = (r) => R.economy.recruitCost * (r.nomad ? R.economy.nomad.recruit : 1);
 export function incomeOf(s, id) {
   const r = s.realms[id], tax = { low: 0.8, normal: 1, high: 1.3 }[r.tax] ?? 1;
   let g = 0;
-  for (const p of provincesOf(s, id)) g += wealthOf(s, p.id) * R.economy.perWealth * (s.provinces[p.id].loyalty / 100) * tax + (p.silk ? R.economy.silkBonus : 0);
+  for (const p of provincesOf(s, id)) g += wealthOf(s, p.id) * R.economy.perWealth * (s.provinces[p.id].loyalty / 100) * tax + (p.silk ? R.economy.silkBonus : 0)
+    + (r.nomad && ['steppe', 'desert', 'mountains', 'forest'].includes(p.terrain) ? R.economy.nomad.herds : 0);
   return round1(g);
 }
 
@@ -88,12 +94,15 @@ export function hops(from) {
   return d;
 }
 
-// Months for an army to enter a province.
-export function moveCost(s, realm, pid) {
-  const t = PROV[pid].terrain;
+// Months for an army to go from one province into the next: the ground it enters, then whatever lies on the road
+// between: a great river to ford, a mountain pass (closed in winter), a strait to sail.
+export function moveCost(s, realm, from, pid) {
+  const t = PROV[pid].terrain, way = PROV[from]?.ways?.[pid] ?? {}, X = R.cross, nomad = s.realms[realm]?.nomad;
+  if (way.sea && nomad) return Infinity; // riders don't take ship
   let c = R.move[t] ?? 1;
-  if (isWinter(s.month) && t === 'mountains') c += 2;
-  if (s.realms[realm]?.nomad && ['steppe', 'desert', 'plains', 'river'].includes(t)) c = Math.max(0.5, c / R.nomadSpeed);
+  if (nomad && ['steppe', 'desert', 'plains', 'river'].includes(t)) c = Math.max(0.5, c / R.nomadSpeed);
+  c += (way.river ?? 0) * X.river + (way.pass ? X.pass : 0) + (way.sea ? X.sea : 0);
+  if (isWinter(s.month) && (t === 'mountains' || way.pass)) c += X.winter;
   return c;
 }
 
@@ -111,7 +120,7 @@ export function route(s, realm, from, to, canEnter) {
     if (cur !== from && !friendly(s, realm, s.provinces[cur].owner)) continue; // fighting stops a march
     for (const n of PROV[cur].neighbors) {
       if (!canEnter(n)) continue;
-      const d = dist[cur] + moveCost(s, realm, n);
+      const d = dist[cur] + moveCost(s, realm, cur, n);
       if (d < (dist[n] ?? Infinity)) { dist[n] = d; prev[n] = cur; open.push(n); }
     }
   }
@@ -124,19 +133,19 @@ export function route(s, realm, from, to, canEnter) {
 // ---------- the world in January 1200 ----------
 export function newAge(age = 1) {
   const rng = rngFor('age', age, 'setup');
-  const s = { age, month: 0, nextId: 1, status: 'running', winner: null, endReason: null, provinces: {}, realms: {}, chars: {}, armies: {}, groups: {}, wars: {}, allies: {}, truces: {}, mongolsAt: null, record: { founded: 0, fallen: 0, assassinations: 0, battles: 0, captures: 0, revolts: 0, splits: 0 } };
+  const s = { age, month: 0, nextId: 1, status: 'running', winner: null, endReason: null, provinces: {}, realms: {}, chars: {}, armies: {}, groups: {}, wars: {}, allies: {}, truces: {}, record: { genghis: null, founded: 0, fallen: 0, assassinations: 0, battles: 0, captures: 0, revolts: 0, splits: 0 } };
   for (const p of PROVINCES) s.provinces[p.id] = { owner: p.owner ?? null, loyalty: p.loyalty ?? (p.owner ? 62 : 55), walls: p.walls, conquered: 0, ravaged: 0, plague: 0, famine: 0, siege: null };
   for (const r of realmData) {
     s.realms[r.id] = { id: r.id, name: r.name, short: r.short, plural: !!r.plural, color: r.color, capital: r.capital, ai: !!r.ai, nomad: !!r.nomad, agents: !!r.agents, overlord: r.overlord ?? null,
-      gold: 0, tax: 'normal', ruler: null, heir: null, power: null, origin: 'historic', founded: 0, fallen: false, plan: null, culture: cultureOf(r.capital), fa: r.fa };
+      gold: 0, tax: 'normal', ruler: null, heir: null, power: null, origin: 'historic', founded: 0, fallen: false, plan: null, culture: cultureOf(r.capital), fa: r.fa, elective: !!r.elective };
     const realm = s.realms[r.id];
     // Where the chronicles have lost a name, the world gives one from the region's customs (marked as invented).
     const named = (c) => (c.name.startsWith('the ') ? { ...c, name: personName(rng, realm.culture, usedNames(s)), invented: true } : c);
     Object.assign(realm, { dynasty: r.dynasty ?? r.short, lineage: (r.lineage ?? []).map((l) => ({ name: l.name, title: r.ruler.title, since: l.since, until: l.until, cause: null })) });
-    realm.ruler = newChar(s, { ...named(r.ruler), role: 'ruler', realm: r.id, skill: 3, family: realm.dynasty });
+    realm.ruler = newChar(s, { ...named(r.ruler), role: 'ruler', realm: r.id, skill: r.ruler.skill ?? 3, family: realm.dynasty });
     if (r.heir) realm.heir = newChar(s, { ...r.heir, role: 'heir', realm: r.id, skill: 3, family: realm.dynasty, parent: s.chars[realm.ruler].name });
     for (const c of r.court ?? []) newChar(s, { ...c, role: 'courtier', title: c.role, realm: r.id, skill: 3, family: r.dynasty });
-    const wealth = provincesOf(s, r.id).reduce((t, p) => t + p.wealth, 0) * (r.levy ?? 1);
+    const wealth = provincesOf(s, r.id).reduce((t, p) => t + p.wealth, 0) * (r.levy ?? (r.nomad ? R.economy.nomad.levy : 1));
     const generals = r.generals.length ? r.generals : r.agents ? [] : [{ name: personName(rng, realm.culture, usedNames(s)), invented: true, skill: 2, traits: randomTraits(rng, 1), at: r.capital }];
     for (const g0 of generals) {
       const g = named(g0);
@@ -157,14 +166,10 @@ export function newAge(age = 1) {
     }
   }
   // The quarrels already under way in 1200.
-  for (const [a, b] of [['khwarazm', 'ghurid'], ['georgia', 'eldiguzid'], ['ghurid', 'chandela']]) s.wars[key(a, b)] = { since: 0 };
-  s.allies[key('karakhanid', 'qarakhitai')] = { since: 0 };
-  // Most ages, the Mongols come: when, the stars decide (around 1219, the year they really did).
-  const M = R.steppe.mongols;
-  if (chance(rng, M.chance)) {
-    const g = (rng() + rng() + rng() - 1.5) * 2 * M.spread; // roughly normal
-    s.mongolsAt = clamp(Math.round((M.year - R.start.year + g) * 12 + rng() * 12), 60, R.months - 120);
+  for (const [a, b] of [['khwarazm', 'ghurid'], ['georgia', 'eldiguzid'], ['ghurid', 'chandela'], ['byzantium', 'bulgaria'], ['mongol', 'tatar'], ['mongol', 'merkit'], ['almohad', 'ghaniya'], ['ayyubid', 'aleppo']]) {
+    if (s.realms[a] && s.realms[b]) s.wars[key(a, b)] = { since: 0 };
   }
+  for (const [a, b] of [['karakhanid', 'qarakhitai'], ['mongol', 'kereit']]) if (s.realms[a] && s.realms[b]) s.allies[key(a, b)] = { since: 0 };
   return s;
 }
 
@@ -177,7 +182,8 @@ function newChar(s, c) {
   return id;
 }
 
-const FEMALE = new Set(['Tamar', 'Terken Khatun', 'Rusudan']);
+const FEMALE = new Set(['Tamar', 'Terken Khatun', 'Rusudan', 'Eirene', 'Anna']);
+const STEPPE = ['kherlen', 'tula', 'selenga', 'buir', 'altai']; // the Mongolian steppe, the khan's to unite
 // A crown passes with the right word for whoever wears it.
 const titled = (title, c) => ({ Queen: c.female ? 'Queen' : 'King', King: c.female ? 'Queen' : 'King' })[title] ?? title;
 
@@ -253,6 +259,7 @@ function plans(s, rng, emit, planFor) {
 export function declareWar(s, a, b, emit, text) {
   const A = s.realms[a], B = s.realms[b];
   if (!A || !B || A.fallen || B.fallen || a === b || atWar(s, a, b) || (s.truces[key(a, b)] ?? -1) > s.month) return false;
+  if (B.overlord === a) return false; // a vassal that bowed is not attacked by its own overlord
   if (A.overlord === b || B.overlord === a) {
     if (A.overlord === b) A.overlord = null;
     else B.overlord = null;
@@ -290,9 +297,9 @@ export function makePeace(s, a, b, emit) {
 // ---------- gold ----------
 function economy(s, emit) {
   for (const r of living(s)) {
-    const horde = r.id === 'mongol'; // the horde lives off the land it rides through
+    const horde = !!r.horde; // the horde lives off the land it rides through
     const income = incomeOf(s, r.id) + (r.id === 'alamut' ? R.agents.alamutDues : 0); // fear of Alamut's agents pays
-    const upkeep = horde ? 0 : armiesOf(s, r.id).reduce((t, a) => t + a.size * R.economy.upkeep, 0);
+    const upkeep = horde ? 0 : armiesOf(s, r.id).reduce((t, a) => t + a.size * R.economy.upkeep, 0) * (r.nomad ? R.economy.nomad.upkeep : 1); // herds feed the steppe's riders
     let tribute = 0;
     if (r.overlord && s.realms[r.overlord] && !s.realms[r.overlord].fallen) {
       tribute = income * R.economy.tribute;
@@ -310,31 +317,33 @@ function economy(s, emit) {
     // keep paying for.
     const men = armiesOf(s, r.id).reduce((t, a) => t + a.size, 0);
     const atWarNow = Object.keys(s.wars).some((k) => k.split('|').includes(r.id));
-    const affordable = horde ? Infinity : (income * (atWarNow ? R.sustain.war : R.sustain.peace)) / R.economy.upkeep - men;
+    const affordable = horde ? Infinity : (income * (atWarNow ? R.sustain.war : R.sustain.peace)) / (R.economy.upkeep * (r.nomad ? R.economy.nomad.upkeep : 1)) - men;
     const room = Math.min(manpower(s, r.id) - men, affordable);
     const share = r.plan?.recruit ?? 0.5;
-    const spend = Math.min(room * R.economy.recruitCost, Math.max(0, r.gold - 12) * share);
-    if (spend >= R.economy.recruitCost) raise(s, r, spend / R.economy.recruitCost, emit);
+    const price = recruitPrice(r), spend = Math.min(room * price, Math.max(0, r.gold - 12) * share);
+    if (spend >= price) raise(s, r, spend / price, emit);
     if (horde) for (const a of armiesOf(s, r.id)) a.size = round1(Math.min(a.size + 0.8, 40)); // the steppe sends riders
     for (const a of armiesOf(s, r.id)) if (a.rest > 0) a.rest--;
   }
 }
 
 function raise(s, r, men, emit) {
-  r.gold = round1(r.gold - men * R.economy.recruitCost);
+  r.gold = round1(r.gold - men * recruitPrice(r));
   const n = provincesOf(s, r.id).length, max = clamp(Math.floor(n / R.armies.perProvinces) + 1, R.armies.min, R.armies.max);
   const mine = armiesOf(s, r.id);
   if (mine.length < max && men >= R.armies.minSize) {
     const rng = rngFor('age', s.age, 'raise', s.month, r.id);
     const free = Object.values(s.chars).find((c) => c.alive && c.realm === r.id && c.role === 'general' && !s.armies[c.army]);
     const gen = free?.id ?? newChar(s, { name: personName(rng, r.culture, usedNames(s)), role: 'general', realm: r.id, born: yearOf(s.month) - 25 - Math.floor(rng() * 15), traits: randomTraits(rng, 1), skill: 1 + Math.floor(rng() * 4) });
-    const at = s.provinces[r.capital]?.owner === r.id ? r.capital : provincesOf(s, r.id)[0]?.id;
+    // Recruits gather where no siege can catch them: the capital if it is free, otherwise any free province.
+    const unbesieged = (pid) => s.provinces[pid]?.owner === r.id && !s.provinces[pid].siege && !Object.values(s.armies).some((b) => b.at === pid && atWar(s, r.id, b.realm));
+    const at = unbesieged(r.capital) ? r.capital : provincesOf(s, r.id).find((p) => unbesieged(p.id))?.id;
     if (!at) return;
     newArmy(s, r.id, gen, at, men);
     emit('army.raised', `${say(s, r.id, 'raises')} an army of ${Math.round(men)},000 under ${nameOf(s, gen)}`, { realms: [r.id], at, chars: [gen] });
   } else if (mine.length) {
-    const a = mine.sort((x, y) => x.size - y.size)[0];
-    a.size = round1(a.size + men);
+    const a = mine.filter((x) => !s.provinces[x.at].siege && !Object.values(s.armies).some((b) => b.at === x.at && atWar(s, r.id, b.realm))).sort((x, y) => x.size - y.size)[0];
+    if (a) a.size = round1(a.size + men);
   }
 }
 const usedNames = (s) => new Set(Object.values(s.chars).map((c) => c.name));
@@ -346,7 +355,7 @@ function march(s, rng, emit) {
     let budget = 1;
     while (budget > 0 && a.path.length && s.armies[a.id]) {
       const next = a.path[0];
-      if (!a.eta) a.eta = moveCost(s, a.realm, next);
+      if (!a.eta) a.eta = moveCost(s, a.realm, a.at, next);
       const step = Math.min(budget, a.eta);
       a.eta = round1(a.eta - step);
       budget = round1(budget - step);
@@ -362,9 +371,9 @@ function march(s, rng, emit) {
   for (const a of Object.values(s.armies)) (byPlace[a.at] ??= []).push(a);
   for (const [pid, list] of Object.entries(byPlace)) {
     for (const a of list) for (const b of list) {
-      if (a.id < b.id && s.armies[a.id] && s.armies[b.id] && atWar(s, a.realm, b.realm)) {
-        const defender = s.provinces[pid].owner === a.realm ? a : b;
-        fight(s, rng, emit, defender === a ? b : a, defender, pid);
+      if (a.id < b.id && s.armies[a.id] && s.armies[b.id] && atWar(s, a.realm, b.realm) && a.mode !== 'garrison' && b.mode !== 'garrison') {
+        const defender = s.provinces[pid].owner === a.realm ? a : b, attacker = defender === a ? b : a;
+        if (fight(s, rng, emit, attacker, defender, pid) && s.armies[attacker.id]?.at === pid) beginSiege(s, attacker, emit);
       }
     }
   }
@@ -373,22 +382,26 @@ function march(s, rng, emit) {
 // Returns true when the army stops here (a fight or a siege).
 function arrive(s, rng, emit, a) {
   const pid = a.at, owner = s.provinces[pid].owner;
-  const foe = Object.values(s.armies).find((b) => b.at === pid && b.id !== a.id && atWar(s, a.realm, b.realm));
-  if (foe) {
-    fight(s, rng, emit, a, foe, pid);
+  const foe = Object.values(s.armies).find((b) => b.at === pid && b.id !== a.id && atWar(s, a.realm, b.realm) && b.mode !== 'garrison');
+  if (foe) { // a field army in the way: fight it, and if it breaks, the town is next
+    if (fight(s, rng, emit, a, foe, pid) && s.armies[a.id]?.at === pid) beginSiege(s, a, emit);
     return true;
   }
-  if (owner !== a.realm && !friendly(s, a.realm, owner) && (owner === null || atWar(s, a.realm, owner))) {
-    const p = s.provinces[pid];
-    if (!p.siege || !s.armies[p.siege.army]) {
-      p.siege = { realm: a.realm, army: a.id, left: Math.max(1, R.walls.baseMonths + p.walls * R.walls.siegeMonths - ((s.chars[a.general]?.skill ?? 2) >= 4 ? 1 : 0)), since: s.month };
-      emit('siege', `${say(s, a.realm, 'lays')} siege to ${PROV[pid].city}`, { realms: [a.realm, owner].filter(Boolean), at: pid, chars: [a.general] });
-    }
-    a.mode = 'siege';
-    a.path = [];
-    return true;
+  return beginSiege(s, a, emit);
+}
+
+// An army in hostile land with no army left to stop it settles down before the walls.
+function beginSiege(s, a, emit) {
+  const pid = a.at, p = s.provinces[pid], owner = p.owner;
+  if (owner === a.realm || friendly(s, a.realm, owner) || (owner !== null && !atWar(s, a.realm, owner))) return false;
+  if (Object.values(s.armies).some((b) => b.at === pid && atWar(s, a.realm, b.realm) && b.mode !== 'garrison')) return false;
+  if (!p.siege || !s.armies[p.siege.army]) {
+    p.siege = { realm: a.realm, army: a.id, left: Math.max(1, R.walls.baseMonths + p.walls * R.walls.siegeMonths - ((s.chars[a.general]?.skill ?? 2) >= 4 ? 1 : 0)), since: s.month };
+    emit('siege', `${say(s, a.realm, 'lays')} siege to ${PROV[pid].city}`, { realms: [a.realm, owner].filter(Boolean), at: pid, chars: [a.general] });
   }
-  return false;
+  a.mode = 'siege';
+  a.path = [];
+  return true;
 }
 
 export function fight(s, rng, emit, A, D, pid, garrison = false) {
@@ -424,7 +437,7 @@ export function fight(s, rng, emit, A, D, pid, garrison = false) {
     { realms: [A.realm, garrison ? s.provinces[pid].owner : D.realm].filter(Boolean), at: pid, chars: [A.general, D.general, ...fallen].filter(Boolean), winner: won ? A.realm : garrison ? s.provinces[pid].owner : D.realm, sizes: [A.size, D.size] });
   if (!garrison) {
     if (L.size < R.armies.minSize) disband(s, L, emit, `${poss(short(s, L.realm))} army at ${P.city} is destroyed`);
-    else retreat(s, L);
+    else if (!retreat(s, L) && s.provinces[pid].owner === L.realm) L.mode = 'garrison'; // cornered at home: behind the walls
   }
   return won;
 }
@@ -433,9 +446,13 @@ function retreat(s, a) {
   const r = s.realms[a.realm];
   const home = route(s, a.realm, a.at, r.capital, (n) => friendly(s, a.realm, s.provinces[n].owner));
   const step = home?.path[0] ?? PROV[a.at].neighbors.find((n) => friendly(s, a.realm, s.provinces[n].owner));
-  if (step) Object.assign(a, { at: step, path: [], eta: 0, mode: 'idle' });
-  else a.mode = 'idle';
   for (const p of Object.values(s.provinces)) if (p.siege?.army === a.id) p.siege = null;
+  if (!step || step === a.at) {
+    a.mode = 'idle';
+    return false;
+  }
+  Object.assign(a, { at: step, path: [], eta: 0, mode: 'idle' });
+  return true;
 }
 
 function disband(s, a, emit, text) {
@@ -457,7 +474,8 @@ function sieges(s, rng, emit) {
       continue;
     }
     const gen = s.chars[a.general], bold = gen?.traits.some((t) => ['bold', 'relentless', 'cruel', 'restless'].includes(t));
-    const defence = wallPower(s, pid);
+    const inside = Object.values(s.armies).filter((b) => b.at === pid && b.realm === p.owner && b.mode === 'garrison');
+    const defence = wallPower(s, pid) + inside.reduce((t, b) => t + b.size, 0);
     if (sg.left > 1 && a.size >= defence * R.walls.stormRatio * (bold ? 0.8 : 1) && chance(rng, bold ? 0.5 : 0.25)) {
       emit('storm', `${say(s, a.realm, 'storms')} the walls of ${PROV[pid].city}`, { realms: [a.realm, p.owner].filter(Boolean), at: pid, chars: [a.general].filter(Boolean) });
       a.size = round1(a.size * (1 - R.walls.stormLoss * rng()));
@@ -475,18 +493,19 @@ export function capture(s, pid, realm, emit, rng, how) {
   p.siege = null;
   p.conquered = R.loyalty.conquered;
   p.loyalty = Math.min(p.loyalty, R2.rebel ? 55 : 35);
-  if (R2.id === 'mongol') { // the horde loots what it takes
+  if (R2.horde) { // the horde loots what it takes
     Object.assign(p, { ravaged: 24, loyalty: 25 });
     R2.gold = round1(R2.gold + PROV[pid].wealth * 12);
   }
   for (const a of Object.values(s.armies)) if (a.at === pid && a.realm === realm) a.mode = 'idle';
+  for (const a of Object.values(s.armies)) if (a.at === pid && a.realm === old && old) disband(s, a, emit, `${poss(short(s, old))} army in ${PROV[pid].city} lays down its arms`);
   s.record.captures++;
   const lost = old && s.realms[old];
   const capital = lost && lost.capital === pid;
   emit('capture', `${say(s, realm, how === 'storm' ? 'storms' : 'takes')} ${PROV[pid].city}${lost ? ` from ${lost.short}` : ''}${capital ? `, the capital` : ''}`,
     { realms: [realm, old].filter(Boolean), at: pid, capital });
   if (capital) moveCapital(s, old, emit);
-  if (lost && !provincesOf(s, old).length && !homeless(s, old)) fall(s, old, emit, `${lost.name} is no more: ${R2.short} ${vb(s, realm, 'has')} taken its last city`);
+  if (lost && !provincesOf(s, old).length && !homeless(s, old)) fall(s, old, emit, `${lost.name} ${vb(s, old, 'is')} no more: ${R2.short} ${vb(s, realm, 'has')} taken its last city`);
 }
 
 // A nomad realm that has lost every city lives on while its armies ride.
@@ -538,7 +557,7 @@ function loyalty(s, rng, emit) {
     for (const t of ruler?.traits ?? []) target += { beloved: 8, just: 5, wise: 3, cruel: -8, greedy: -3, carefree: -3 }[t] ?? 0;
     if (r.rebel) target += 15; // a cause is popular where it began
     p.loyalty = round1(clamp(p.loyalty + (target - p.loyalty) * L.drift + between(rng, [-2, 2]), 0, 100));
-    const fear = owner === 'mongol' ? 0.15 : 1; // few dare rise against the Mongols
+    const fear = r.horde ? 0.15 : 1; // few dare rise against the horde
     if (p.loyalty < L.revoltBelow && r.capital !== P.id && !p.siege && chance(rng, (L.revoltBelow - p.loyalty) * L.revoltChance * fear)) revolt(s, P.id, rng, emit);
   }
 }
@@ -561,7 +580,7 @@ function revolt(s, pid, rng, emit) {
   s.wars[key(id, old)] = { since: s.month };
   newArmy(s, id, s.realms[id].ruler && !s.chars[s.realms[id].ruler].army ? s.realms[id].ruler : null, pid, round1(1 + wealthOf(s, pid) * 0.9));
   emit('revolt', `${PROV[pid].name} rises against ${short(s, old)}${cause ? `, joining the ${cause.short}` : `, led by ${s.chars[s.realms[id].ruler].name}`}`, { realms: [id, old], at: pid, chars: [s.realms[id].ruler] });
-  if (s.realms[old] && !provincesOf(s, old).length) fall(s, old, emit, `${s.realms[old].name} is no more: its last province has risen`);
+  if (s.realms[old] && !provincesOf(s, old).length) fall(s, old, emit, `${s.realms[old].name} ${vb(s, old, 'is')} no more: its last province has risen`);
 }
 
 // ---------- fate: deaths, heirs, plots, betrayals, the steppe, disasters ----------
@@ -581,7 +600,7 @@ function lives(s, rng, emit) {
     if (chance(rng, p)) die(s, c.id, 'age', emit, rng);
   }
   for (const r of living(s)) {
-    if (!r.heir && !r.rebel && s.month % 12 === 0 && chance(rng, R.life.heirEachYear)) {
+    if (!r.heir && !r.rebel && !r.elective && s.month % 12 === 0 && chance(rng, R.life.heirEachYear)) {
       const ruler = s.chars[r.ruler];
       const old = yearOf(s.month) - (ruler?.born ?? 1170) > 58, relation = old && rng() < 0.5 ? pick(rng, ['brother', 'nephew', 'grandson']) : 'son';
       r.heir = newChar(s, { name: personName(rng, r.culture, usedNames(s)), role: 'heir', realm: r.id, born: relation === 'brother' ? (ruler?.born ?? 1170) + 4 : Math.max((ruler?.born ?? 1170) + 18, yearOf(s.month) - 20),
@@ -619,6 +638,14 @@ function endReign(s, r, cause) {
 function succession(s, id, rng, emit) {
   const r = s.realms[id], provs = provincesOf(s, id);
   endReign(s, r);
+  if (r.elective) { // a pope, a doge, a podestà: chosen, not born
+    const chosen = newChar(s, { name: personName(rng, r.culture, usedNames(s)), role: 'heir', realm: id, born: yearOf(s.month) - 45 - Math.floor(rng() * 25), traits: randomTraits(rng, 2), skill: 2 + Math.floor(rng() * 2), relation: 'elected', family: r.dynasty });
+    const title = s.chars[r.ruler]?.title ?? 'Lord';
+    Object.assign(s.chars[chosen], { role: 'ruler', title, since: yearOf(s.month) });
+    Object.assign(r, { ruler: chosen, heir: null, power: null, plan: null });
+    emit('crowned', `${s.chars[chosen].name} is chosen ${title} of ${r.short}`, { realms: [id], chars: [chosen] });
+    return;
+  }
   let heir = r.heir && s.chars[r.heir]?.alive ? r.heir : null;
   const generals = Object.values(s.chars).filter((c) => c.alive && c.realm === id && c.role === 'general').sort((a, b) => b.skill - a.skill);
   if (!heir) heir = generals[0]?.id ?? newChar(s, { name: personName(rng, r.culture, usedNames(s)), role: 'heir', realm: id, born: yearOf(s.month) - 20 - Math.floor(rng() * 20), traits: randomTraits(rng, 2), skill: 2 + Math.floor(rng() * 3) });
@@ -753,29 +780,27 @@ function steppe(s, rng, emit) {
       emit('raid', `Kipchak riders raid ${PROV[t].name}, burning villages and carrying off ${Math.round(loot)} gold`, { realms: ['kipchak', victim.id], at: t });
     }
   }
-  // The Mongols.
-  if (s.mongolsAt === s.month && !s.realms.mongol) {
-    const entry = ['almaliq', 'otrar', 'kashgar', 'balasagun', 'jand'].find((pid) => PROV[pid]) ?? 'almaliq';
-    const khan = newChar(s, { name: 'Genghis Khan', title: 'Great Khan', role: 'ruler', realm: null, born: 1162, traits: ['relentless', 'cruel', 'shrewd'], skill: 5, since: 1206, family: 'Borjigin' });
-    const id = 'mongol';
-    s.realms[id] = { id, name: 'Mongol Empire', short: 'Mongols', plural: true, color: '#e9e2c6', capital: entry, ai: true, nomad: true, agents: false, overlord: null, gold: 120, tax: 'normal', ruler: khan, heir: null, power: null,
-      origin: 'horde', founded: s.month, fallen: false, plan: null, culture: 'mongol', fa: 'مغولان', dynasty: 'Borjigin', lineage: [{ name: 'Yesügei', title: 'Chief', since: 1160, until: 1171, cause: 'poisoned' }] };
-    s.chars[khan].realm = id;
-    const old = s.provinces[entry].owner;
-    s.provinces[entry].owner = id;
-    s.provinces[entry].loyalty = 40;
-    const names = ['Jebe', 'Subutai', 'Jochi', 'Tolui', 'Chagatai', 'Ögedei'];
-    const M = R.steppe.mongols;
-    newArmy(s, id, khan, entry, M.size / M.generals);
-    for (let i = 0; i < M.generals - 1; i++) {
-      const g = newChar(s, { name: names[i], role: 'general', realm: id, born: 1180 + i * 3, traits: i < 2 ? ['relentless', 'bold'] : ['bold'], skill: i < 2 ? 5 : 4 });
-      newArmy(s, id, g, entry, M.size / M.generals);
+  // Temujin's road to empire: hold the Mongolian steppe, and the tribes proclaim a Great Khan.
+  const M = s.realms.mongol;
+  const ours = (o) => o === 'mongol' || s.realms[o]?.overlord === 'mongol';
+  if (M && !M.fallen && !M.horde && STEPPE.filter((p) => ours(s.provinces[p]?.owner)).length >= STEPPE.length - 1) {
+    for (const v of living(s).filter((x) => x.overlord === 'mongol' && x.nomad)) { // the tribes that bowed ride with the khan now
+      for (const p of provincesOf(s, v.id)) s.provinces[p.id].owner = 'mongol';
+      for (const a of armiesOf(s, v.id)) a.realm = 'mongol';
+      fall(s, v.id, emit, `The ${v.name} join the Mongol nation`);
     }
-    if (old && s.realms[old]) {
-      s.wars[key(id, old)] = { since: s.month };
-      if (!provincesOf(s, old).length) fall(s, old, emit, `${s.realms[old].name} is swept away`);
+    const khan = s.chars[M.ruler];
+    const was = khan.name;
+    if (khan.name === 'Temujin') khan.name = 'Genghis Khan';
+    Object.assign(khan, { title: 'Great Khan' });
+    Object.assign(M, { horde: true, name: 'Mongol Empire', short: 'Mongols', fa: 'مغولان', plan: null });
+    s.record.genghis = s.month;
+    const G = R.steppe.mongols, names = ['Jebe', 'Subutai', 'Jochi', 'Tolui', 'Chagatai', 'Ögedei'];
+    for (let i = 0; i < G.generals; i++) {
+      const g = newChar(s, { name: names[i], role: 'general', realm: 'mongol', born: 1180 + i * 3, traits: i < 2 ? ['relentless', 'bold'] : ['bold'], skill: i < 2 ? 5 : 4, family: i > 1 ? 'Borjigin' : null });
+      newArmy(s, 'mongol', g, M.capital, G.size / G.generals);
     }
-    emit('horde', `Riders from the east: Genghis Khan's Mongols pour into ${PROV[entry].name}`, { realms: [id, old].filter(Boolean), at: entry, chars: [khan] });
+    emit('horde', `${was} unites the steppe and is proclaimed ${khan.name}, Great Khan of all the Mongols`, { realms: ['mongol'], at: M.capital, chars: [khan.id] });
   }
 }
 
@@ -830,7 +855,7 @@ export function powerMove(s, id, kind, rng, emit) {
     const old = s.provinces[t].owner;
     Object.assign(s.provinces[t], { owner: id, loyalty: 45, siege: null });
     emit('power', `${who} of ${r.short} bribes the governor of ${PROV[t].city}, who opens the gates${old ? ` to spite ${short(s, old)}` : ''}`, { realms: [id, old].filter(Boolean), chars: [r.ruler], power: kind, at: t });
-    if (old && s.realms[old] && !provincesOf(s, old).length) fall(s, old, emit, `${s.realms[old].name} is no more`);
+    if (old && s.realms[old] && !provincesOf(s, old).length) fall(s, old, emit, `${s.realms[old].name} ${vb(s, old, 'is')} no more`);
   } else if (kind === 'feast') {
     for (const p of mine) s.provinces[p.id].loyalty = Math.min(100, s.provinces[p.id].loyalty + 20);
     emit('power', `${who} of ${r.short} holds a Royal Feast: the people cheer their ruler`, { realms: [id], chars: [r.ruler], power: kind });
@@ -850,7 +875,7 @@ function settle(s, rng, emit) {
   for (const r of living(s)) {
     const n = provincesOf(s, r.id).length;
     if (!n && homeless(s, r.id)) continue; // a horde without a city still rides
-    if (!n) { fall(s, r.id, emit, r.rebel ? `The ${r.name} is crushed` : `${r.name} is no more`); continue; }
+    if (!n) { fall(s, r.id, emit, r.rebel ? `The ${r.name} is crushed` : `${r.name} ${vb(s, r.id, 'is')} no more`); continue; }
     if (r.rebel && s.month - r.founded >= R.rebels.foundAfter && (n >= R.rebels.minProvinces || s.month - r.founded >= R.rebels.foundAfter * 2)) {
       const culture = cultureOf(r.capital), leader = s.chars[r.ruler];
       Object.assign(r, { rebel: false, name: kingdomName(culture, PROV[r.capital].name), short: PROV[r.capital].name, origin: 'founded', founded: s.month });

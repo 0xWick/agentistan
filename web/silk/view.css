@@ -262,8 +262,20 @@ textarea, input, .plan-result { -webkit-user-select: text; user-select: text; }
 .army .leader { color: #fbf3dd; }
 .army.royal .medal { stroke: #b3852c; stroke-width: 3; }
 
+/* the timeline: what has been lived is red; the marker is now; anything lived can be revisited */
+.steps-ctl { display: flex; align-items: center; gap: 6px; }
+.round.small { width: 34px; height: 34px; }
+.round.small svg { width: 16px; height: 16px; }
+.round:disabled { opacity: 0.4; cursor: default; }
+.track { cursor: pointer; touch-action: none; }
+.track .now { position: absolute; top: 9px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--lapis); box-shadow: 0 0 0 2px var(--paper); transition: left 0.3s; }
+.track .ev { cursor: pointer; }
+.distant { font: italic 600 30px var(--body); letter-spacing: 0.24em; fill: rgba(90, 70, 45, 0.42); text-anchor: middle; pointer-events: none; }
+#map[data-zoom='0'] .region-fa, #map[data-zoom='0'] .city text, #map[data-zoom='0'] .seat.citadel { display: none; }
+#map[data-zoom='0'] .region { font-size: 30px; }
+
 .zoom { position: fixed; right: 16px; bottom: 92px; display: grid; gap: 8px; }
-.player { grid-template-columns: auto auto 1fr auto auto; }
+.player { grid-template-columns: auto auto 1fr auto auto; width: min(820px, calc(100vw - 32px)); }
 .tool svg, .key svg, .forge li svg, .round svg { display: block; }
 @media (max-width: 760px) {
   .zoom { right: 10px; bottom: 190px; }

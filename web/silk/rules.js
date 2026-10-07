@@ -13,6 +13,7 @@ export const RULES = {
     tribute: 0.25, // share of a vassal's income paid to its overlord
     silkBonus: 1, // extra gold a month from each Silk Road city held
     startGold: 3, // months of income in the treasury at the start
+    nomad: { riders: 9, recruit: 0.35, upkeep: 0.1, levy: 6, herds: 3, garrison: 4 }, // on the steppe every man is a rider, fed by his herds
   },
 
   loyalty: {
@@ -30,6 +31,7 @@ export const RULES = {
   move: { plains: 1, river: 1, steppe: 1, forest: 1, hills: 1, desert: 2, mountains: 2 }, // months to enter a province
   winter: [11, 0, 1], // December to February: the high passes close
   nomadSpeed: 2, // steppe riders cover two provinces a month in open country
+  cross: { river: 1, pass: 2, sea: 2, winter: 4 }, // extra months: a great river, a mountain pass, a strait; passes in winter
 
   battle: {
     luck: 0.25, // each side's dice: up to ±25%
@@ -63,7 +65,7 @@ export const RULES = {
 
   steppe: {
     raidEvery: 24, // months between Kipchak raids, on average
-    mongols: { chance: 0.85, year: 1219, spread: 3, size: 100, generals: 4 }, // most ages, the horde comes around 1219
+    mongols: { size: 80, generals: 4 }, // the armies the tribes give a Great Khan once he unites the steppe
   },
 
   disasters: { plague: 0.003, plagueMonths: 8, spread: { silk: 0.35, other: 0.1 }, earthquake: 0.003, famine: 0.004 },

@@ -14,13 +14,26 @@ export const CULTURE_OF = {
   rajput: ['ajmer', 'ranthambore', 'gwalior', 'marwar', 'thar', 'gujarat', 'saurashtra', 'malwa', 'kalinjar'],
   hindustani: ['delhi', 'kannauj', 'varanasi', 'bihar'],
   bengali: ['bengal'],
+  greek: ['constantinople', 'thrace', 'thessalonica', 'hellas', 'morea', 'epirus', 'nicaea', 'smyrna', 'attaleia', 'trebizond', 'cyprus'],
+  latin: ['palermo', 'naples', 'apulia', 'rome', 'romagna', 'tuscany', 'venice', 'genoa', 'milan', 'acre', 'antioch', 'tripoli'],
+  armenian: ['cilicia'],
+  berber: ['marrakesh', 'fez', 'sijilmasa', 'tlemcen', 'bejaia', 'tunis'],
+  nubian: ['dongola'],
+  slavic: ['tarnovo', 'sofia', 'varna', 'ras'],
+  magyar: ['hungary'],
+  chinese: ['zhongdu', 'kaifeng', 'datong', 'liaoyang', 'huining', 'taiyuan', 'jingzhao', 'jinan', 'linan', 'jiankang', 'xiangyang', 'ezhou', 'chengdu', 'changsha', 'quanzhou', 'guangzhou', 'hanzhong', 'xingqing', 'ganzhou', 'shazhou', 'liangzhou', 'dali'],
+  mongol: ['kherlen', 'tula', 'altai', 'selenga', 'buir', 'gobi'],
 };
+// Later additions to older cultures.
+CULTURE_OF.arab.push('cairo', 'alexandria', 'qus', 'damascus', 'jerusalem', 'karak', 'homs', 'edessa', 'aleppo', 'tripolitania', 'barqa');
+CULTURE_OF.turk.push('konya', 'kayseri', 'sivas', 'malatya', 'ankara', 'erzurum', 'kastamonu', 'qocho', 'hami');
+CULTURE_OF.steppe.push('cumania');
 
 const NAMES = {
   persian: ['Mas\'ud', 'Bahram', 'Kayqubad', 'Rustam', 'Shahriyar', 'Ardashir', 'Isfandiyar', 'Mahmud', 'Sa\'d', 'Nusrat al-Din', 'Fakhr al-Din', 'Shams al-Din', 'Izz al-Din', 'Abu Sa\'id', 'Farrukhzad', 'Qubad'],
   turk: ['Arslan', 'Tughril', 'Sanjar', 'Alp Tegin', 'Inanch', 'Qutlugh', 'Toghan', 'Kilij', 'Altuntash', 'Er Buqa', 'Tekish', 'Ilchi', 'Yaghan', 'Boz Arslan', 'Qara Sonqur', 'Uzbek'],
   steppe: ['Köten', 'Bachman', 'Tugor', 'Kunchek', 'Boniak', 'Konchak', 'Tarkhan', 'Itlar', 'Kutlu', 'Ay Aba'],
-  mongol: ['Jebe', 'Subutai', 'Jochi', 'Chagatai', 'Ögedei', 'Tolui', 'Muqali', 'Tolun', 'Batu', 'Möngke', 'Hülegü', 'Kitbuqa', 'Baiju', 'Chormaqan'],
+  mongol: ['Altan', 'Quchar', 'Daritai', 'Jamukha', 'Sorqan', 'Badai', 'Kishiliq', 'Naya', 'Toghon', 'Ilugei', 'Qorchi', 'Mönglik', 'Tolun', 'Kitbuqa'], // Genghis's sons and generals are kept for the Great Khan's own house
   arab: ['Ahmad', 'Ja\'far', 'Abd Allah', 'Muhammad', 'Ali', 'Hasan', 'Yusuf', 'Ibrahim', 'Isma\'il', 'Badr al-Din', 'Mu\'ayyad al-Din', 'Sharaf al-Din'],
   kurd: ['Hazarasp', 'Badr', 'Shuja\'', 'Mamlan', 'Abu\'l-Hayja', 'Sayf al-Din'],
   georgian: ['Giorgi', 'Davit', 'Bagrat', 'Demetre', 'Ivane', 'Zakaria', 'Vakhtang', 'Shalva', 'Avag', 'Rusudan', 'Tamar', 'Shota'],
@@ -31,10 +44,20 @@ const NAMES = {
   rajput: ['Hammira', 'Vagbhata', 'Jaitrasimha', 'Viradhavala', 'Udayasimha', 'Arjunavarman', 'Devapala', 'Trailokyavarman', 'Vira', 'Jayasimha', 'Vishvamalla', 'Chachigadeva'],
   hindustani: ['Harishchandra', 'Adakkamalla', 'Hariraja', 'Jayachandra', 'Vijayapala', 'Ranapala'],
   bengali: ['Vishvarupa', 'Keshava', 'Madhava', 'Surya', 'Danuja', 'Sadhana'],
+  greek: ['Theodore', 'Michael', 'Manuel', 'Alexios', 'Isaac', 'John', 'Andronikos', 'Constantine', 'Nikephoros', 'Leo', 'Basil', 'Demetrios', 'Eirene', 'Anna'],
+  latin: ['Henry', 'Baldwin', 'Boniface', 'Walter', 'Raymond', 'Guy', 'Conrad', 'Manfred', 'Roger', 'William', 'Tancred', 'Pietro', 'Marco', 'Ranieri', 'Ottone'],
+  armenian: ['Hethum', 'Thoros', 'Oshin', 'Rupen', 'Smbat', 'Vasak', 'Constantine', 'Leo'],
+  berber: ['Yusuf', "Ya'qub", 'Abu Zakariya', 'Abu Hafs', 'Yaghmurasan', 'Abd al-Wahid', 'Idris', 'Tashfin', 'Abu Yahya'],
+  nubian: ['Moses', 'Georgios', 'David', 'Basil', 'Kudanbes', 'Shekanda', 'Barak'],
+  slavic: ['Boril', 'Asen', 'Peter', 'Stefan', 'Vukan', 'Radoslav', 'Strez', 'Dragan', 'Vladislav', 'Ivanko'],
+  magyar: ['Béla', 'Andrew', 'Ladislaus', 'Stephen', 'Coloman', 'Géza'],
+  chinese: ['Zhang Rou', 'Shi Tianze', 'Li Quan', 'Meng Gong', 'Wang Jian', 'Chen Hao', 'Liu Ying', 'Zhao Kui', 'Peng Yiwu', 'Wanyan Heda', 'Wanyan Yi', 'Puxian Wannu', 'Yan Shi', 'Du Gao'],
 };
 
-const TITLE = { persian: 'Malik', turk: 'Khan', steppe: 'Khan', mongol: 'Khan', arab: 'Amir', kurd: 'Amir', georgian: 'King', afghan: 'Sultan', punjabi: 'Rai', sindhi: 'Jam', kashmiri: 'King', rajput: 'Raja', hindustani: 'Raja', bengali: 'King' };
-const KINGDOM = { persian: 'Kingdom of', turk: 'Khanate of', steppe: 'Horde of', mongol: 'Khanate of', arab: 'Emirate of', kurd: 'Emirate of', georgian: 'Kingdom of', afghan: 'Sultanate of', punjabi: 'Kingdom of', sindhi: 'Kingdom of', kashmiri: 'Kingdom of', rajput: 'Kingdom of', hindustani: 'Kingdom of', bengali: 'Kingdom of' };
+const TITLE = { persian: 'Malik', turk: 'Khan', steppe: 'Khan', mongol: 'Khan', arab: 'Amir', kurd: 'Amir', georgian: 'King', afghan: 'Sultan', punjabi: 'Rai', sindhi: 'Jam', kashmiri: 'King', rajput: 'Raja', hindustani: 'Raja', bengali: 'King',
+  greek: 'Despot', latin: 'Count', armenian: 'Prince', berber: 'Amir', nubian: 'King', slavic: 'Prince', magyar: 'King', chinese: 'King' };
+const KINGDOM = { persian: 'Kingdom of', turk: 'Khanate of', steppe: 'Horde of', mongol: 'Khanate of', arab: 'Emirate of', kurd: 'Emirate of', georgian: 'Kingdom of', afghan: 'Sultanate of', punjabi: 'Kingdom of', sindhi: 'Kingdom of', kashmiri: 'Kingdom of', rajput: 'Kingdom of', hindustani: 'Kingdom of', bengali: 'Kingdom of',
+  greek: 'Despotate of', latin: 'County of', armenian: 'Principality of', berber: 'Emirate of', nubian: 'Kingdom of', slavic: 'Principality of', magyar: 'Kingdom of', chinese: 'Kingdom of' };
 
 export function cultureOf(provinceId) {
   for (const [c, ids] of Object.entries(CULTURE_OF)) if (ids.includes(provinceId)) return c;

@@ -1,10 +1,9 @@
 // The living map: the Silk Road world, simulated month by month right here in the browser, drawn like an old map.
-import { newAge, tick, PROVINCES, PROV, living, provincesOf, armiesOf, strength, dateText, yearOf, atWar, friendly } from './engine.js';
+import { newAge, tick, PROVINCES, PROV, living, provincesOf, armiesOf, dateText, yearOf, atWar, friendly } from './engine.js';
 import { brain } from './doctrine.js';
 import { RULES } from './rules.js';
 
 const NS = 'http://www.w3.org/2000/svg';
-const W = 2560, H = 1736;
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 function el(tag, attrs = {}, text) {
@@ -35,6 +34,8 @@ const ICON = {
   quake: { s: 'M2 12h4l2-5 3 10 3-12 2 7h6' },
   star: { f: 'M12 2l2.6 6.3 6.8.5-5.2 4.4 1.6 6.6L12 16.3l-5.8 3.5 1.6-6.6-5.2-4.4 6.8-.5z' },
   play: { f: 'M7 4l13 8-13 8z' },
+  prev: { s: 'M15 4.5 7.5 12l7.5 7.5', w: 2.8 },
+  next: { s: 'M9 4.5 16.5 12 9 19.5', w: 2.8 },
   pause: { f: 'M6 4h4v16H6zM14 4h4v16h-4z' },
   dice: { s: 'M4 4h16v16H4zM8.5 8.5h.01M15.5 15.5h.01M15.5 8.5h.01M8.5 15.5h.01M12 12h.01', w: 2.6 },
   key: { s: 'M15 4a5 5 0 1 1-4.3 7.6L4 18.3V21h3v-2h2v-2h2l1.6-1.6A5 5 0 0 1 15 4zM16 8h.01', w: 2 },
@@ -64,20 +65,45 @@ const KIND = {
 };
 const kindOf = (e) => (e.type === 'death' && e.cause === 'assassin' ? ['dagger', '#a3361f', 1] : KIND[e.type] ?? ['scroll', '#6a5032', 0]);
 
-// Regions, seas and rivers, in English and in the Persian of the chronicles.
+// Regions, seas and the lands beyond this world, in English and in a script of their time.
 const REGIONS = [
-  ['Iraq', 'عراق', 31.6, 45.4], ['Jibal', 'جبال', 34.0, 49.6], ['Azerbaijan', 'آذربایجان', 37.4, 47.6], ['Georgia', 'گرجستان', 42.5, 43.5],
+  ['Iraq', 'عراق', 31.6, 45.4], ['Jibal', 'جبال', 34.0, 49.6], ['Azerbaijan', 'آذربایجان', 37.4, 47.6], ['Georgia', 'გეორგია', 42.5, 43.5],
   ['Fars', 'فارس', 28.7, 53.4], ['Khorasan', 'خراسان', 35.2, 59.7], ['Khwarazm', 'خوارزم', 41.0, 60.0], ['Transoxiana', 'ماوراءالنهر', 41.6, 66.4],
   ['Kipchak Steppe', 'دشت قپچاق', 46.0, 64.0], ['Seven Rivers', 'هفت‌رود', 44.4, 79.0], ['Ghor', 'غور', 33.2, 65.2], ['Punjab', 'پنجاب', 31.0, 73.3],
-  ['Sindh', 'سند', 26.0, 68.6], ['Makran', 'مکران', 26.2, 62.8], ['Hindustan', 'هندوستان', 26.9, 81.2], ['Gujarat', 'گجرات', 22.4, 71.5],
-  ['Malwa', 'مالوه', 23.2, 76.6], ['Bengal', 'بنگاله', 24.0, 87.6], ['Kashmir', 'کشمیر', 34.7, 75.9],
+  ['Sindh', 'سند', 26.0, 68.6], ['Hindustan', 'هندوستان', 26.9, 81.2], ['Bengal', 'بنگاله', 24.0, 87.6], ['Anatolia', 'روم', 38.9, 33.5],
+  ['Syria', 'الشام', 34.5, 37.6], ['Egypt', 'مصر', 27.5, 30.5], ['Maghreb', 'المغرب', 33.0, -2.0], ['Ifriqiya', 'إفريقية', 34.6, 9.0],
+  ['Hellas', 'Ἑλλάς', 39.3, 22.0], ['Italia', 'Italia', 42.5, 13.0], ['Balkans', 'Балкан', 43.6, 22.5], ['Mongolia', 'مغولستان', 46.3, 103.0],
+  ['Manchuria', '東北', 45.0, 125.0], ['China', '中國', 30.5, 112.0], ['Gobi', 'گوبی', 43.0, 106.0], ['Tarim', 'تاریم', 39.6, 84.5],
 ];
-const SEAS = [['Caspian Sea', 'دریای خزر', 41.6, 50.9], ['Sea of Khwarazm', 'بحر خوارزم', 45.4, 60.6], ['Sea of Fars', 'دریای پارس', 27.0, 51.6], ['Sea of Hind', 'بحر هند', 20.6, 63.4]];
-const SILK_ROAD = ['baghdad', 'hamadan', 'rey', 'kumis', 'nishapur', 'sarakhs', 'merv', 'bukhara', 'samarkand', 'ushrusana', 'ferghana', 'kashgar', 'khotan'];
-const xyOf = (lat, lon) => [((lon - 39.5) / 51) * W, ((47.5 - lat) / 29) * H];
+const SEAS = [['Caspian Sea', 'دریای خزر', 41.6, 50.9], ['Sea of Khwarazm', 'بحر خوارزم', 45.4, 60.6], ['Sea of Fars', 'دریای پارس', 27.0, 51.6], ['Sea of Hind', 'بحر هند', 15.0, 64.0],
+  ['Mare Nostrum', 'بحر الروم', 34.6, 18.5], ['Black Sea', 'Πόντος', 43.2, 34.5], ['Red Sea', 'بحر القلزم', 20.5, 38.6], ['Eastern Sea', '東海', 29.0, 125.0], ['Atlantic', 'Oceanus', 33.0, -16.0]];
+const DISTANT = [['Frankish kingdoms', 47.5, 2.0], ['Iberia', 40.0, -4.0], ['Holy Roman Empire', 50.5, 10.0], ['Rus’ principalities', 54.5, 34.0], ['Volga Bulgaria', 55.0, 50.0],
+  ['Sahara', 23.0, 5.0], ['Lands of the Blacks', 13.0, 0.0], ['Ethiopia', 11.5, 38.5], ['Arabia', 23.0, 45.0], ['Tibet', 32.0, 87.0], ['Siberia', 62.0, 95.0],
+  ['Deccan', 17.0, 77.5], ['Goryeo', 37.5, 127.5], ['Japan', 36.5, 137.5], ['Khmer & Dai Viet', 15.0, 104.0], ['Swahili Coast', -4.0, 39.5]];
+// The Silk Road, Constantinople to Chang'an, and its branches south to Baghdad and India.
+const ROADS = [
+  ['constantinople', 'nicaea', 'ankara', 'sivas', 'erzurum', 'tabriz', 'qazvin', 'rey', 'kumis', 'nishapur', 'sarakhs', 'merv', 'bukhara', 'samarkand', 'ushrusana', 'ferghana', 'kashgar', 'khotan', 'shazhou', 'ganzhou', 'liangzhou', 'jingzhao'],
+  ['aleppo', 'edessa', 'mosul', 'baghdad', 'hamadan', 'rey'],
+  ['merv', 'balkh', 'bamiyan', 'kabul', 'peshawar', 'lahore', 'delhi'],
+  ['shazhou', 'hami', 'qocho', 'almaliq', 'balasagun', 'talas', 'shash', 'samarkand'],
+];
+// Equal Earth, the projection the map is drawn in (mirrors tools/map/build.py).
+let xyOf = () => [0, 0];
+function projector({ lon0, x0, y1, scale }) {
+  const A1 = 1.340264, A2 = -0.081106, A3 = 0.000893, A4 = 0.003796, M = Math.sqrt(3) / 2, rad = Math.PI / 180;
+  return (lat, lon) => {
+    const lam = (lon - lon0) * rad, th = Math.asin(M * Math.sin(lat * rad)), t2 = th * th, t6 = t2 ** 3;
+    const x = (lam * Math.cos(th)) / (M * (A1 + 3 * A2 * t2 + t6 * (7 * A3 + 9 * A4 * t2)));
+    return [(x - x0) * scale, (y1 - th * (A1 + A2 * t2 + t6 * (A3 + A4 * t2))) * scale];
+  };
+}
 
 // ---------- state ----------
 let geo, s, age, timer = 0, playing = false, speed = 1, last = {};
+let W = 8192, H = 6245;
+// History, so the timeline can go back and forth: the world is a pure function of (age, month), so a snapshot each
+// year plus the months' events is enough to rebuild any month in a few milliseconds.
+const story = { keys: {}, events: [], frontier: 0 };
 const SPEED = { 1: 2600, 4: 800, 16: 200 }; // ms per month
 const HOLD = { 1: 2200, 4: 1000, 16: 0 }; // extra pause after a great event, so it can be read
 const GREAT = (e) => ['founded', 'fallen', 'split', 'coup', 'horde', 'age.ended'].includes(e.type) || (e.type === 'capture' && e.capital) || (e.type === 'death' && e.ruler);
@@ -91,23 +117,21 @@ async function boot() {
   const defs = el('defs');
   defs.innerHTML = Object.entries(ICON).map(([k, i]) => `<symbol id="i-${k}" viewBox="0 0 24 24">${i.f ? `<path d="${i.f}" fill="currentColor"${i.even ? ' fill-rule="evenodd"' : ''}/>` : `<path d="${i.s}" fill="none" stroke="currentColor" stroke-width="${i.w ?? 1.9}" stroke-linecap="round" stroke-linejoin="round"/>`}</symbol>`).join('');
   map.append(defs);
-  map.setAttribute('viewBox', `0 0 ${W} ${H}`);
   geo = await fetch('/world/geo.json').then((r) => r.json());
-  defs.insertAdjacentHTML('beforeend', `<mask id="sea"><rect width="${W}" height="${H}" fill="#fff"/><path d="${geo.coast}" fill="#000"/></mask>`);
-  for (const name of ['base', 'ripples', 'rivers', 'provs', 'edges', 'coastline', 'road', 'regions', 'realms', 'cities', 'seats', 'marks', 'sieges', 'arrows', 'armies', 'pulses']) map.append((layer[name] = el('g', { class: `l-${name}` })));
-  layer.base.append(el('image', { href: '/world/paper.webp', width: W, height: H }));
-  // Engraved ripples along the shore, only on the water.
-  layer.ripples.setAttribute('mask', 'url(#sea)');
-  for (const [w, o] of [[10, 0.28], [22, 0.16], [38, 0.08]]) layer.ripples.append(el('path', { class: 'ripple', d: geo.coast, 'stroke-width': w, opacity: o }));
+  ({ width: W, height: H } = geo);
+  xyOf = projector(geo.proj);
+  map.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  for (const name of ['base', 'tiles', 'rivers', 'provs', 'edges', 'road', 'regions', 'realms', 'cities', 'seats', 'marks', 'sieges', 'arrows', 'armies', 'pulses']) map.append((layer[name] = el('g', { class: `l-${name}` })));
+  // The parchment: a small picture of the whole world at once, then sharper tiles as the view closes in.
+  layer.base.append(el('image', { href: '/world/base.webp', width: W, height: H, preserveAspectRatio: 'none' }));
+  for (let lv = 1; lv < 4; lv++) layer.tiles.append((tileLayers[lv] = el('g')));
   for (const r of geo.rivers) layer.rivers.append(el('path', { class: 'river', d: r.d, 'stroke-width': Math.max(1, 4.2 - r.rank * 0.45) }));
   geo.provinces.forEach((p) => {
     const path = el('path', { class: 'prov', d: p.d, 'data-id': p.id, fill: 'transparent', 'fill-opacity': 0.5 });
     layer.provs.append(path);
   });
   geo.edges.forEach(([a, b, d]) => layer.edges.append(el('path', { class: 'edge inner', d, 'data-a': a, 'data-b': b })));
-  layer.coastline.append(el('path', { class: 'coast', d: geo.coast }));
-  const road = SILK_ROAD.map((id) => PROV[id].xy);
-  layer.road.append(el('path', { class: 'silkroad', d: `M${road.map((p) => p.join(' ')).join('L')}` }));
+  for (const road of ROADS) layer.road.append(el('path', { class: 'silkroad', d: `M${road.map((id) => PROV[id].xy.join(' ')).join('L')}` }));
   for (const [en, fa, lat, lon] of REGIONS) {
     const [x, y] = xyOf(lat, lon);
     layer.regions.append(el('text', { class: 'region', x, y }, en), el('text', { class: 'region-fa', x, y: y + 26 }, fa));
@@ -115,6 +139,10 @@ async function boot() {
   for (const [en, fa, lat, lon] of SEAS) {
     const [x, y] = xyOf(lat, lon);
     layer.regions.append(el('text', { class: 'sea', x, y }, en), el('text', { class: 'sea-fa', x, y: y + 28 }, fa));
+  }
+  for (const [en, lat, lon] of DISTANT) {
+    const [x, y] = xyOf(lat, lon);
+    layer.regions.append(el('text', { class: 'distant', x, y }, en));
   }
   for (const p of PROVINCES) {
     const g = el('g', { class: 'city', 'data-id': p.id });
@@ -139,15 +167,51 @@ let welcome = 0;
 function newWorld(seed) {
   age = seed ?? 1 + Math.floor(Math.random() * 99999);
   s = newAge(age);
+  Object.assign(story, { keys: { 0: structuredClone(s) }, events: [], frontier: 0 });
   last = {};
   shown.length = 0;
   $('#feed-list').innerHTML = '';
   $('#track-events').innerHTML = '';
   closeCard();
-  render([{ type: 'age.started', text: 'The year 1200. The realms of the Silk Road stand as history left them.', date: 'January 1200' }]);
+  render([{ type: 'age.started', text: 'The year 1200. The realms of the Old World stand as history left them.', date: 'January 1200' }]);
 }
 
-function render(events) {
+// One month forward. At the edge of what has been lived, the world is simulated (and remembered); behind it, the
+// recorded month is simply replayed.
+function advance() {
+  const r = tick(s, brain);
+  s = r.state;
+  story.events[s.month - 1] = r.events;
+  if (s.month > story.frontier) {
+    story.frontier = s.month;
+    if (s.month % 12 === 0) story.keys[s.month] = structuredClone(s);
+    markTrack(r.events);
+  }
+  return r.events;
+}
+
+// Jump to any month already lived: back to the year's snapshot, then forward month by month.
+function seek(month) {
+  const m = Math.max(0, Math.min(story.frontier, Math.round(month)));
+  if (m === s.month) return;
+  const k = Math.max(...Object.keys(story.keys).map(Number).filter((x) => x <= m));
+  s = structuredClone(story.keys[k]);
+  while (s.month < m) s = tick(s, brain).state;
+  last = {};
+  $('#feed-list').innerHTML = '';
+  // The chronicle as it stood that month: its latest entries.
+  const recent = [];
+  for (let i = m - 1; i >= 0 && recent.length < 7; i--) for (const e of [...(story.events[i] ?? [])].reverse()) if (kindOf(e)[2] && recent.length < 7) recent.push(e);
+  render(recent.reverse(), { quiet: true });
+}
+function step(months) {
+  playPause(false);
+  if (months > 0 && s.month + months > story.frontier) {
+    for (let i = 0; i < months && s.status === 'running'; i++) render(advance());
+  } else seek(s.month + months);
+}
+
+function render(events, { quiet = false } = {}) {
   const owner = PROVINCES.map((p) => s.provinces[p.id].owner);
   const ownerKey = owner.join(',');
   if (ownerKey !== last.owner) {
@@ -159,13 +223,30 @@ function render(events) {
   paintArmies();
   paintSieges();
   paintMarks();
-  for (const e of events) pulse(e);
+  if (!quiet) for (const e of events) pulse(e);
   feed(events);
   powers();
   $('#date').textContent = dateText(s.month);
   $('#yr').textContent = yearOf(s.month);
-  $('#done').style.width = `${(Math.min(s.month, RULES.months) / RULES.months) * 100}%`;
+  const at = (m) => `${(Math.min(m, RULES.months) / RULES.months) * 100}%`;
+  $('#done').style.width = at(story.frontier);
+  $('#now').style.left = at(s.month);
+  $('#back').disabled = s.month === 0;
   if (card.kind) refreshCard();
+}
+
+// Great moments marked on the timeline, where they happened in the age.
+function markTrack(events) {
+  for (const e of events) {
+    if (!(['founded', 'fallen', 'horde', 'split', 'coup'].includes(e.type) || (e.type === 'capture' && e.capital))) continue;
+    const m = document.createElement('i');
+    m.className = 'ev';
+    m.style.left = `${(Math.min(e.month, RULES.months) / RULES.months) * 100}%`;
+    m.style.background = kindOf(e)[1];
+    m.title = `${e.date}: ${e.text}`;
+    m.dataset.month = e.month + 1;
+    $('#track-events').append(m);
+  }
 }
 
 const colorOf = (id) => s.realms[id]?.color ?? 'transparent';
@@ -320,14 +401,6 @@ function feed(events) {
     if (e.at) li.dataset.at = e.at;
     if (e.realms?.[0]) li.dataset.realm = e.realms[0];
     list.prepend(li);
-    if (['founded', 'fallen', 'horde', 'split', 'coup'].includes(e.type) || (e.type === 'capture' && e.capital)) {
-      const m = document.createElement('i');
-      m.className = 'ev';
-      m.style.left = `${(Math.min(s.month, RULES.months) / RULES.months) * 100}%`;
-      m.style.background = color;
-      m.title = `${e.date}: ${e.text}`;
-      $('#track-events').append(m);
-    }
   }
   while (list.children.length > 7) list.lastElementChild.remove();
 }
@@ -475,10 +548,9 @@ function loop() {
     playPause(false);
     return;
   }
-  const r = tick(s, brain);
-  s = r.state;
-  render(r.events);
-  timer = setTimeout(loop, SPEED[speed] + (r.events.some(GREAT) ? HOLD[speed] : 0));
+  const events = advance();
+  render(events);
+  timer = setTimeout(loop, SPEED[speed] + (events.some(GREAT) ? HOLD[speed] : 0));
 }
 function setSpeed(v) {
   speed = v;
@@ -489,11 +561,10 @@ function setSpeed(v) {
 // ---------- pan and zoom ----------
 const view = { x: 0, y: 0, w: W, h: H };
 function fit() {
-  const aspect = innerWidth / innerHeight;
-  let w = W, h = W / aspect;
-  if (h > H) { h = H; w = H * aspect; }
-  if (innerWidth < 760) { w = Math.min(W, 1180); h = w / aspect; if (h > H) { h = H; w = H * aspect; } }
-  setView({ x: (W - w) / 2 + (innerWidth < 760 ? 120 : 0), y: (H - h) / 2, w, h });
+  const phone = innerWidth < 760;
+  const [x1] = xyOf(37, phone ? 48 : -9), [x2] = xyOf(37, phone ? 82 : 121), [, cy] = xyOf(phone ? 37 : 38, 60);
+  const w = x2 - x1, h = w / (innerWidth / innerHeight);
+  setView({ x: x1, y: cy - h / 2, w, h });
 }
 function setView(v) {
   const aspect = innerWidth / innerHeight;
@@ -504,7 +575,28 @@ function setView(v) {
   v.y = Math.max(0, Math.min(H - v.h, v.y));
   Object.assign(view, v);
   map.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
-  map.dataset.zoom = v.w < 950 ? 3 : v.w < 1750 ? 2 : 1;
+  map.dataset.zoom = v.w < 950 ? 3 : v.w < 1750 ? 2 : v.w < 3800 ? 1 : 0;
+  clearTimeout(tileTimer);
+  tileTimer = setTimeout(loadTiles, 120);
+}
+
+// Sharper parchment as the view closes in: the coarsest tile level that still looks crisp on this screen.
+const tileLayers = {}, tilesShown = new Set();
+let tileTimer = 0, tileMeta = null;
+async function loadTiles() {
+  tileMeta ??= await fetch('/world/tiles/meta.json').then((r) => r.json()).catch(() => ({ tile: 512, levels: 4 }));
+  const need = (innerWidth / view.w) * (devicePixelRatio || 1) * 0.8; // screen pixels per map unit
+  let level = 1;
+  while (level < tileMeta.levels - 1 && 2 ** (level - (tileMeta.levels - 1)) < need) level++;
+  const span = tileMeta.tile * 2 ** (tileMeta.levels - 1 - level); // map units per tile at this level
+  for (let ty = Math.floor(view.y / span); ty * span < view.y + view.h; ty++) {
+    for (let tx = Math.floor(view.x / span); tx * span < view.x + view.w; tx++) {
+      const key = `${level}/${tx}_${ty}`;
+      if (tilesShown.has(key) || tx < 0 || ty < 0 || tx * span >= W || ty * span >= H) continue;
+      tilesShown.add(key);
+      tileLayers[level].append(el('image', { href: `/world/tiles/${key}.webp`, x: tx * span, y: ty * span, width: Math.min(span, W - tx * span), height: Math.min(span, H - ty * span), preserveAspectRatio: 'none' }));
+    }
+  }
 }
 const toMap = (cx, cy) => ({ x: view.x + (cx / innerWidth) * view.w, y: view.y + (cy / innerHeight) * view.h });
 function zoomAt(cx, cy, k) {
@@ -567,6 +659,22 @@ function focus(pid) {
 // ---------- controls ----------
 function wire() {
   $('#play').addEventListener('click', () => playPause());
+  // Back and forth through the age: a month (or, with Shift, a year), or straight to any lived moment on the timeline.
+  $('#back').addEventListener('click', (e) => step(e.shiftKey ? -12 : -1));
+  $('#fwd').addEventListener('click', (e) => step(e.shiftKey ? 12 : 1));
+  const track = $('.track');
+  const seekAt = (e) => {
+    const r = track.getBoundingClientRect();
+    playPause(false);
+    seek(((e.clientX - r.left) / r.width) * RULES.months);
+  };
+  track.addEventListener('pointerdown', (e) => {
+    seekAt(e);
+    track.setPointerCapture(e.pointerId);
+    const move = (ev) => seekAt(ev);
+    track.addEventListener('pointermove', move);
+    track.addEventListener('pointerup', () => track.removeEventListener('pointermove', move), { once: true });
+  });
   document.querySelectorAll('.speed button').forEach((b) => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
   $('#new').addEventListener('click', () => { playPause(false); newWorld(); playPause(true); });
   $('#zin').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, 1.5));
@@ -609,7 +717,8 @@ function wire() {
   });
   $('#card').addEventListener('click', (e) => { if (e.target.closest('.x')) closeCard(); });
   addEventListener('keydown', (e) => {
-    if (e.key === ' ' && !e.target.closest('button, a, input')) { e.preventDefault(); playPause(); }
+    if (e.key === ' ' && !e.target.closest('button, a, input, textarea')) { e.preventDefault(); playPause(); }
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.target.closest('input, textarea')) step((e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 12 : 1));
     if (e.key === 'Escape') closeCard();
   });
   for (const y of [1200, 1210, 1220, 1230, 1240, 1250]) {

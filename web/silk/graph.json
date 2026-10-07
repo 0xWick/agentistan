@@ -3,35 +3,91 @@
   "neighbors": [
    "basra",
    "mosul",
+   "khuzestan",
    "shahrazur",
-   "lur"
+   "lur",
+   "damascus",
+   "karak",
+   "homs"
   ],
+  "ways": {
+   "basra": {
+    "river": 2,
+    "pass": false,
+    "sea": false
+   },
+   "mosul": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "khuzestan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "shahrazur": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "lur": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "damascus": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "karak": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "homs": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   244.0,
-   849.4
+   3180.4,
+   1835.3
   ],
   "label": [
-   107.3,
-   890.5
+   3073.1,
+   1909.0
   ],
-  "area": 70481
+  "area": 53556
  },
  "basra": {
   "neighbors": [
    "baghdad",
-   "khuzestan",
-   "lur",
-   "fars"
+   "khuzestan"
   ],
+  "ways": {
+   "baghdad": {
+    "river": 2,
+    "pass": false,
+    "sea": false
+   },
+   "khuzestan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   417.1,
-   1017.1
+   3323.0,
+   2001.8
   ],
   "label": [
-   313.0,
-   1038.8
+   3222.8,
+   2022.9
   ],
-  "area": 30555
+  "area": 24473
  },
  "mosul": {
   "neighbors": [
@@ -39,34 +95,101 @@
    "shahrazur",
    "amid",
    "tabriz",
-   "nakhchivan"
+   "nakhchivan",
+   "homs",
+   "edessa"
   ],
+  "ways": {
+   "baghdad": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "shahrazur": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "amid": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tabriz": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "nakhchivan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "homs": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "edessa": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   182.2,
-   668.1
+   3141.4,
+   1658.5
   ],
   "label": [
-   170.7,
-   685.3
+   3130.1,
+   1676.1
   ],
-  "area": 40048
+  "area": 32421
  },
  "khuzestan": {
   "neighbors": [
+   "baghdad",
    "basra",
    "lur",
    "isfahan",
    "fars"
   ],
+  "ways": {
+   "baghdad": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "basra": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "lur": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "isfahan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "fars": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   469.3,
-   924.9
+   3375.1,
+   1909.9
   ],
   "label": [
-   474.2,
-   949.0
+   3373.2,
+   1929.1
   ],
-  "area": 18209
+  "area": 20256
  },
  "shahrazur": {
   "neighbors": [
@@ -74,54 +197,140 @@
    "mosul",
    "lur",
    "tabriz",
-   "ardabil",
-   "hamadan"
+   "hamadan",
+   "qazvin"
   ],
+  "ways": {
+   "baghdad": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "mosul": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "lur": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tabriz": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "hamadan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "qazvin": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   318.7,
-   730.3
+   3255.3,
+   1718.8
   ],
   "label": [
-   341.5,
-   699.5
+   3271.3,
+   1687.7
   ],
-  "area": 18616
+  "area": 18013
  },
  "lur": {
   "neighbors": [
    "baghdad",
-   "basra",
    "khuzestan",
    "shahrazur",
    "hamadan",
    "isfahan"
   ],
+  "ways": {
+   "baghdad": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "khuzestan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "shahrazur": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hamadan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "isfahan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   444.7,
-   838.7
+   3358.5,
+   1824.7
   ],
   "label": [
-   402.3,
-   838.8
+   3309.8,
+   1843.5
   ],
-  "area": 16159
+  "area": 13272
  },
  "amid": {
   "neighbors": [
    "mosul",
-   "imereti",
-   "ani",
-   "nakhchivan"
+   "nakhchivan",
+   "malatya",
+   "erzurum",
+   "edessa"
   ],
+  "ways": {
+   "mosul": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nakhchivan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "malatya": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "erzurum": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "edessa": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   36.6,
-   574.1
+   3024.6,
+   1568.4
   ],
   "label": [
-   77.0,
-   540.7
+   3052.3,
+   1573.1
   ],
-  "area": 35191
+  "area": 11229
  },
  "kartli": {
   "neighbors": [
@@ -130,49 +339,115 @@
    "arran",
    "derbent"
   ],
+  "ways": {
+   "imereti": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ani": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "arran": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "derbent": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   265.5,
-   346.0
+   3242.3,
+   1354.3
   ],
   "label": [
-   270.0,
-   346.3
+   3245.7,
+   1350.8
   ],
-  "area": 12579
+  "area": 9785
  },
  "imereti": {
   "neighbors": [
-   "amid",
    "kartli",
-   "ani"
+   "ani",
+   "erzurum"
   ],
+  "ways": {
+   "kartli": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ani": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "erzurum": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   160.6,
-   313.1
+   3157.4,
+   1324.0
   ],
   "label": [
-   154.0,
-   308.5
+   3152.2,
+   1318.6
   ],
-  "area": 18538
+  "area": 10335
  },
  "ani": {
   "neighbors": [
-   "amid",
    "kartli",
    "imereti",
    "arran",
-   "nakhchivan"
+   "nakhchivan",
+   "erzurum"
   ],
+  "ways": {
+   "kartli": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "imereti": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "arran": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "nakhchivan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "erzurum": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   204.3,
-   418.4
+   3183.7,
+   1421.6
   ],
   "label": [
-   175.9,
-   432.5
+   3176.0,
+   1441.0
   ],
-  "area": 17984
+  "area": 9809
  },
  "arran": {
   "neighbors": [
@@ -183,15 +458,47 @@
    "ardabil",
    "nakhchivan"
   ],
+  "ways": {
+   "kartli": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ani": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "shirvan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "derbent": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ardabil": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "nakhchivan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   344.3,
-   408.3
+   3303.3,
+   1412.1
   ],
   "label": [
-   336.6,
-   424.3
+   3309.2,
+   1426.3
   ],
-  "area": 11331
+  "area": 8666
  },
  "shirvan": {
   "neighbors": [
@@ -200,15 +507,37 @@
    "ardabil",
    "gorgan"
   ],
+  "ways": {
+   "arran": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "derbent": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ardabil": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "gorgan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   458.8,
-   411.3
+   3400.0,
+   1414.9
   ],
   "label": [
-   457.4,
-   424.3
+   3397.2,
+   1423.4
   ],
-  "area": 10815
+  "area": 9441
  },
  "derbent": {
   "neighbors": [
@@ -216,53 +545,128 @@
    "arran",
    "shirvan"
   ],
+  "ways": {
+   "kartli": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "arran": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "shirvan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   441.2,
-   325.6
+   3391.7,
+   1335.6
   ],
   "label": [
-   400.8,
-   327.1
+   3356.7,
+   1336.7
   ],
-  "area": 8012
+  "area": 6198
  },
  "tabriz": {
   "neighbors": [
    "mosul",
    "shahrazur",
    "ardabil",
-   "nakhchivan"
+   "nakhchivan",
+   "qazvin"
   ],
+  "ways": {
+   "mosul": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "shahrazur": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ardabil": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nakhchivan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "qazvin": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   340.8,
-   563.9
+   3287.5,
+   1558.7
   ],
   "label": [
-   365.7,
-   592.3
+   3305.6,
+   1582.5
   ],
-  "area": 17575
+  "area": 14594
  },
  "ardabil": {
   "neighbors": [
-   "shahrazur",
    "arran",
    "shirvan",
    "tabriz",
    "nakhchivan",
-   "hamadan",
    "qazvin",
    "gilan"
   ],
+  "ways": {
+   "arran": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "shirvan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tabriz": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nakhchivan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "qazvin": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gilan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   441.2,
-   553.7
+   3374.7,
+   1549.0
   ],
   "label": [
-   437.3,
-   521.4
+   3372.8,
+   1515.8
   ],
-  "area": 10365
+  "area": 6954
  },
  "nakhchivan": {
   "neighbors": [
@@ -271,36 +675,100 @@
    "ani",
    "arran",
    "tabriz",
-   "ardabil"
+   "ardabil",
+   "erzurum"
   ],
+  "ways": {
+   "mosul": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "amid": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "ani": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "arran": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tabriz": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ardabil": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "erzurum": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   296.7,
-   496.3
+   3255.2,
+   1494.6
   ],
   "label": [
-   247.0,
-   527.4
+   3214.2,
+   1517.8
   ],
-  "area": 15666
+  "area": 12329
  },
  "hamadan": {
   "neighbors": [
    "shahrazur",
    "lur",
-   "ardabil",
    "isfahan",
    "rey",
    "qazvin"
   ],
+  "ways": {
+   "shahrazur": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "lur": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "isfahan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "rey": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "qazvin": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   452.3,
-   760.2
+   3370.2,
+   1747.9
   ],
   "label": [
-   437.0,
-   747.1
+   3385.9,
+   1747.2
   ],
-  "area": 15253
+  "area": 10868
  },
  "isfahan": {
   "neighbors": [
@@ -312,15 +780,52 @@
    "yazd",
    "fars"
   ],
+  "ways": {
+   "khuzestan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "lur": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hamadan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "rey": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kumis": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "yazd": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "fars": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   610.9,
-   889.0
+   3502.7,
+   1874.3
   ],
   "label": [
-   598.5,
-   878.1
+   3489.0,
+   1869.3
   ],
-  "area": 37118
+  "area": 32388
  },
  "rey": {
   "neighbors": [
@@ -331,33 +836,104 @@
    "tabaristan",
    "kumis"
   ],
+  "ways": {
+   "hamadan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "isfahan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "qazvin": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "alamut": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tabaristan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kumis": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   598.8,
-   713.0
+   3501.2,
+   1701.9
   ],
   "label": [
-   585.7,
-   744.3
+   3484.4,
+   1734.2
   ],
-  "area": 9194
+  "area": 7772
  },
  "qazvin": {
   "neighbors": [
+   "shahrazur",
+   "tabriz",
    "ardabil",
    "hamadan",
    "rey",
    "alamut",
    "gilan"
   ],
+  "ways": {
+   "shahrazur": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tabriz": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ardabil": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hamadan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "rey": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "alamut": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "gilan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   527.1,
-   672.3
+   3441.0,
+   1662.6
   ],
   "label": [
-   506.7,
-   688.0
+   3388.4,
+   1662.0
   ],
-  "area": 7666
+  "area": 9924
  },
  "alamut": {
   "neighbors": [
@@ -366,15 +942,37 @@
    "gilan",
    "tabaristan"
   ],
+  "ways": {
+   "rey": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "qazvin": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "gilan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tabaristan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   556.7,
-   662.1
+   3467.4,
+   1652.8
   ],
   "label": [
-   566.2,
-   684.7
+   3475.6,
+   1673.9
   ],
-  "area": 1922
+  "area": 1592
  },
  "gilan": {
   "neighbors": [
@@ -383,15 +981,37 @@
    "alamut",
    "tabaristan"
   ],
+  "ways": {
+   "ardabil": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "qazvin": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "alamut": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tabaristan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   527.1,
-   616.6
+   3444.5,
+   1609.0
   ],
   "label": [
-   515.5,
-   626.6
+   3433.8,
+   1617.9
   ],
-  "area": 5317
+  "area": 3652
  },
  "tabaristan": {
   "neighbors": [
@@ -401,33 +1021,87 @@
    "gorgan",
    "kumis"
   ],
+  "ways": {
+   "rey": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "alamut": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gilan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "gorgan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kumis": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   645.0,
-   660.3
+   3544.3,
+   1651.0
   ],
   "label": [
-   683.0,
-   668.7
+   3577.5,
+   1658.9
   ],
-  "area": 7444
+  "area": 6270
  },
  "gorgan": {
   "neighbors": [
    "shirvan",
    "tabaristan",
    "kumis",
-   "nasa",
-   "mangyshlak"
+   "nishapur",
+   "nasa"
   ],
+  "ways": {
+   "shirvan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tabaristan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kumis": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "nishapur": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "nasa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   749.9,
-   638.1
+   3636.4,
+   1629.7
   ],
   "label": [
-   774.4,
-   578.4
+   3659.0,
+   1574.9
   ],
-  "area": 23013
+  "area": 16649
  },
  "kumis": {
   "neighbors": [
@@ -439,15 +1113,52 @@
    "yazd",
    "nishapur"
   ],
+  "ways": {
+   "isfahan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "rey": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tabaristan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gorgan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "quhistan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "yazd": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nishapur": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   744.9,
-   678.2
+   3630.3,
+   1668.3
   ],
   "label": [
-   778.9,
-   718.8
+   3653.6,
+   1710.0
   ],
-  "area": 27008
+  "area": 22897
  },
  "quhistan": {
   "neighbors": [
@@ -458,15 +1169,47 @@
    "herat",
    "sistan"
   ],
+  "ways": {
+   "kumis": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "yazd": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kerman": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nishapur": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "herat": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "sistan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   937.2,
-   806.9
+   3794.1,
+   1793.6
   ],
   "label": [
-   973.8,
-   814.9
+   3812.0,
+   1785.9
   ],
-  "area": 25150
+  "area": 21832
  },
  "yazd": {
   "neighbors": [
@@ -477,33 +1220,86 @@
    "darabgerd",
    "kerman"
   ],
+  "ways": {
+   "isfahan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kumis": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "quhistan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "fars": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "darabgerd": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kerman": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   746.4,
-   933.8
+   3621.1,
+   1918.8
   ],
   "label": [
-   842.3,
-   870.3
+   3710.4,
+   1857.2
   ],
-  "area": 36601
+  "area": 32061
  },
  "fars": {
   "neighbors": [
-   "basra",
    "khuzestan",
    "isfahan",
    "yazd",
    "darabgerd"
   ],
+  "ways": {
+   "khuzestan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "isfahan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "yazd": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "darabgerd": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   656.6,
-   1072.1
+   3535.1,
+   2057.0
   ],
   "label": [
-   637.8,
-   1068.9
+   3518.0,
+   2050.8
   ],
-  "area": 31146
+  "area": 28110
  },
  "darabgerd": {
   "neighbors": [
@@ -512,15 +1308,37 @@
    "kerman",
    "hormuz"
   ],
+  "ways": {
+   "yazd": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "fars": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kerman": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hormuz": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   754.9,
-   1122.4
+   3621.9,
+   2107.8
   ],
   "label": [
-   742.9,
-   1147.0
+   3610.7,
+   2131.7
   ],
-  "area": 17401
+  "area": 15554
  },
  "kerman": {
   "neighbors": [
@@ -528,17 +1346,50 @@
    "yazd",
    "darabgerd",
    "hormuz",
-   "sistan"
+   "sistan",
+   "makran"
   ],
+  "ways": {
+   "quhistan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "yazd": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "darabgerd": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hormuz": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sistan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "makran": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   881.9,
-   1030.2
+   3739.0,
+   2015.0
   ],
   "label": [
-   908.0,
-   1049.1
+   3756.3,
+   2029.1
   ],
-  "area": 55687
+  "area": 50070
  },
  "hormuz": {
   "neighbors": [
@@ -546,33 +1397,83 @@
    "kerman",
    "makran"
   ],
+  "ways": {
+   "darabgerd": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kerman": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "makran": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   841.8,
-   1216.4
+   3697.7,
+   2203.1
   ],
   "label": [
-   833.2,
-   1187.3
+   3695.0,
+   2173.4
   ],
-  "area": 21842
+  "area": 20832
  },
  "nishapur": {
   "neighbors": [
+   "gorgan",
    "kumis",
    "quhistan",
    "sarakhs",
    "nasa",
    "herat"
   ],
+  "ways": {
+   "gorgan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kumis": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "quhistan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "sarakhs": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "nasa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "herat": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   968.8,
-   675.8
+   3825.2,
+   1666.0
   ],
   "label": [
-   977.0,
-   679.0
+   3835.9,
+   1672.0
   ],
-  "area": 27552
+  "area": 23204
  },
  "merv": {
   "neighbors": [
@@ -585,15 +1486,57 @@
    "bukhara",
    "nasaf"
   ],
+  "ways": {
+   "sarakhs": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nasa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "herat": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "balkh": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ghor": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "khiva": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "bukhara": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "nasaf": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1138.9,
-   589.0
+   3974.3,
+   1582.7
   ],
   "label": [
-   1174.3,
-   612.9
+   4005.5,
+   1604.3
   ],
-  "area": 34153
+  "area": 27973
  },
  "sarakhs": {
   "neighbors": [
@@ -602,15 +1545,37 @@
    "nasa",
    "herat"
   ],
+  "ways": {
+   "nishapur": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "merv": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nasa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "herat": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1094.3,
-   652.5
+   3934.7,
+   1643.5
   ],
   "label": [
-   1050.7,
-   608.5
+   3897.7,
+   1600.6
   ],
-  "area": 6154
+  "area": 4889
  },
  "nasa": {
   "neighbors": [
@@ -619,17 +1584,55 @@
    "merv",
    "sarakhs",
    "gurganj",
-   "khiva"
+   "khiva",
+   "mangyshlak"
   ],
+  "ways": {
+   "gorgan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "nishapur": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "merv": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sarakhs": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gurganj": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "khiva": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "mangyshlak": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   938.7,
-   569.3
+   3802.0,
+   1563.8
   ],
   "label": [
-   951.3,
-   511.0
+   3820.4,
+   1511.6
   ],
-  "area": 41520
+  "area": 35347
  },
  "herat": {
   "neighbors": [
@@ -640,15 +1643,47 @@
    "ghor",
    "sistan"
   ],
+  "ways": {
+   "quhistan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nishapur": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "merv": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sarakhs": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ghor": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sistan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1139.5,
-   787.2
+   3972.5,
+   1774.2
   ],
   "label": [
-   1123.0,
-   825.4
+   3954.2,
+   1816.6
   ],
-  "area": 23725
+  "area": 19132
  },
  "balkh": {
   "neighbors": [
@@ -659,15 +1694,47 @@
    "termez",
    "nasaf"
   ],
+  "ways": {
+   "merv": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ghor": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "bamiyan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "khuttal": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "termez": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "nasaf": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1375.4,
-   642.9
+   4178.7,
+   1634.3
   ],
   "label": [
-   1358.8,
-   667.9
+   4179.0,
+   1659.9
   ],
-  "area": 20493
+  "area": 15176
  },
  "ghor": {
   "neighbors": [
@@ -676,18 +1743,49 @@
    "balkh",
    "bamiyan",
    "ghazni",
-   "kandahar",
-   "sistan"
+   "kandahar"
   ],
+  "ways": {
+   "merv": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "herat": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "balkh": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "bamiyan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ghazni": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kandahar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1255.9,
-   784.2
+   4074.8,
+   1771.3
   ],
   "label": [
-   1301.3,
-   805.3
+   4113.3,
+   1794.0
   ],
-  "area": 26984
+  "area": 26432
  },
  "bamiyan": {
   "neighbors": [
@@ -698,15 +1796,47 @@
    "badakhshan",
    "termez"
   ],
+  "ways": {
+   "balkh": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ghor": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ghazni": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kabul": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "badakhshan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "termez": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1422.1,
-   759.1
+   4220.6,
+   1746.8
   ],
   "label": [
-   1404.6,
-   759.9
+   4206.1,
+   1749.2
   ],
-  "area": 13576
+  "area": 11562
  },
  "ghazni": {
   "neighbors": [
@@ -717,15 +1847,47 @@
    "peshawar",
    "multan"
   ],
+  "ways": {
+   "ghor": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "bamiyan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kabul": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kandahar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "peshawar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "multan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1451.7,
-   835.1
+   4247.5,
+   1821.2
   ],
   "label": [
-   1469.9,
-   884.4
+   4271.3,
+   1868.0
   ],
-  "area": 17497
+  "area": 15375
  },
  "kabul": {
   "neighbors": [
@@ -734,15 +1896,37 @@
    "badakhshan",
    "peshawar"
   ],
+  "ways": {
+   "bamiyan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ghazni": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "badakhshan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "peshawar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1489.3,
-   776.4
+   4279.8,
+   1763.7
   ],
   "label": [
-   1522.7,
-   750.9
+   4303.6,
+   1739.9
   ],
-  "area": 10061
+  "area": 8559
  },
  "kandahar": {
   "neighbors": [
@@ -751,35 +1935,88 @@
    "sistan",
    "turan"
   ],
+  "ways": {
+   "ghor": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ghazni": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "sistan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "turan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1315.6,
-   951.2
+   4127.8,
+   1936.0
   ],
   "label": [
-   1290.6,
-   946.3
+   4107.8,
+   1925.9
   ],
-  "area": 32968
+  "area": 29293
  },
  "sistan": {
   "neighbors": [
    "quhistan",
    "kerman",
    "herat",
-   "ghor",
    "kandahar",
    "makran",
    "turan"
   ],
+  "ways": {
+   "quhistan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kerman": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "herat": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kandahar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "makran": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "turan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1122.4,
-   987.7
+   3955.1,
+   1972.4
   ],
   "label": [
-   1124.5,
-   978.1
+   3951.6,
+   1962.5
   ],
-  "area": 47636
+  "area": 42071
  },
  "badakhshan": {
   "neighbors": [
@@ -792,15 +2029,57 @@
    "peshawar",
    "kashmir"
   ],
+  "ways": {
+   "bamiyan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kabul": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "khuttal": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "termez": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "ferghana": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "kashgar": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "peshawar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kashmir": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1560.1,
-   621.4
+   4338.5,
+   1613.6
   ],
   "label": [
-   1597.4,
-   606.7
+   4371.1,
+   1602.3
   ],
-  "area": 28042
+  "area": 23654
  },
  "khuttal": {
   "neighbors": [
@@ -811,15 +2090,47 @@
    "ushrusana",
    "ferghana"
   ],
+  "ways": {
+   "balkh": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "badakhshan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "termez": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "samarkand": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ushrusana": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ferghana": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1519.9,
-   574.1
+   4302.8,
+   1568.4
   ],
   "label": [
-   1503.1,
-   554.6
+   4279.6,
+   1552.2
   ],
-  "area": 14573
+  "area": 12268
  },
  "termez": {
   "neighbors": [
@@ -831,32 +2142,97 @@
    "nasaf",
    "ushrusana"
   ],
+  "ways": {
+   "balkh": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "bamiyan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "badakhshan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "khuttal": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "samarkand": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nasaf": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ushrusana": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1394.4,
-   615.4
+   4195.0,
+   1607.9
   ],
   "label": [
-   1397.4,
-   577.5
+   4198.2,
+   1569.6
   ],
-  "area": 9180
+  "area": 7717
  },
  "gurganj": {
   "neighbors": [
    "nasa",
    "khiva",
+   "jand",
    "kipchak",
    "mangyshlak"
   ],
+  "ways": {
+   "nasa": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "khiva": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "jand": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "kipchak": {
+    "river": 2,
+    "pass": false,
+    "sea": false
+   },
+   "mangyshlak": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   986.4,
-   310.1
+   3849.9,
+   1321.2
   ],
   "label": [
-   970.6,
-   293.5
+   3837.3,
+   1303.5
   ],
-  "area": 64333
+  "area": 49570
  },
  "khiva": {
   "neighbors": [
@@ -864,18 +2240,44 @@
    "nasa",
    "gurganj",
    "bukhara",
-   "jand",
-   "kipchak"
+   "jand"
   ],
+  "ways": {
+   "merv": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nasa": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "gurganj": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "bukhara": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "jand": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1047.1,
-   366.4
+   3899.6,
+   1373.1
   ],
   "label": [
-   1118.6,
-   312.2
+   3964.3,
+   1326.9
   ],
-  "area": 24237
+  "area": 18236
  },
  "bukhara": {
   "neighbors": [
@@ -886,15 +2288,47 @@
    "otrar",
    "jand"
   ],
+  "ways": {
+   "merv": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "khiva": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "samarkand": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nasaf": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "otrar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "jand": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1250.9,
-   462.7
+   4071.2,
+   1463.0
   ],
   "label": [
-   1240.6,
-   397.9
+   4064.5,
+   1405.3
   ],
-  "area": 30739
+  "area": 24068
  },
  "samarkand": {
   "neighbors": [
@@ -903,18 +2337,49 @@
    "bukhara",
    "nasaf",
    "ushrusana",
-   "shash",
    "otrar"
   ],
+  "ways": {
+   "khuttal": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "termez": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "bukhara": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nasaf": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ushrusana": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "otrar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1378.9,
-   469.9
+   4180.3,
+   1469.8
   ],
   "label": [
-   1360.1,
-   439.1
+   4166.8,
+   1442.0
   ],
-  "area": 12573
+  "area": 11552
  },
  "nasaf": {
   "neighbors": [
@@ -925,15 +2390,47 @@
    "samarkand",
    "ushrusana"
   ],
+  "ways": {
+   "merv": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "balkh": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "termez": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "bukhara": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "samarkand": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ushrusana": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1319.7,
-   517.2
+   4130.0,
+   1514.4
   ],
   "label": [
-   1311.4,
-   536.6
+   4119.6,
+   1534.1
   ],
-  "area": 15274
+  "area": 12239
  },
  "ushrusana": {
   "neighbors": [
@@ -945,33 +2442,91 @@
    "ferghana",
    "otrar"
   ],
+  "ways": {
+   "khuttal": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "termez": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "samarkand": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nasaf": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "shash": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "ferghana": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "otrar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1480.8,
-   454.4
+   4266.9,
+   1455.2
   ],
   "label": [
-   1478.3,
-   477.6
+   4292.2,
+   1472.0
   ],
-  "area": 18845
+  "area": 13735
  },
  "shash": {
   "neighbors": [
-   "samarkand",
    "ushrusana",
    "ferghana",
    "otrar",
    "talas"
   ],
+  "ways": {
+   "ushrusana": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "ferghana": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "otrar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "talas": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1492.8,
-   371.1
+   4275.6,
+   1377.6
   ],
   "label": [
-   1523.4,
-   377.1
+   4301.4,
+   1382.4
   ],
-  "area": 6210
+  "area": 4648
  },
  "ferghana": {
   "neighbors": [
@@ -983,15 +2538,52 @@
    "balasagun",
    "kashgar"
   ],
+  "ways": {
+   "badakhshan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "khuttal": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ushrusana": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "shash": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "talas": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "balasagun": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "kashgar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1696.6,
-   402.9
+   4448.8,
+   1407.1
   ],
   "label": [
-   1692.3,
-   403.7
+   4448.7,
+   1405.7
   ],
-  "area": 28954
+  "area": 22658
  },
  "otrar": {
   "neighbors": [
@@ -1002,32 +2594,92 @@
    "jand",
    "talas"
   ],
+  "ways": {
+   "bukhara": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "samarkand": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "ushrusana": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "shash": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "jand": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "talas": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1445.6,
-   278.4
+   4234.3,
+   1292.2
   ],
   "label": [
-   1474.6,
-   300.1
+   4237.0,
+   1327.1
   ],
-  "area": 43834
+  "area": 32819
  },
  "jand": {
   "neighbors": [
+   "gurganj",
    "khiva",
    "bukhara",
    "otrar",
    "kipchak"
   ],
+  "ways": {
+   "gurganj": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "khiva": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "bukhara": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "otrar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "kipchak": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1280.0,
-   185.6
+   4096.0,
+   1208.0
   ],
   "label": [
-   1308.1,
-   177.2
+   4119.1,
+   1204.1
   ],
-  "area": 61213
+  "area": 46258
  },
  "talas": {
   "neighbors": [
@@ -1036,15 +2688,37 @@
    "otrar",
    "balasagun"
   ],
+  "ways": {
+   "shash": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ferghana": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "otrar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "balasagun": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1599.7,
-   275.4
+   4363.0,
+   1289.4
   ],
   "label": [
-   1627.3,
-   209.7
+   4388.1,
+   1225.6
   ],
-  "area": 57185
+  "area": 43086
  },
  "balasagun": {
   "neighbors": [
@@ -1053,31 +2727,76 @@
    "almaliq",
    "kashgar"
   ],
+  "ways": {
+   "ferghana": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "talas": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "almaliq": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kashgar": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1794.5,
-   284.3
+   4526.0,
+   1297.6
   ],
   "label": [
-   1828.7,
-   134.7
+   4544.8,
+   1159.0
   ],
-  "area": 54588
+  "area": 40804
  },
  "almaliq": {
   "neighbors": [
    "balasagun",
    "kashgar",
-   "khotan"
+   "khotan",
+   "qocho"
   ],
+  "ways": {
+   "balasagun": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kashgar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "khotan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "qocho": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   2078.1,
-   209.5
+   4757.3,
+   1229.6
   ],
   "label": [
-   2089.4,
-   273.6
+   4784.2,
+   1295.2
   ],
-  "area": 130081
+  "area": 105829
  },
  "kashgar": {
   "neighbors": [
@@ -1088,76 +2807,161 @@
    "khotan",
    "kashmir"
   ],
+  "ways": {
+   "badakhshan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "ferghana": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "balasagun": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "almaliq": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "khotan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kashmir": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1831.7,
-   480.7
+   4566.9,
+   1479.9
   ],
   "label": [
-   1826.0,
-   520.0
+   4564.1,
+   1514.4
   ],
-  "area": 60303
+  "area": 49633
  },
  "khotan": {
   "neighbors": [
    "almaliq",
-   "kashgar"
+   "kashgar",
+   "kashmir"
   ],
+  "ways": {
+   "almaliq": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kashgar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kashmir": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   2029.4,
-   622.0
+   4744.8,
+   1614.2
   ],
   "label": [
-   1956.4,
-   602.5
+   4678.4,
+   1595.6
   ],
-  "area": 34081
+  "area": 28772
  },
  "kipchak": {
   "neighbors": [
    "gurganj",
-   "khiva",
    "jand"
   ],
+  "ways": {
+   "gurganj": {
+    "river": 2,
+    "pass": false,
+    "sea": false
+   },
+   "jand": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1159.5,
-   71.8
+   3997.8,
+   1106.6
   ],
   "label": [
-   1191.3,
-   64.2
+   3931.8,
+   985.1
   ],
-  "area": 41963
+  "area": 76332
  },
  "saqsin": {
   "neighbors": [
    "mangyshlak"
   ],
+  "ways": {
+   "mangyshlak": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   426.7,
-   68.8
+   3400.8,
+   1104.0
   ],
   "label": [
-   426.6,
-   48.7
+   3452.0,
+   1028.2
   ],
-  "area": 17227
+  "area": 53499
  },
  "mangyshlak": {
   "neighbors": [
-   "gorgan",
+   "nasa",
    "gurganj",
    "saqsin"
   ],
+  "ways": {
+   "nasa": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "gurganj": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "saqsin": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   647.5,
-   197.5
+   3572.7,
+   1218.8
   ],
   "label": [
-   730.5,
-   216.6
+   3636.9,
+   1237.9
   ],
-  "area": 72441
+  "area": 59751
  },
  "peshawar": {
   "neighbors": [
@@ -1168,15 +2972,47 @@
    "multan",
    "kashmir"
   ],
+  "ways": {
+   "ghazni": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kabul": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "badakhshan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "saltrange": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "multan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "kashmir": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1610.3,
-   807.5
+   4386.8,
+   1794.1
   ],
   "label": [
-   1599.0,
-   789.4
+   4376.1,
+   1778.3
   ],
-  "area": 29798
+  "area": 25508
  },
  "saltrange": {
   "neighbors": [
@@ -1185,15 +3021,37 @@
    "multan",
    "kashmir"
   ],
+  "ways": {
+   "peshawar": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "lahore": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "multan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kashmir": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1718.2,
-   872.2
+   4484.0,
+   1857.7
   ],
   "label": [
-   1665.1,
-   883.1
+   4437.1,
+   1870.1
   ],
-  "area": 14147
+  "area": 12579
  },
  "lahore": {
   "neighbors": [
@@ -1203,15 +3061,42 @@
    "delhi",
    "ajmer"
   ],
+  "ways": {
+   "saltrange": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "multan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kashmir": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "delhi": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ajmer": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1748.8,
-   954.8
+   4514.0,
+   1939.6
   ],
   "label": [
-   1774.1,
-   977.7
+   4532.0,
+   1959.6
   ],
-  "area": 28588
+  "area": 25696
  },
  "multan": {
   "neighbors": [
@@ -1221,18 +3106,54 @@
    "lahore",
    "sehwan",
    "turan",
-   "ajmer",
    "thar"
   ],
+  "ways": {
+   "ghazni": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "peshawar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "saltrange": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "lahore": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "sehwan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "turan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "thar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1604.8,
-   1035.6
+   4387.4,
+   2020.4
   ],
   "label": [
-   1612.8,
-   1048.5
+   4395.3,
+   2037.9
   ],
-  "area": 34315
+  "area": 30604
  },
  "thatta": {
   "neighbors": [
@@ -1243,15 +3164,47 @@
    "marwar",
    "thar"
   ],
+  "ways": {
+   "sehwan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "turan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gujarat": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "saurashtra": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "marwar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "thar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1426.6,
-   1361.9
+   4230.5,
+   2352.2
   ],
   "label": [
-   1435.8,
-   1356.0
+   4243.1,
+   2343.4
   ],
-  "area": 16674
+  "area": 15757
  },
  "sehwan": {
   "neighbors": [
@@ -1260,31 +3213,76 @@
    "turan",
    "thar"
   ],
+  "ways": {
+   "multan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "thatta": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "turan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "thar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1423.6,
-   1261.9
+   4226.9,
+   2249.6
   ],
   "label": [
-   1446.5,
-   1222.9
+   4249.1,
+   2203.1
   ],
-  "area": 21435
+  "area": 19912
  },
  "makran": {
   "neighbors": [
+   "kerman",
    "hormuz",
    "sistan",
    "turan"
   ],
+  "ways": {
+   "kerman": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "hormuz": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "sistan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "turan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1182.1,
-   1287.0
+   4006.6,
+   2275.3
   ],
   "label": [
-   1158.7,
-   1234.7
+   3966.2,
+   2225.1
   ],
-  "area": 53446
+  "area": 47752
  },
  "turan": {
   "neighbors": [
@@ -1295,33 +3293,98 @@
    "sehwan",
    "makran"
   ],
+  "ways": {
+   "kandahar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sistan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "multan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "thatta": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sehwan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "makran": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1360.3,
-   1179.3
+   4168.8,
+   2165.4
   ],
   "label": [
-   1319.2,
-   1151.1
+   4128.0,
+   2135.4
   ],
-  "area": 57774
+  "area": 52528
  },
  "kashmir": {
   "neighbors": [
    "badakhshan",
    "kashgar",
+   "khotan",
    "peshawar",
    "saltrange",
    "lahore"
   ],
+  "ways": {
+   "badakhshan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "kashgar": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "khotan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "peshawar": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "saltrange": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "lahore": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1771.9,
-   803.3
+   4529.0,
+   1790.0
   ],
   "label": [
-   1772.1,
-   694.9
+   4524.0,
+   1682.2
   ],
-  "area": 28696
+  "area": 23789
  },
  "delhi": {
   "neighbors": [
@@ -1330,35 +3393,88 @@
    "ranthambore",
    "kannauj"
   ],
+  "ways": {
+   "lahore": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ajmer": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ranthambore": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kannauj": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1893.9,
-   1128.4
+   4650.6,
+   2113.8
   ],
   "label": [
-   1843.3,
-   1081.6
+   4602.3,
+   2063.8
   ],
-  "area": 18526
+  "area": 16724
  },
  "ajmer": {
   "neighbors": [
    "lahore",
-   "multan",
    "delhi",
    "ranthambore",
    "malwa",
    "marwar",
    "thar"
   ],
+  "ways": {
+   "lahore": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "delhi": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ranthambore": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "malwa": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "marwar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "thar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1763.9,
-   1260.1
+   4537.1,
+   2247.8
   ],
   "label": [
-   1753.3,
-   1194.5
+   4530.2,
+   2186.6
   ],
-  "area": 33926
+  "area": 30197
  },
  "ranthambore": {
   "neighbors": [
@@ -1368,15 +3484,42 @@
    "kannauj",
    "malwa"
   ],
+  "ways": {
+   "delhi": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ajmer": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "gwalior": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kannauj": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "malwa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1855.2,
-   1285.8
+   4621.3,
+   2274.1
   ],
   "label": [
-   1861.0,
-   1242.8
+   4626.1,
+   2233.9
   ],
-  "area": 17831
+  "area": 16389
  },
  "gwalior": {
   "neighbors": [
@@ -1385,15 +3528,37 @@
    "kalinjar",
    "malwa"
   ],
+  "ways": {
+   "ranthambore": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kannauj": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kalinjar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "malwa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1941.1,
-   1273.3
+   4699.2,
+   2261.2
   ],
   "label": [
-   1921.7,
-   1294.3
+   4684.0,
+   2280.8
   ],
-  "area": 13269
+  "area": 11651
  },
  "kannauj": {
   "neighbors": [
@@ -1403,15 +3568,42 @@
    "varanasi",
    "kalinjar"
   ],
+  "ways": {
+   "delhi": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ranthambore": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "gwalior": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "varanasi": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "kalinjar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   2028.9,
-   1224.2
+   4777.1,
+   2211.1
   ],
   "label": [
-   2051.9,
-   1210.9
+   4800.2,
+   2198.7
   ],
-  "area": 45558
+  "area": 41785
  },
  "varanasi": {
   "neighbors": [
@@ -1419,44 +3611,80 @@
    "bihar",
    "kalinjar"
   ],
+  "ways": {
+   "kannauj": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "bihar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "kalinjar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   2182.0,
-   1327.7
+   4921.9,
+   2317.1
   ],
   "label": [
-   2173.2,
-   1281.3
+   4909.4,
+   2276.7
   ],
-  "area": 27768
+  "area": 25362
  },
  "bihar": {
   "neighbors": [
    "varanasi",
    "bengal"
   ],
+  "ways": {
+   "varanasi": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "bengal": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   2310.0,
-   1334.9
+   5039.6,
+   2324.5
   ],
   "label": [
-   2333.8,
-   1306.0
+   5061.1,
+   2297.0
   ],
-  "area": 38986
+  "area": 36492
  },
  "bengal": {
   "neighbors": [
    "bihar"
   ],
+  "ways": {
+   "bihar": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   2441.0,
-   1354.7
+   5160.9,
+   2344.8
   ],
   "label": [
-   2461.7,
-   1419.0
+   5181.1,
+   2412.1
   ],
-  "area": 54151
+  "area": 71417
  },
  "kalinjar": {
   "neighbors": [
@@ -1465,15 +3693,37 @@
    "varanasi",
    "malwa"
   ],
+  "ways": {
+   "gwalior": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kannauj": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "varanasi": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "malwa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   2057.0,
-   1346.9
+   4808.3,
+   2336.8
   ],
   "label": [
-   2040.8,
-   1410.8
+   4799.2,
+   2401.0
   ],
-  "area": 26437
+  "area": 25495
  },
  "malwa": {
   "neighbors": [
@@ -1482,17 +3732,55 @@
    "gwalior",
    "kalinjar",
    "gujarat",
+   "saurashtra",
    "marwar"
   ],
+  "ways": {
+   "ajmer": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ranthambore": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gwalior": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kalinjar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gujarat": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "saurashtra": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "marwar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1797.0,
-   1490.6
+   4574.0,
+   2485.4
   ],
   "label": [
-   1868.3,
-   1459.0
+   4640.5,
+   2452.6
   ],
-  "area": 26011
+  "area": 25330
  },
  "gujarat": {
   "neighbors": [
@@ -1501,30 +3789,70 @@
    "saurashtra",
    "marwar"
   ],
+  "ways": {
+   "thatta": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "malwa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "saurashtra": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "marwar": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
   "city": [
-   1637.4,
-   1415.7
+   4425.0,
+   2407.8
   ],
   "label": [
-   1641.2,
-   1440.8
+   4424.6,
+   2431.4
   ],
-  "area": 26534
+  "area": 25799
  },
  "saurashtra": {
   "neighbors": [
    "thatta",
+   "malwa",
    "gujarat"
   ],
+  "ways": {
+   "thatta": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "malwa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gujarat": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1554.1,
-   1555.2
+   4350.3,
+   2552.8
   ],
   "label": [
-   1575.8,
-   1541.0
+   4366.6,
+   2531.3
   ],
-  "area": 18653
+  "area": 17575
  },
  "marwar": {
   "neighbors": [
@@ -1534,15 +3862,42 @@
    "gujarat",
    "thar"
   ],
+  "ways": {
+   "thatta": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "ajmer": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "malwa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gujarat": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "thar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1662.5,
-   1325.9
+   4446.2,
+   2315.3
   ],
   "label": [
-   1662.3,
-   1314.4
+   4443.3,
+   2305.6
   ],
-  "area": 21762
+  "area": 20743
  },
  "thar": {
   "neighbors": [
@@ -1552,14 +3907,3215 @@
    "ajmer",
    "marwar"
   ],
+  "ways": {
+   "multan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "thatta": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "sehwan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "ajmer": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "marwar": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
   "city": [
-   1576.2,
-   1232.6
+   4365.5,
+   2219.6
   ],
   "label": [
-   1589.2,
-   1235.7
+   4379.1,
+   2220.7
   ],
-  "area": 19852
+  "area": 19425
+ },
+ "constantinople": {
+  "neighbors": [
+   "thrace",
+   "nicaea"
+  ],
+  "ways": {
+   "thrace": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nicaea": {
+    "river": 0,
+    "pass": false,
+    "sea": true
+   }
+  },
+  "city": [
+   2567.4,
+   1393.7
+  ],
+  "label": [
+   2560.6,
+   1386.7
+  ],
+  "area": 1391
+ },
+ "thrace": {
+  "neighbors": [
+   "constantinople",
+   "thessalonica",
+   "smyrna",
+   "tarnovo",
+   "sofia",
+   "varna"
+  ],
+  "ways": {
+   "constantinople": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "thessalonica": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "smyrna": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tarnovo": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sofia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "varna": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2471.8,
+   1356.5
+  ],
+  "label": [
+   2471.7,
+   1373.2
+  ],
+  "area": 13945
+ },
+ "thessalonica": {
+  "neighbors": [
+   "thrace",
+   "hellas",
+   "epirus",
+   "sofia",
+   "ras"
+  ],
+  "ways": {
+   "thrace": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "hellas": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "epirus": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sofia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ras": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2306.9,
+   1414.3
+  ],
+  "label": [
+   2279.7,
+   1385.3
+  ],
+  "area": 13914
+ },
+ "hellas": {
+  "neighbors": [
+   "thessalonica",
+   "morea"
+  ],
+  "ways": {
+   "thessalonica": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "morea": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2311.6,
+   1564.4
+  ],
+  "label": [
+   2279.9,
+   1532.9
+  ],
+  "area": 5451
+ },
+ "morea": {
+  "neighbors": [
+   "hellas",
+   "epirus"
+  ],
+  "ways": {
+   "hellas": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "epirus": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2245.6,
+   1616.5
+  ],
+  "label": [
+   2238.0,
+   1578.8
+  ],
+  "area": 9363
+ },
+ "epirus": {
+  "neighbors": [
+   "thessalonica",
+   "morea",
+   "apulia",
+   "ras"
+  ],
+  "ways": {
+   "thessalonica": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "morea": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "apulia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ras": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2166.9,
+   1376.5
+  ],
+  "label": [
+   2185.1,
+   1419.3
+  ],
+  "area": 11521
+ },
+ "nicaea": {
+  "neighbors": [
+   "constantinople",
+   "smyrna",
+   "konya",
+   "ankara"
+  ],
+  "ways": {
+   "constantinople": {
+    "river": 0,
+    "pass": false,
+    "sea": true
+   },
+   "smyrna": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "konya": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ankara": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2593.3,
+   1426.0
+  ],
+  "label": [
+   2593.1,
+   1459.1
+  ],
+  "area": 13375
+ },
+ "smyrna": {
+  "neighbors": [
+   "thrace",
+   "nicaea",
+   "attaleia",
+   "konya"
+  ],
+  "ways": {
+   "thrace": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nicaea": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "attaleia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "konya": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2463.3,
+   1539.4
+  ],
+  "label": [
+   2503.2,
+   1524.6
+  ],
+  "area": 17513
+ },
+ "attaleia": {
+  "neighbors": [
+   "smyrna",
+   "konya",
+   "cyprus"
+  ],
+  "ways": {
+   "smyrna": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "konya": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "cyprus": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2603.5,
+   1627.4
+  ],
+  "label": [
+   2582.3,
+   1606.0
+  ],
+  "area": 12070
+ },
+ "trebizond": {
+  "neighbors": [
+   "sivas",
+   "erzurum",
+   "cumania"
+  ],
+  "ways": {
+   "sivas": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "erzurum": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "cumania": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   3023.1,
+   1394.2
+  ],
+  "label": [
+   3005.2,
+   1422.6
+  ],
+  "area": 6620
+ },
+ "konya": {
+  "neighbors": [
+   "nicaea",
+   "smyrna",
+   "attaleia",
+   "kayseri",
+   "ankara",
+   "cilicia",
+   "cyprus"
+  ],
+  "ways": {
+   "nicaea": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "smyrna": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "attaleia": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kayseri": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ankara": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "cilicia": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "cyprus": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2689.0,
+   1570.7
+  ],
+  "label": [
+   2704.3,
+   1572.7
+  ],
+  "area": 17766
+ },
+ "kayseri": {
+  "neighbors": [
+   "konya",
+   "sivas",
+   "ankara",
+   "kastamonu",
+   "cilicia"
+  ],
+  "ways": {
+   "konya": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "sivas": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ankara": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kastamonu": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "cilicia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2825.3,
+   1521.8
+  ],
+  "label": [
+   2824.8,
+   1517.1
+  ],
+  "area": 9250
+ },
+ "sivas": {
+  "neighbors": [
+   "trebizond",
+   "kayseri",
+   "malatya",
+   "erzurum",
+   "kastamonu",
+   "cilicia"
+  ],
+  "ways": {
+   "trebizond": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kayseri": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "malatya": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "erzurum": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "kastamonu": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "cilicia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2899.1,
+   1464.2
+  ],
+  "label": [
+   2907.7,
+   1443.0
+  ],
+  "area": 14925
+ },
+ "malatya": {
+  "neighbors": [
+   "amid",
+   "sivas",
+   "erzurum",
+   "cilicia",
+   "edessa",
+   "aleppo"
+  ],
+  "ways": {
+   "amid": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "sivas": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "erzurum": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "cilicia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "edessa": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "aleppo": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2944.5,
+   1543.3
+  ],
+  "label": [
+   2940.8,
+   1559.0
+  ],
+  "area": 6576
+ },
+ "ankara": {
+  "neighbors": [
+   "nicaea",
+   "konya",
+   "kayseri",
+   "kastamonu"
+  ],
+  "ways": {
+   "nicaea": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "konya": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kayseri": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kastamonu": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2722.7,
+   1454.1
+  ],
+  "label": [
+   2716.0,
+   1456.6
+  ],
+  "area": 12163
+ },
+ "erzurum": {
+  "neighbors": [
+   "amid",
+   "imereti",
+   "ani",
+   "nakhchivan",
+   "trebizond",
+   "sivas",
+   "malatya"
+  ],
+  "ways": {
+   "amid": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "imereti": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "ani": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nakhchivan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "trebizond": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "sivas": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "malatya": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   3081.9,
+   1455.7
+  ],
+  "label": [
+   3088.9,
+   1482.9
+  ],
+  "area": 16798
+ },
+ "kastamonu": {
+  "neighbors": [
+   "kayseri",
+   "sivas",
+   "ankara"
+  ],
+  "ways": {
+   "kayseri": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "sivas": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ankara": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2774.3,
+   1373.1
+  ],
+  "label": [
+   2772.2,
+   1386.3
+  ],
+  "area": 11511
+ },
+ "cilicia": {
+  "neighbors": [
+   "konya",
+   "kayseri",
+   "sivas",
+   "malatya",
+   "aleppo",
+   "antioch",
+   "cyprus"
+  ],
+  "ways": {
+   "konya": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kayseri": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "sivas": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "malatya": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "aleppo": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "antioch": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "cyprus": {
+    "river": 0,
+    "pass": false,
+    "sea": true
+   }
+  },
+  "city": [
+   2830.3,
+   1595.3
+  ],
+  "label": [
+   2853.1,
+   1581.1
+  ],
+  "area": 9955
+ },
+ "cairo": {
+  "neighbors": [
+   "alexandria",
+   "qus",
+   "jerusalem",
+   "karak"
+  ],
+  "ways": {
+   "alexandria": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "qus": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "jerusalem": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "karak": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2574.6,
+   2030.0
+  ],
+  "label": [
+   2513.8,
+   2105.2
+  ],
+  "area": 42782
+ },
+ "alexandria": {
+  "neighbors": [
+   "cairo",
+   "barqa"
+  ],
+  "ways": {
+   "cairo": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "barqa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2523.6,
+   1960.5
+  ],
+  "label": [
+   2370.1,
+   2016.9
+  ],
+  "area": 29760
+ },
+ "qus": {
+  "neighbors": [
+   "cairo",
+   "nobadia"
+  ],
+  "ways": {
+   "cairo": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "nobadia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2617.6,
+   2280.8
+  ],
+  "label": [
+   2523.3,
+   2274.4
+  ],
+  "area": 65459
+ },
+ "damascus": {
+  "neighbors": [
+   "baghdad",
+   "jerusalem",
+   "karak",
+   "homs",
+   "acre",
+   "tripoli"
+  ],
+  "ways": {
+   "baghdad": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "jerusalem": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "karak": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "homs": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "acre": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tripoli": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2823.7,
+   1823.5
+  ],
+  "label": [
+   2949.0,
+   1883.6
+  ],
+  "area": 19859
+ },
+ "jerusalem": {
+  "neighbors": [
+   "cairo",
+   "damascus",
+   "karak",
+   "acre"
+  ],
+  "ways": {
+   "cairo": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "damascus": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "karak": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "acre": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2764.9,
+   1925.9
+  ],
+  "label": [
+   2765.2,
+   1911.9
+  ],
+  "area": 4349
+ },
+ "karak": {
+  "neighbors": [
+   "baghdad",
+   "cairo",
+   "damascus",
+   "jerusalem"
+  ],
+  "ways": {
+   "baghdad": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "cairo": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "damascus": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "jerusalem": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2782.5,
+   1961.7
+  ],
+  "label": [
+   2771.8,
+   2018.2
+  ],
+  "area": 24818
+ },
+ "homs": {
+  "neighbors": [
+   "baghdad",
+   "mosul",
+   "damascus",
+   "edessa",
+   "aleppo",
+   "antioch",
+   "tripoli"
+  ],
+  "ways": {
+   "baghdad": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "mosul": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "damascus": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "edessa": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "aleppo": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "antioch": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tripoli": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2850.3,
+   1752.0
+  ],
+  "label": [
+   2920.1,
+   1772.3
+  ],
+  "area": 18806
+ },
+ "edessa": {
+  "neighbors": [
+   "mosul",
+   "amid",
+   "malatya",
+   "homs",
+   "aleppo"
+  ],
+  "ways": {
+   "mosul": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "amid": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "malatya": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "homs": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "aleppo": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2957.3,
+   1611.3
+  ],
+  "label": [
+   2980.8,
+   1608.3
+  ],
+  "area": 13086
+ },
+ "aleppo": {
+  "neighbors": [
+   "malatya",
+   "cilicia",
+   "homs",
+   "edessa",
+   "antioch"
+  ],
+  "ways": {
+   "malatya": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "cilicia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "homs": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "edessa": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "antioch": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2879.9,
+   1666.6
+  ],
+  "label": [
+   2893.0,
+   1645.6
+  ],
+  "area": 7483
+ },
+ "acre": {
+  "neighbors": [
+   "damascus",
+   "jerusalem",
+   "tripoli",
+   "cyprus"
+  ],
+  "ways": {
+   "damascus": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "jerusalem": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tripoli": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "cyprus": {
+    "river": 0,
+    "pass": false,
+    "sea": true
+   }
+  },
+  "city": [
+   2766.2,
+   1857.7
+  ],
+  "label": [
+   2785.7,
+   1845.4
+  ],
+  "area": 2472
+ },
+ "antioch": {
+  "neighbors": [
+   "cilicia",
+   "homs",
+   "aleppo"
+  ],
+  "ways": {
+   "cilicia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "homs": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "aleppo": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2836.2,
+   1666.6
+  ],
+  "label": [
+   2843.4,
+   1672.0
+  ],
+  "area": 3439
+ },
+ "tripoli": {
+  "neighbors": [
+   "damascus",
+   "homs",
+   "acre"
+  ],
+  "ways": {
+   "damascus": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "homs": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "acre": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2810.4,
+   1769.0
+  ],
+  "label": [
+   2826.1,
+   1778.9
+  ],
+  "area": 1506
+ },
+ "cyprus": {
+  "neighbors": [
+   "attaleia",
+   "konya",
+   "cilicia",
+   "acre"
+  ],
+  "ways": {
+   "attaleia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "konya": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "cilicia": {
+    "river": 0,
+    "pass": false,
+    "sea": true
+   },
+   "acre": {
+    "river": 0,
+    "pass": false,
+    "sea": true
+   }
+  },
+  "city": [
+   2706.1,
+   1726.4
+  ],
+  "label": [
+   2732.4,
+   1639.8
+  ],
+  "area": 6259
+ },
+ "marrakesh": {
+  "neighbors": [
+   "fez",
+   "sijilmasa"
+  ],
+  "ways": {
+   "fez": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sijilmasa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   830.6,
+   1934.8
+  ],
+  "label": [
+   805.2,
+   2076.9
+  ],
+  "area": 55941
+ },
+ "fez": {
+  "neighbors": [
+   "marrakesh",
+   "sijilmasa",
+   "tlemcen"
+  ],
+  "ways": {
+   "marrakesh": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sijilmasa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tlemcen": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   1002.3,
+   1793.0
+  ],
+  "label": [
+   1052.1,
+   1825.5
+  ],
+  "area": 22765
+ },
+ "sijilmasa": {
+  "neighbors": [
+   "marrakesh",
+   "fez",
+   "tlemcen"
+  ],
+  "ways": {
+   "marrakesh": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "fez": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tlemcen": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   992.3,
+   1955.7
+  ],
+  "label": [
+   1076.0,
+   1997.9
+  ],
+  "area": 75773
+ },
+ "tlemcen": {
+  "neighbors": [
+   "fez",
+   "sijilmasa",
+   "bejaia"
+  ],
+  "ways": {
+   "fez": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sijilmasa": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "bejaia": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   1178.5,
+   1743.3
+  ],
+  "label": [
+   1255.8,
+   1790.7
+  ],
+  "area": 55118
+ },
+ "bejaia": {
+  "neighbors": [
+   "tlemcen",
+   "tunis"
+  ],
+  "ways": {
+   "tlemcen": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tunis": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   1486.7,
+   1634.9
+  ],
+  "label": [
+   1457.5,
+   1736.6
+  ],
+  "area": 49296
+ },
+ "tunis": {
+  "neighbors": [
+   "bejaia",
+   "tripolitania",
+   "palermo"
+  ],
+  "ways": {
+   "bejaia": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tripolitania": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "palermo": {
+    "river": 0,
+    "pass": false,
+    "sea": true
+   }
+  },
+  "city": [
+   1709.5,
+   1632.0
+  ],
+  "label": [
+   1666.2,
+   1709.8
+  ],
+  "area": 19991
+ },
+ "tripolitania": {
+  "neighbors": [
+   "tunis",
+   "barqa"
+  ],
+  "ways": {
+   "tunis": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "barqa": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   1792.5,
+   1859.5
+  ],
+  "label": [
+   1750.8,
+   1967.0
+  ],
+  "area": 60591
+ },
+ "barqa": {
+  "neighbors": [
+   "alexandria",
+   "tripolitania"
+  ],
+  "ways": {
+   "alexandria": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tripolitania": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2091.0,
+   1905.7
+  ],
+  "label": [
+   2178.7,
+   2005.1
+  ],
+  "area": 58048
+ },
+ "nobadia": {
+  "neighbors": [
+   "qus",
+   "dongola"
+  ],
+  "ways": {
+   "qus": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "dongola": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2543.8,
+   2510.3
+  ],
+  "label": [
+   2669.2,
+   2531.9
+  ],
+  "area": 73469
+ },
+ "dongola": {
+  "neighbors": [
+   "nobadia"
+  ],
+  "ways": {
+   "nobadia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2485.2,
+   2760.2
+  ],
+  "label": [
+   2443.2,
+   2797.2
+  ],
+  "area": 136700
+ },
+ "palermo": {
+  "neighbors": [
+   "naples",
+   "tunis"
+  ],
+  "ways": {
+   "tunis": {
+    "river": 0,
+    "pass": false,
+    "sea": true
+   },
+   "naples": {
+    "river": 0,
+    "pass": false,
+    "sea": true
+   }
+  },
+  "city": [
+   1865.1,
+   1556.4
+  ],
+  "label": [
+   1903.5,
+   1592.1
+  ],
+  "area": 7610
+ },
+ "naples": {
+  "neighbors": [
+   "palermo",
+   "apulia",
+   "rome"
+  ],
+  "ways": {
+   "palermo": {
+    "river": 0,
+    "pass": false,
+    "sea": true
+   },
+   "apulia": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "rome": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   1941.0,
+   1402.6
+  ],
+  "label": [
+   1958.2,
+   1383.5
+  ],
+  "area": 5839
+ },
+ "apulia": {
+  "neighbors": [
+   "epirus",
+   "naples",
+   "venice",
+   "ras"
+  ],
+  "ways": {
+   "epirus": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "naples": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "venice": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ras": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2055.0,
+   1387.6
+  ],
+  "label": [
+   2022.6,
+   1409.8
+  ],
+  "area": 11051
+ },
+ "rome": {
+  "neighbors": [
+   "naples",
+   "romagna",
+   "tuscany"
+  ],
+  "ways": {
+   "naples": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "romagna": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tuscany": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   1881.0,
+   1344.4
+  ],
+  "label": [
+   1910.8,
+   1338.7
+  ],
+  "area": 7221
+ },
+ "romagna": {
+  "neighbors": [
+   "rome",
+   "tuscany",
+   "venice",
+   "milan"
+  ],
+  "ways": {
+   "rome": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tuscany": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "venice": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "milan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   1906.4,
+   1206.9
+  ],
+  "label": [
+   1888.6,
+   1202.2
+  ],
+  "area": 5010
+ },
+ "tuscany": {
+  "neighbors": [
+   "rome",
+   "romagna",
+   "genoa",
+   "milan"
+  ],
+  "ways": {
+   "rome": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "romagna": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "genoa": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "milan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   1856.8,
+   1242.1
+  ],
+  "label": [
+   1852.5,
+   1262.0
+  ],
+  "area": 8307
+ },
+ "venice": {
+  "neighbors": [
+   "apulia",
+   "romagna",
+   "milan",
+   "ras",
+   "hungary"
+  ],
+  "ways": {
+   "apulia": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "romagna": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "milan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ras": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hungary": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   1927.6,
+   1152.3
+  ],
+  "label": [
+   2039.3,
+   1124.3
+  ],
+  "area": 21912
+ },
+ "genoa": {
+  "neighbors": [
+   "tuscany",
+   "milan"
+  ],
+  "ways": {
+   "tuscany": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "milan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   1770.6,
+   1207.5
+  ],
+  "label": [
+   1722.6,
+   1190.7
+  ],
+  "area": 10926
+ },
+ "milan": {
+  "neighbors": [
+   "romagna",
+   "tuscany",
+   "venice",
+   "genoa"
+  ],
+  "ways": {
+   "romagna": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tuscany": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "venice": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "genoa": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   1798.7,
+   1151.2
+  ],
+  "label": [
+   1813.2,
+   1155.0
+  ],
+  "area": 10011
+ },
+ "tarnovo": {
+  "neighbors": [
+   "thrace",
+   "sofia",
+   "varna",
+   "hungary"
+  ],
+  "ways": {
+   "thrace": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sofia": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "varna": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hungary": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2448.0,
+   1279.6
+  ],
+  "label": [
+   2442.2,
+   1174.9
+  ],
+  "area": 25118
+ },
+ "sofia": {
+  "neighbors": [
+   "thrace",
+   "thessalonica",
+   "tarnovo",
+   "ras",
+   "hungary"
+  ],
+  "ways": {
+   "thrace": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "thessalonica": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tarnovo": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ras": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hungary": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2346.8,
+   1300.4
+  ],
+  "label": [
+   2348.5,
+   1322.6
+  ],
+  "area": 20838
+ },
+ "varna": {
+  "neighbors": [
+   "thrace",
+   "tarnovo",
+   "cumania"
+  ],
+  "ways": {
+   "thrace": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tarnovo": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "cumania": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2544.9,
+   1272.5
+  ],
+  "label": [
+   2558.2,
+   1143.3
+  ],
+  "area": 27398
+ },
+ "ras": {
+  "neighbors": [
+   "thessalonica",
+   "epirus",
+   "apulia",
+   "venice",
+   "sofia",
+   "hungary"
+  ],
+  "ways": {
+   "thessalonica": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "epirus": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "apulia": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "venice": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sofia": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hungary": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2234.2,
+   1275.8
+  ],
+  "label": [
+   2217.2,
+   1229.1
+  ],
+  "area": 34336
+ },
+ "hungary": {
+  "neighbors": [
+   "venice",
+   "tarnovo",
+   "sofia",
+   "ras"
+  ],
+  "ways": {
+   "venice": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tarnovo": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "sofia": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ras": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   2224.7,
+   1028.5
+  ],
+  "label": [
+   2292.9,
+   1050.0
+  ],
+  "area": 52550
+ },
+ "cumania": {
+  "neighbors": [
+   "trebizond",
+   "varna"
+  ],
+  "ways": {
+   "trebizond": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "varna": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   2877.0,
+   1059.3
+  ],
+  "label": [
+   2960.7,
+   983.2
+  ],
+  "area": 87777
+ },
+ "zhongdu": {
+  "neighbors": [
+   "datong",
+   "liaoyang",
+   "taiyuan",
+   "jinan"
+  ],
+  "ways": {
+   "datong": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "liaoyang": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "taiyuan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "jinan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   6292.6,
+   1455.7
+  ],
+  "label": [
+   6310.4,
+   1363.7
+  ],
+  "area": 48357
+ },
+ "kaifeng": {
+  "neighbors": [
+   "taiyuan",
+   "jingzhao",
+   "jinan",
+   "jiankang",
+   "xiangyang",
+   "ezhou"
+  ],
+  "ways": {
+   "taiyuan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "jingzhao": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "jinan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "jiankang": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "xiangyang": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ezhou": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   6266.0,
+   1747.9
+  ],
+  "label": [
+   6237.5,
+   1776.1
+  ],
+  "area": 47192
+ },
+ "datong": {
+  "neighbors": [
+   "zhongdu",
+   "taiyuan",
+   "xingqing"
+  ],
+  "ways": {
+   "zhongdu": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "taiyuan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "xingqing": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   6157.8,
+   1445.6
+  ],
+  "label": [
+   6128.5,
+   1387.2
+  ],
+  "area": 55912
+ },
+ "liaoyang": {
+  "neighbors": [
+   "zhongdu",
+   "huining"
+  ],
+  "ways": {
+   "zhongdu": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "huining": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   6560.4,
+   1379.2
+  ],
+  "label": [
+   6586.8,
+   1349.3
+  ],
+  "area": 60489
+ },
+ "huining": {
+  "neighbors": [
+   "liaoyang"
+  ],
+  "ways": {
+   "liaoyang": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   6643.2,
+   1149.1
+  ],
+  "label": [
+   6702.0,
+   1108.1
+  ],
+  "area": 115684
+ },
+ "taiyuan": {
+  "neighbors": [
+   "zhongdu",
+   "kaifeng",
+   "datong",
+   "jingzhao",
+   "jinan"
+  ],
+  "ways": {
+   "zhongdu": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "kaifeng": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "datong": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "jingzhao": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "jinan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   6153.3,
+   1570.7
+  ],
+  "label": [
+   6164.1,
+   1590.8
+  ],
+  "area": 35456
+ },
+ "jingzhao": {
+  "neighbors": [
+   "kaifeng",
+   "taiyuan",
+   "xiangyang",
+   "hanzhong",
+   "xingqing"
+  ],
+  "ways": {
+   "kaifeng": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "taiyuan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "xiangyang": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hanzhong": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "xingqing": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   6036.0,
+   1778.9
+  ],
+  "label": [
+   6034.6,
+   1770.1
+  ],
+  "area": 33707
+ },
+ "jinan": {
+  "neighbors": [
+   "zhongdu",
+   "kaifeng",
+   "taiyuan",
+   "jiankang"
+  ],
+  "ways": {
+   "zhongdu": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "kaifeng": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "taiyuan": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "jiankang": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   6361.0,
+   1639.5
+  ],
+  "label": [
+   6413.5,
+   1675.9
+  ],
+  "area": 46119
+ },
+ "linan": {
+  "neighbors": [
+   "jiankang",
+   "ezhou",
+   "changsha",
+   "quanzhou"
+  ],
+  "ways": {
+   "jiankang": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ezhou": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "changsha": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "quanzhou": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   6578.8,
+   2016.2
+  ],
+  "label": [
+   6568.5,
+   2117.7
+  ],
+  "area": 40918
+ },
+ "jiankang": {
+  "neighbors": [
+   "kaifeng",
+   "jinan",
+   "linan",
+   "ezhou"
+  ],
+  "ways": {
+   "kaifeng": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "jinan": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "linan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ezhou": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   6497.5,
+   1909.3
+  ],
+  "label": [
+   6475.5,
+   1899.1
+  ],
+  "area": 43513
+ },
+ "xiangyang": {
+  "neighbors": [
+   "kaifeng",
+   "jingzhao",
+   "ezhou",
+   "chengdu",
+   "changsha",
+   "hanzhong"
+  ],
+  "ways": {
+   "kaifeng": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "jingzhao": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "ezhou": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "chengdu": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "changsha": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "hanzhong": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   6200.0,
+   1912.8
+  ],
+  "label": [
+   6165.6,
+   1955.5
+  ],
+  "area": 32923
+ },
+ "ezhou": {
+  "neighbors": [
+   "kaifeng",
+   "linan",
+   "jiankang",
+   "xiangyang",
+   "changsha"
+  ],
+  "ways": {
+   "kaifeng": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "linan": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "jiankang": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "xiangyang": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "changsha": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   6312.5,
+   1999.4
+  ],
+  "label": [
+   6374.7,
+   1981.6
+  ],
+  "area": 28711
+ },
+ "chengdu": {
+  "neighbors": [
+   "xiangyang",
+   "hanzhong",
+   "liangzhou",
+   "dali"
+  ],
+  "ways": {
+   "xiangyang": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "hanzhong": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "liangzhou": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "dali": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5851.7,
+   1992.8
+  ],
+  "label": [
+   5801.6,
+   1993.1
+  ],
+  "area": 110090
+ },
+ "changsha": {
+  "neighbors": [
+   "linan",
+   "xiangyang",
+   "ezhou",
+   "quanzhou",
+   "guangzhou"
+  ],
+  "ways": {
+   "linan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "xiangyang": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "ezhou": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "quanzhou": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "guangzhou": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   6275.4,
+   2141.1
+  ],
+  "label": [
+   6261.4,
+   2212.1
+  ],
+  "area": 85836
+ },
+ "quanzhou": {
+  "neighbors": [
+   "linan",
+   "changsha",
+   "guangzhou"
+  ],
+  "ways": {
+   "linan": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "changsha": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "guangzhou": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   6567.4,
+   2344.8
+  ],
+  "label": [
+   6495.9,
+   2274.2
+  ],
+  "area": 32986
+ },
+ "guangzhou": {
+  "neighbors": [
+   "changsha",
+   "quanzhou"
+  ],
+  "ways": {
+   "changsha": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "quanzhou": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   6332.2,
+   2452.5
+  ],
+  "label": [
+   6235.2,
+   2448.0
+  ],
+  "area": 69833
+ },
+ "hanzhong": {
+  "neighbors": [
+   "jingzhao",
+   "xiangyang",
+   "chengdu"
+  ],
+  "ways": {
+   "jingzhao": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "xiangyang": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "chengdu": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5962.8,
+   1849.5
+  ],
+  "label": [
+   5969.0,
+   1835.2
+  ],
+  "area": 16304
+ },
+ "xingqing": {
+  "neighbors": [
+   "datong",
+   "jingzhao",
+   "liangzhou",
+   "gobi"
+  ],
+  "ways": {
+   "datong": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "jingzhao": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   },
+   "liangzhou": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "gobi": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5875.2,
+   1536.5
+  ],
+  "label": [
+   5888.2,
+   1489.6
+  ],
+  "area": 50383
+ },
+ "ganzhou": {
+  "neighbors": [
+   "shazhou",
+   "liangzhou",
+   "gobi"
+  ],
+  "ways": {
+   "shazhou": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "liangzhou": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gobi": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5620.1,
+   1510.4
+  ],
+  "label": [
+   5600.3,
+   1457.6
+  ],
+  "area": 61030
+ },
+ "shazhou": {
+  "neighbors": [
+   "ganzhou",
+   "hami"
+  ],
+  "ways": {
+   "ganzhou": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hami": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5361.7,
+   1442.3
+  ],
+  "label": [
+   5391.1,
+   1476.3
+  ],
+  "area": 73035
+ },
+ "liangzhou": {
+  "neighbors": [
+   "chengdu",
+   "xingqing",
+   "ganzhou",
+   "gobi"
+  ],
+  "ways": {
+   "chengdu": {
+    "river": 1,
+    "pass": true,
+    "sea": false
+   },
+   "xingqing": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ganzhou": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gobi": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5723.9,
+   1567.3
+  ],
+  "label": [
+   5746.7,
+   1679.8
+  ],
+  "area": 62218
+ },
+ "dali": {
+  "neighbors": [
+   "chengdu"
+  ],
+  "ways": {
+   "chengdu": {
+    "river": 1,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5715.3,
+   2299.9
+  ],
+  "label": [
+   5655.9,
+   2287.8
+  ],
+  "area": 100714
+ },
+ "qocho": {
+  "neighbors": [
+   "almaliq",
+   "hami",
+   "altai"
+  ],
+  "ways": {
+   "almaliq": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hami": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "altai": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   5109.0,
+   1286.7
+  ],
+  "label": [
+   5070.4,
+   1229.5
+  ],
+  "area": 88358
+ },
+ "hami": {
+  "neighbors": [
+   "shazhou",
+   "qocho",
+   "altai"
+  ],
+  "ways": {
+   "shazhou": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "qocho": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "altai": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   5291.4,
+   1293.3
+  ],
+  "label": [
+   5304.2,
+   1266.6
+  ],
+  "area": 70758
+ },
+ "kherlen": {
+  "neighbors": [
+   "tula",
+   "selenga",
+   "buir",
+   "gobi"
+  ],
+  "ways": {
+   "tula": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "selenga": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "buir": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "gobi": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5879.8,
+   1043.6
+  ],
+  "label": [
+   5914.7,
+   1063.4
+  ],
+  "area": 81319
+ },
+ "tula": {
+  "neighbors": [
+   "kherlen",
+   "selenga",
+   "gobi"
+  ],
+  "ways": {
+   "kherlen": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "selenga": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "gobi": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5692.5,
+   1022.8
+  ],
+  "label": [
+   5608.5,
+   1067.2
+  ],
+  "area": 68008
+ },
+ "altai": {
+  "neighbors": [
+   "qocho",
+   "hami"
+  ],
+  "ways": {
+   "qocho": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "hami": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   5194.8,
+   1069.8
+  ],
+  "label": [
+   5318.5,
+   1069.4
+  ],
+  "area": 78117
+ },
+ "selenga": {
+  "neighbors": [
+   "kherlen",
+   "tula"
+  ],
+  "ways": {
+   "kherlen": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   },
+   "tula": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5737.6,
+   915.2
+  ],
+  "label": [
+   5814.5,
+   846.4
+  ],
+  "area": 72032
+ },
+ "buir": {
+  "neighbors": [
+   "kherlen"
+  ],
+  "ways": {
+   "kherlen": {
+    "river": 0,
+    "pass": true,
+    "sea": false
+   }
+  },
+  "city": [
+   6227.6,
+   1028.0
+  ],
+  "label": [
+   6328.7,
+   1072.9
+  ],
+  "area": 131590
+ },
+ "gobi": {
+  "neighbors": [
+   "xingqing",
+   "ganzhou",
+   "liangzhou",
+   "kherlen",
+   "tula"
+  ],
+  "ways": {
+   "xingqing": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "ganzhou": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "liangzhou": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "kherlen": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   },
+   "tula": {
+    "river": 0,
+    "pass": false,
+    "sea": false
+   }
+  },
+  "city": [
+   5771.2,
+   1284.0
+  ],
+  "label": [
+   5770.5,
+   1286.2
+  ],
+  "area": 83731
  }
 }

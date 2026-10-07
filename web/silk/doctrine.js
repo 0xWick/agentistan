@@ -33,10 +33,18 @@ export function plan(s, id, rng) {
 
   if (r.rebel) return { ...p, recruit: 0.9, targets: wars.filter((w) => w === r.cause), peace: [] };
 
-  // The Mongols make war on everyone they touch; most neighbours of a horde think about bowing.
-  if (r.id === 'mongol') return { ...p, war: next.filter((n) => !friendly(s, id, n)), targets: next.filter((n) => !friendly(s, id, n)), recruit: 1, peace: [], until: s.month + 4 };
-  if (s.realms.mongol && !s.realms.mongol.fallen && next.includes('mongol') && !r.overlord && me < strength(s, 'mongol') * 0.4 && rng() < (cautious ? 0.3 : 0.1)) {
-    return { ...p, submit: 'mongol', peace: [], targets: wars.filter((w) => w !== 'mongol') };
+  // A horde makes war on everyone it touches; most neighbours of a horde think about bowing.
+  if (r.horde) return { ...p, war: next.filter((n) => !friendly(s, id, n)), targets: [...next.filter((n) => !friendly(s, id, n)), 'neutral'], recruit: 1, peace: [], until: s.month + 4 }; // across the Gobi too
+  // Before that, a khan of the steppe fights for the steppe, and when only his ally is left, turns on him too.
+  if (r.nomad && id === 'mongol') {
+    const tribes = next.filter((n) => s.realms[n]?.nomad && n !== 'kipchak');
+    const prey = tribes.filter((n) => !friendly(s, id, n));
+    const war = prey.length ? prey.filter((n) => !atWar(s, id, n)).slice(0, 1) : tribes.filter(() => rng() < 0.25).slice(0, 1);
+    return { ...p, war, targets: [...new Set([...wars, ...war, ...prey])], recruit: 0.9, peace: [] };
+  }
+  const horde = living(s).find((o) => o.horde && next.includes(o.id));
+  if (horde && !r.overlord && me < strength(s, horde.id) * 0.4 && rng() < (cautious ? 0.3 : 0.1)) {
+    return { ...p, submit: horde.id, peace: [], targets: wars.filter((w) => w !== horde.id) };
   }
 
   // Vassals break free when they outgrow their master; the weak bow to a crushing enemy.
@@ -72,7 +80,7 @@ export function plan(s, id, rng) {
   }
 
   // A schemer at war buys a dagger for the enemy's best man.
-  if (wars.length && r.gold > R.agents.contractCost * 1.6 && rng() < (has(ruler, 'scheming', 'shrewd', 'cruel') ? 0.1 : 0.02)) {
+  if (wars.length && r.gold > R.agents.contractCost * 1.6 && rng() < (has(ruler, 'scheming', 'shrewd', 'cruel') ? 0.06 : 0.012)) {
     const foe = wars.map((w) => s.realms[w]).filter((o) => !o.rebel).sort((a, b) => strength(s, b.id) - strength(s, a.id))[0];
     const marks = foe && Object.values(s.chars).filter((c) => c.alive && c.realm === foe.id && ['ruler', 'general'].includes(c.role)).sort((a, b) => b.skill - a.skill);
     if (marks?.length) p.hire = (rng() < 0.4 ? marks.find((c) => c.role === 'ruler') : marks[0])?.id ?? null;
@@ -91,6 +99,8 @@ export function orders(s, id, rng) {
   const claimed = new Set(armiesOf(s, id).filter((a) => a.target && a.mode !== 'idle').map((a) => a.target));
   const winter = isWinter(s.month) && !r.nomad; // settled armies keep to winter quarters
   for (const a of armiesOf(s, id)) {
+    if (a.mode === 'garrison' && s.provinces[a.at].siege) continue; // holding the walls
+    if (a.mode === 'garrison') a.mode = 'idle';
     if (a.mode === 'siege' || a.rest > 0) continue;
     if (a.path.length && a.target && rng() < 0.85 && (s.provinces[a.target].owner === null ? targets.has('neutral') : atWar(s, id, s.provinces[a.target].owner))) continue;
     // An enemy army on our land, close by and not stronger: go and meet it, winter or not.

@@ -67,8 +67,8 @@
 
   <footer class="player panel">
     <button class="round" id="new" title="A new age: history again from 1200" aria-label="New age"><svg viewBox="0 0 24 24"><use href="#i-dice"/></svg></button>
-    <button class="round big" id="play" aria-label="Play"></button>
-    <div class="track" aria-hidden="true"><div class="line"></div><div class="done" id="done"></div><div id="track-events"></div><div id="track-ticks"></div></div>
+    <div class="steps-ctl"><button class="round small" id="back" title="Back a month (Shift: a year)" aria-label="Back a month"><svg viewBox="0 0 24 24"><use href="#i-prev"/></svg></button><button class="round big" id="play" aria-label="Play"></button><button class="round small" id="fwd" title="Forward a month (Shift: a year)" aria-label="Forward a month"><svg viewBox="0 0 24 24"><use href="#i-next"/></svg></button></div>
+    <div class="track" title="Click or drag to go to any moment already lived"><div class="line"></div><div class="done" id="done"></div><div id="track-events"></div><div class="now" id="now"></div><div id="track-ticks"></div></div>
     <div class="speed" role="group" aria-label="Speed"><button data-speed="1">1×</button><button data-speed="4">4×</button><button data-speed="16">16×</button></div>
     <span class="yr" id="yr">1200</span>
   </footer>
