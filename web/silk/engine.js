@@ -15,7 +15,7 @@ import AGE_ANCIENT from './ages/ancient.js';
 import AGE_MODERN from './ages/modern.js';
 
 export const AGES = { 1200: AGE_1200, ancient: AGE_ANCIENT, modern: AGE_MODERN };
-export const ENGINE = 4; // bump when a change to the rules would make old records replay differently
+export const ENGINE = 5; // bump when a change to the rules would make old records replay differently
 export * from './core.js';
 export { wealthOf, yieldOf, suppliesOf, yearlyGrain, rations, cavalryOf, garrisonOf, wallPower, strength, manpower, incomeOf, prosperityOf, steersman, rulingTemper, knows, canBuild, tradeOpen, treatiesOf, pairTreaties } from './economy.js';
 export { moveCost, route, declareWar, makePeace, peaceTerms, capture, conflictOf } from './war.js';
