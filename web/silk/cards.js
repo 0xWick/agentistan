@@ -4,6 +4,8 @@
 import { PROV, PROVINCES, LAND, provincesOf, armiesOf, living, atWar, friendly, yieldOf, cavalryOf, rations, isWinter, dateText, yearOf, weatherOf, seasonName, ageOf, menOf,
   prosperityOf, steersman, rulingTemper, treatiesOf, INVENTIONS, fortuneOf, cityOf, placeOf } from './engine.js';
 import { TEMPER_TEXT } from './names.js';
+import { isGreat } from './engine.js';
+export { isGreat };
 import { S, $, esc, icon, kindOf, worth, chip, personChip, pips, meter, sign, months, men, loyalColor, colorOf } from './ui.js';
 import { portrait, paintedFor } from './portrait.js';
 
@@ -270,17 +272,6 @@ export function artFor(e) {
   const k = e.type === 'death' ? (e.cause === 'assassin' ? 'assassin' : e.cause === 'battle' ? 'battle' : 'funeral') : e.type === 'war' && /Frankish|knights/.test(e.text) ? 'expedition' : ARTKEY[e.type];
   return k && ART.has(k) ? `/art/events/${k}.webp` : null;
 }
-export function isGreat(e, st) {
-  if (['founded', 'fallen', 'split', 'coup', 'horde', 'golden', 'charter', 'commune', 'uprising', 'turncoat', 'separatist', 'defied', 'age.ended'].includes(e.type)) return true;
-  if (e.type === 'capture' && e.capital) return true;
-  if (e.type === 'death' && e.ruler && (e.cause !== 'age' || rankOf(st, e.realms?.[0]) < 8)) return true;
-  if (e.type === 'battle' && (e.lost?.[0] ?? 0) + (e.lost?.[1] ?? 0) >= 14) return true;
-  if (e.type === 'invention' && e.first) return true;
-  if (['famine', 'earthquake', 'flood'].includes(e.type) || (e.type === 'plague' && !e.minor)) return true;
-  if (e.type === 'war' && /Frankish/.test(e.text)) return true;
-  return false;
-}
-const rankOf = (st, id) => living(st).map((r) => [r.id, provincesOf(st, r.id).length]).sort((a, b) => b[1] - a[1]).findIndex(([x]) => x === id);
 export function eventCard(e, before, after, sameMonth) {
   const d = $('#event'), [ic, color] = kindOf(e), art = artFor(e);
   const realms = (e.realms ?? []).filter((id) => after.realms[id] || before.realms[id]).slice(0, 2);

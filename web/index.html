@@ -36,6 +36,7 @@
 
   <nav class="tools" aria-label="Tools">
     <button class="tool panel" id="powers-btn" aria-pressed="true"><svg viewBox="0 0 24 24"><use href="#i-crown"/></svg><span>Powers</span></button>
+    <button class="tool panel" id="rule-btn" aria-pressed="false"><svg viewBox="0 0 24 24"><use href="#i-banner"/></svg><span>Play</span></button>
     <button class="tool panel" id="ask-btn" aria-pressed="false"><svg viewBox="0 0 24 24"><use href="#i-quill"/></svg><span>Ask</span></button>
     <button class="tool panel" id="key-btn" aria-pressed="false"><svg viewBox="0 0 24 24"><use href="#i-key"/></svg><span>Key</span></button>
     <a class="tool panel" href="/classic/"><svg viewBox="0 0 24 24"><use href="#i-swords"/></svg><span>Classic war</span></a>
@@ -68,6 +69,12 @@
   </div>
 
   <div class="card panel" id="card" hidden></div>
+
+  <section class="rule panel" id="rule" hidden aria-labelledby="rule-title">
+    <button class="x" id="rule-x" aria-label="Close">×</button>
+    <h2 id="rule-title"><svg viewBox="0 0 24 24"><use href="#i-banner"/></svg>Rule a realm</h2>
+    <div id="rule-body"></div>
+  </section>
 
   <section class="ask panel" id="ask" hidden aria-labelledby="ask-title">
     <button class="x" id="ask-x" aria-label="Close">×</button>

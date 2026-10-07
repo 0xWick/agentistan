@@ -1,0 +1,117 @@
+{
+  "id": "nbpReminders0001",
+  "name": "Turn Reminders",
+  "active": true,
+  "versionId": "5b0e6a86-1f1d-4c2a-9f55-0d7a3c1e0012",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": [],
+  "nodes": [
+    {
+      "id": "62da07c4-bdc2-56e6-8caf-41ef3ea17a1f",
+      "name": "A month has turned",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reminder",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "7c1f9b2e-7c1f-4f8e-9a51-2d8e6b3c0012"
+    },
+    {
+      "id": "20ee65c5-f5a7-5c24-8c8b-f0a3d7ada46a",
+      "name": "From the world, to Discord?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "secret",
+              "leftValue": "={{ $json.headers['x-realm-secret'] }}",
+              "rightValue": "={{ $env.REALM_SECRET }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "discord",
+              "leftValue": "={{ /^https:\\/\\/(discord|discordapp)\\.com\\/api\\/webhooks\\/\\d+\\/[\\w-]+$/.test($json.body.webhook ?? '') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "be4eac30-e995-57a1-b39a-46fce123da24",
+      "name": "Remind the player",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.body.webhook }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ username: \"Agentistan\", embeds: [{ title: $json.body.title, description: $json.body.text, color: 11765036, url: $json.body.url, footer: { text: 'Posted by an n8n automation \\u00b7 agentistan.umarkhatana.com' } }] }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "A month has turned": {
+      "main": [
+        [
+          {
+            "node": "From the world, to Discord?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "From the world, to Discord?": {
+      "main": [
+        [
+          {
+            "node": "Remind the player",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  }
+}

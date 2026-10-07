@@ -7,7 +7,7 @@ import { economy, prosperity, incomeOf, suppliesOf } from './economy.js';
 import { march, battles, sieges, weatherToll, fall, homeless } from './war.js';
 import { court, settleDecisions, setupCourt } from './court.js';
 import { people } from './people.js';
-import { world } from './world.js';
+import { world, realSkies } from './world.js';
 import { act, applyAnswers, treaty } from './acts.js';
 import { cultureOf, personName, kingdomName, titleFor, pickTemper, temperFromTraits, isWomanName } from './names.js';
 import AGE_1200 from './ages/1200.js';
@@ -112,6 +112,7 @@ export function tick(s0, brain, inputs = {}) {
   const rng = (step) => rngFor('age', s.age, 'month', s.month, step);
 
   for (const [id, p] of Object.entries(inputs.personas ?? {})) if (s.chars[id]) s.chars[id].persona = p; // written by the AI cast
+  if (inputs.skies) realSkies(s, inputs.skies, emit);
   if (s.month === 0) emit('age.started', `The year ${yearOf(0, s)}. ${living(s).length} realms share the Old World.`);
   settleDecisions(s, inputs, brain, rng('decide'), emit);
   applyAnswers(s, rng('answers'), emit);
@@ -198,6 +199,19 @@ function end(s, winner, reason, emit) {
   Object.assign(s, { status: 'ended', winner, endReason: reason });
   emit('age.ended', reason, { realms: [winner] });
 }
+
+// ---------- the events worth stopping the story for (the page's cards, the server's heralds) ----------
+export function isGreat(e, st) {
+  if (['founded', 'fallen', 'split', 'coup', 'horde', 'golden', 'charter', 'commune', 'uprising', 'turncoat', 'separatist', 'defied', 'age.ended'].includes(e.type)) return true;
+  if (e.type === 'capture' && e.capital) return true;
+  if (e.type === 'death' && e.ruler && (e.cause !== 'age' || rankOf(st, e.realms?.[0]) < 8)) return true;
+  if (e.type === 'battle' && (e.lost?.[0] ?? 0) + (e.lost?.[1] ?? 0) >= 14) return true;
+  if (e.type === 'invention' && e.first) return true;
+  if (['famine', 'earthquake', 'flood'].includes(e.type) || (e.type === 'plague' && !e.minor)) return true;
+  if (e.type === 'war' && /Frankish/.test(e.text)) return true;
+  return false;
+}
+const rankOf = (st, id) => living(st).map((r) => [r.id, provincesOf(st, r.id).length]).sort((a, b) => b[1] - a[1]).findIndex(([x]) => x === id);
 
 // ---------- what the map shows: one compact frame per month ----------
 export function frame(s) {

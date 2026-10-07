@@ -37,6 +37,23 @@ function seasons(s, emit) {
   if (mo === 7) emit('season', 'Harvest: the granaries of the temperate lands fill for the year', { weather: 'harvest', minor: true });
 }
 
+// ---------- the real sky: today's weather over a real city, brought by n8n, falls on the game ----------
+// readings: { provinceId: { kind: 'storm' | 'rain' | 'snow' | 'heat' | 'cold', tempC, city } }. Storms and great heat
+// wear down the armies there; heavy rain may flood a river province; a hard frost thins the herds.
+export function realSkies(s, readings, emit) {
+  for (const [pid, w] of Object.entries(readings ?? {})) {
+    const P = PROV[pid], q = s.provinces[pid];
+    if (!P || !q || !w?.kind) continue;
+    const here = Object.values(s.armies).filter((a) => a.at === pid);
+    const text = { storm: 'a storm', rain: 'heavy rain', snow: 'snow', heat: 'fierce heat', cold: 'a hard frost' }[w.kind];
+    if (!text) continue;
+    if (['storm', 'heat', 'cold'].includes(w.kind)) for (const a of here) a.size = round1(a.size * 0.97);
+    if (w.kind === 'rain' && P.terrain === 'river') q.famine = Math.max(q.famine, 2);
+    if (w.kind === 'cold' && q.owner && s.realms[q.owner]) s.realms[q.owner].horses = round1((s.realms[q.owner].horses ?? 0) * 0.96);
+    emit('skies', `The real sky over ${w.city ?? P.city} today brings ${text}${Number.isFinite(w.tempC) ? ` (${Math.round(w.tempC)}°C)` : ''}${here.length ? ', and the armies camped there suffer' : ''}`, { at: pid, realms: [q.owner].filter(Boolean), weather: w.kind === 'storm' || w.kind === 'rain' ? 'rains' : w.kind === 'snow' || w.kind === 'cold' ? 'snow' : 'heat', real: true });
+  }
+}
+
 // ---------- plague, famine, flood, earthquake ----------
 function disasters(s, rng, emit) {
   const D = R.disasters;

@@ -7,6 +7,7 @@ import { newAge, tick, frame, ENGINE } from '../web/silk/engine.js';
 import { brain } from '../web/silk/doctrine.js';
 import { makeCast } from './cast.js';
 import { makeSealer, DEPLOYED, EXPLORER } from './seal.js';
+import { play, makeHeralds } from './play.js';
 
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' };
 const json = (status, body, cache = 'no-store') => new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': cache } });
@@ -31,6 +32,8 @@ export class Era extends DurableObject {
       if (env.LLM_API_KEY && env.CAST !== 'off') this.hooks.push(makeCast(env, this));
       const sealer = makeSealer(env, this);
       if (sealer) this.hooks.push(sealer);
+      const heralds = makeHeralds(env, this);
+      if (heralds) this.hooks.push(heralds);
     });
   }
 
@@ -51,7 +54,7 @@ export class Era extends DurableObject {
   public() {
     const s = this.state(), m = this.meta;
     if (!s || !m) return { status: 'none' };
-    return { age: m.age, seed: m.seed, ageId: m.ageId, engine: m.engine, month: s.month, months: s.months, startYear: s.startYear, status: s.status, pace: m.pace, next: m.next, restUntil: m.restUntil ?? null,
+    return { game: m.game ?? null, age: m.age, seed: m.seed, ageId: m.ageId, engine: m.engine, month: s.month, months: s.months, startYear: s.startYear, status: s.status, pace: m.pace, next: m.next, restUntil: m.restUntil ?? null,
       viewers: this.ctx.getWebSockets().length, endReason: s.endReason, past: (m.ages ?? []).slice(-6), chain: this.chain() };
   }
   chain() { // the registry on Base Sepolia: where it is, and the last year sealed
@@ -61,9 +64,10 @@ export class Era extends DurableObject {
   }
 
   // ---------- the turn of the month ----------
-  begin({ seed = 1 + Math.floor(Math.random() * 99999), ageId = this.meta?.ageId ?? '1200', pace = this.meta?.pace ?? PACE } = {}) {
+  begin({ seed = 1 + Math.floor(Math.random() * 99999), ageId = this.meta?.ageId ?? '1200', pace = this.meta?.pace ?? PACE, game = this.meta?.game } = {}) {
     const s = newAge(seed, ageId), age = (this.meta?.age ?? 0) + 1;
-    this.meta = { ...(this.meta ?? {}), age, seed, ageId, pace, engine: ENGINE, started: Date.now(), next: Date.now() + pace, restUntil: null, ages: this.meta?.ages ?? [] };
+    this.meta = { ...(this.meta ?? {}), age, seed, ageId, pace, game: game ?? null, engine: ENGINE, started: Date.now(), next: Date.now() + pace, restUntil: null, ages: this.meta?.ages ?? [] };
+    if (game) this.put('seats', {});
     this.s = s;
     this.put('state', s);
     this.put('meta', this.meta);
@@ -79,8 +83,9 @@ export class Era extends DurableObject {
   async alarm() {
     const s = this.state();
     if (!s || !this.meta) return;
-    if (this.meta.engine !== ENGINE) return this.begin(); // new rules: an old record would replay differently, so a new age begins
+    if (this.meta.engine !== ENGINE && !this.meta.game) return this.begin(); // new rules: an old record would replay differently, so a new age begins
     if (s.status !== 'running') { // the age is over: rest a while, then history starts again
+      if (this.meta.game) return; // a game ends when its age ends
       if (Date.now() >= (this.meta.restUntil ?? 0)) this.begin();
       else this.ctx.storage.setAlarm(this.meta.restUntil);
       return;
@@ -117,6 +122,7 @@ export class Era extends DurableObject {
       else if (kind === 'plan') (inputs.plans ??= {})[k] = val;
       else if (kind === 'act') ((inputs.acts ??= {})[k] ??= []).push(val);
       else if (kind === 'persona') ((inputs.personas ??= {})[k] = val);
+      else if (kind === 'skies') ((inputs.skies ??= {})[k] = val);
     }
     return inputs;
   }
@@ -152,15 +158,18 @@ export class Era extends DurableObject {
         else if (!(await this.ctx.storage.getAlarm())) this.ctx.storage.setAlarm(Math.max(Date.now() + 1000, this.state()?.status === 'running' ? this.meta.next : this.meta.restUntil ?? 0));
         return json(200, this.public());
       }
+      if (p === '/internal/era/skies') return (await play(this, req, p, url)) ?? json(404, { error: 'not found' });
       if (p.startsWith('/internal/era/')) {
         if (!this.authorized(req)) return json(403, { error: 'forbidden' });
         const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-        if (p === '/internal/era/start') { this.begin({ seed: body.seed, ageId: body.ageId, pace: body.pace }); return json(200, this.public()); }
+        if (p === '/internal/era/start') { this.begin({ seed: body.seed, ageId: body.ageId, pace: body.pace, game: body.game }); return json(200, this.public()); }
         if (p === '/internal/era/pace') { this.meta.pace = Math.max(10_000, +body.pace || PACE); this.meta.next = Date.now() + this.meta.pace; this.put('meta', this.meta); this.ctx.storage.setAlarm(this.meta.next); return json(200, this.public()); }
         if (p === '/internal/era/step') { await this.alarm(); return json(200, this.public()); }
         return json(404, { error: 'not found' });
       }
       if (!this.allow(ip)) return json(429, { error: 'slow down' });
+      if (p === '/api/games') return (await play(this, req, p, url)) ?? json(404, { error: 'not found' });
+      if (!this.meta && req.headers.get('x-era-game')) return json(404, { error: 'no such game' });
       if (!this.meta) this.begin();
       if (p === '/api/era') return json(200, this.public());
       if (p === '/api/era/live') {
@@ -184,6 +193,8 @@ export class Era extends DurableObject {
         return new Response(`[${rows.map((r) => `{"m":${r.m},"inputs":${r.inputs},"events":${r.events},"chk":"${r.chk}"}`).join(',')}]`, { headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': 'no-store' } });
       }
       if (p === '/api/era/state') return json(200, { m: this.state().month, state: this.state(), era: this.public() });
+      const played = await play(this, req, p, url);
+      if (played) return played;
       return json(404, { error: 'not found' });
     } catch (err) {
       console.error(err);

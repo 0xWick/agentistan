@@ -6,6 +6,7 @@ import { TEMPER_TEXT } from './names.js';
 import { S, $, esc, icon, symbols, kindOf, worth, colorOf, ink, men } from './ui.js';
 import { card, openCard, closeCard, backCard, refreshCard, eventCard, isGreat, ART } from './cards.js';
 import { PAINTED } from './portrait.js';
+import { API, GAME, openRule, closeRule, refreshRule, onSeats, loadSeats, seatsByRealm } from './rule.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 function el(tag, attrs = {}, text) {
@@ -99,7 +100,11 @@ async function boot() {
   }
   setupPanZoom();
   wire();
-  if (!(await joinLive())) newWorld();
+  if (GAME) await loadSeats();
+  if (!(await joinLive())) {
+    if (GAME) { $('#forge .lede').innerHTML = 'This game could not be found.<br>It may have ended.'; }
+    newWorld();
+  }
   // /#plan is the link for outreach: straight to the plan. Everyone else gets five seconds of welcome, then 1200 begins.
   if (location.hash === '#plan') {
     openPlan();
@@ -132,10 +137,10 @@ function resetStory(first) {
 const record = (row) => { story.events[row.m] = row.events; story.inputs[row.m] = row.inputs ?? {}; };
 async function joinLive() {
   try {
-    era = await getJSON('/api/era');
+    era = await getJSON(API);
     if (!era || era.status === 'none') return false;
     S.chain = era.chain ?? null;
-    const [first, months, now] = await Promise.all([getJSON(`/api/era/snap?m=0&age=${era.age}`), getJSON(`/api/era/months?age=${era.age}`), getJSON(`/api/era/snap?m=${era.month}&age=${era.age}`)]);
+    const [first, months, now] = await Promise.all([getJSON(`${API}/snap?m=0&age=${era.age}`), getJSON(`${API}/months?age=${era.age}`), getJSON(`${API}/snap?m=${era.month}&age=${era.age}`)]);
     mode = 'live';
     resetStory(first.state);
     story.keys[now.m] = now.state;
@@ -156,11 +161,12 @@ async function joinLive() {
 }
 function connect() {
   ws?.close();
-  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/era/live`);
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${API}/live`);
   ws.onmessage = (ev) => {
     if (mode !== 'live' || ev.data === 'pong') return;
     const d = JSON.parse(ev.data);
     if (d.t === 'age' && d.era?.age !== era.age) return location.reload(); // a new age has begun
+    if (d.t === 'seats') { onSeats(d.seats); last.powers = null; powers(); }
     if (d.t === 'hello' && d.era) {
       Object.assign(era, d.era);
       S.chain = d.era.chain ?? S.chain;
@@ -175,6 +181,7 @@ function connect() {
       $('#done').style.width = `${(Math.min(story.frontier, total()) / total()) * 100}%`;
       liveChip();
       if (playing && waiting) { waiting = false; loop(); }
+      if (GAME) refreshRule();
     }
   };
   ws.onclose = () => { if (mode === 'live') setTimeout(() => mode === 'live' && connect(), 4000 + Math.random() * 6000); };
@@ -182,7 +189,7 @@ function connect() {
 setInterval(() => ws?.readyState === 1 && ws.send('ping'), 50_000);
 setInterval(() => liveChip(), 20_000);
 async function catchUp() {
-  const months = await getJSON(`/api/era/months?age=${era.age}&from=${story.frontier}`).catch(() => []);
+  const months = await getJSON(`${API}/months?age=${era.age}&from=${story.frontier}`).catch(() => []);
   for (const row of months) { record(row); markTrack(row.events); }
   if (months.length) story.frontier = months.at(-1).m + 1;
   liveChip();
@@ -195,7 +202,7 @@ function liveChip() {
     c.innerHTML = `<span class="own">${icon('dice')} Your own age</span><button class="link" data-go="live">The living world</button>`;
     return;
   }
-  if (Date.now() - (S.chainAt ?? 0) > 5 * 60_000) { S.chainAt = Date.now(); getJSON('/api/era').then((e) => { S.chain = e.chain ?? S.chain; }).catch(() => {}); }
+  if (Date.now() - (S.chainAt ?? 0) > 5 * 60_000) { S.chainAt = Date.now(); getJSON(API).then((e) => { S.chain = e.chain ?? S.chain; }).catch(() => {}); }
   const behind = story.frontier - s.month, mins = Math.max(0, Math.round(((era?.next ?? Date.now()) - Date.now()) / 60000));
   c.innerHTML = behind <= 0
     ? `<span class="on"><i></i>Live</span><small>${era?.status === 'running' ? `next month in ${mins} min` : 'the age has ended'}</small>${s.month > 12 ? '<button class="link" data-go="start">Watch from the start</button>' : ''}`
@@ -250,7 +257,7 @@ async function seek(month) {
   const my = ++seekSeq;
   let k = Math.max(...Object.keys(story.keys).map(Number).filter((x) => x <= m));
   if (mode === 'live' && m - k >= 12) {
-    const snap = await getJSON(`/api/era/snap?m=${m}&age=${era.age}`).catch(() => null);
+    const snap = await getJSON(`${API}/snap?m=${m}&age=${era.age}`).catch(() => null);
     if (my !== seekSeq) return; // a later seek has overtaken this one
     if (snap) { story.keys[snap.m] = snap.state; k = snap.m; }
   }
@@ -527,11 +534,11 @@ const statsOf = (r) => {
 };
 function powers() {
   const rows = living(s).map(statsOf).filter((x) => x.n > 0).sort((a, b) => b.land - a.land);
-  const key = rows.map((x) => `${x.r.id}${x.n}${x.ruler?.name}${Math.round(x.men)}${Math.round(x.r.gold / 10)}${x.r.golden > s.month}`).join();
+  const key = rows.map((x) => `${x.r.id}${x.n}${x.ruler?.name}${Math.round(x.men)}${Math.round(x.r.gold / 10)}${x.r.golden > s.month}${seatsByRealm()[x.r.id]?.name ?? ''}`).join();
   if (key === last.powers) return;
   last.powers = key;
   $('#powers-list').innerHTML = rows.map(({ r, land, men: m, ruler }) => `<li><button data-realm="${r.id}">
-      <i class="shield" style="--c:${r.color}"></i><span class="nm">${esc(r.short)}${r.golden > s.month ? `<span class="gold" title="A golden age">${icon('sun')}</span>` : ''}</span><span class="n">${Math.max(1, Math.round(land * 100))}%</span>
+      <i class="shield" style="--c:${r.color}"></i><span class="nm">${esc(r.short)}${r.golden > s.month ? `<span class="gold" title="A golden age">${icon('sun')}</span>` : ''}${seatsByRealm()[r.id] ? `<span class="player" title="Ruled by a player">${icon('people')}${esc(seatsByRealm()[r.id].name)}</span>` : ''}</span><span class="n">${Math.max(1, Math.round(land * 100))}%</span>
       <span class="sub"><span>${icon('crown')}${esc(ruler?.name ?? '—')}</span><span>${icon('banner')}${men(m)}</span><span>${icon('coin')}${Math.round(r.gold)}</span>${(r.grain ?? 0) < m * 1.2 && !r.nomad ? `<span class="hungry" title="Granaries nearly empty">${icon('wheat')}</span>` : ''}</span>
     </button></li>`).join('');
 }
@@ -810,6 +817,9 @@ function wire() {
   $('#ask-x').addEventListener('click', () => toggleAsk(false));
   $('#ask-form').addEventListener('submit', (e) => { e.preventDefault(); askChronicler($('#ask-q').value); });
   $('#ask').addEventListener('click', (e) => { const b = e.target.closest('.pick'); if (b) askChronicler(b.dataset.q); });
+  $('#rule-btn').addEventListener('click', () => ($('#rule').hidden ? openRule() : closeRule()));
+  $('#rule-x').addEventListener('click', closeRule);
+  if (GAME) setTimeout(openRule, 5600); // in a game, the seat comes first
   $('#key-btn').addEventListener('click', () => {
     const k = $('#key'), open = k.hidden;
     k.hidden = !open;

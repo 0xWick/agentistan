@@ -457,3 +457,30 @@ dialog.event::backdrop { background: rgba(43, 33, 22, 0.42); }
 .deeds-reg .sealed { display: inline-flex; color: var(--turquoise); }
 .deeds-reg .sealed svg { width: 14px; height: 14px; }
 .chain-note { margin: 6px 0 0; font: 12px var(--kufi); color: var(--ink-soft); }
+
+/* playing: the lobby and the seat */
+.rule { position: fixed; right: 16px; top: 72px; z-index: 6; width: 380px; max-height: calc(100dvh - 180px); overflow: auto; padding: 12px 14px; }
+.rule h2 { margin: 0 0 4px; display: flex; align-items: center; gap: 8px; font: 700 22px var(--display); color: var(--lapis); }
+.rule h2 svg { width: 22px; height: 22px; }
+.rule .x { position: absolute; right: 8px; top: 4px; border: 0; background: none; font-size: 22px; color: var(--ink-soft); }
+.rule .sub { margin: 2px 0 8px; font-size: 15px; color: var(--ink-soft); }
+.rule svg { width: 16px; height: 16px; flex: none; }
+.rule-form { display: grid; gap: 8px; margin: 6px 0; }
+.rule-form label { display: grid; gap: 3px; font: 600 13px var(--kufi); color: var(--ink-soft); }
+.rule-form label.check { display: flex; align-items: center; gap: 6px; }
+.rule-form label > svg { display: inline; vertical-align: -3px; }
+.rule-form select, .rule-form input:not([type]), .rule-form input[name] { padding: 7px 9px; border: 1px solid var(--sepia); border-radius: 5px; background: rgba(255, 252, 242, 0.75); font: 15px var(--body); color: var(--ink); }
+.rule-form .go { display: flex; gap: 8px; }
+.rule .note { margin: 4px 0; padding: 6px 8px; border-radius: 5px; background: rgba(43, 125, 122, 0.1); font-size: 14px; }
+.decisions { display: grid; gap: 6px; margin: 6px 0; }
+.decision { padding: 7px 9px; border-left: 3px solid var(--vermilion); background: rgba(163, 54, 31, 0.06); border-radius: 4px; }
+.decision p { margin: 0 0 6px; font-size: 15px; }
+.delegate { display: grid; gap: 3px; margin-top: 8px; font: 600 13px var(--kufi); color: var(--ink-soft); }
+.delegate label { display: flex; gap: 6px; align-items: center; font-weight: 500; }
+.rule .fine { font: 12px var(--kufi); color: var(--ink-soft); word-break: break-all; }
+.games-h { margin: 10px 0 4px; font: 700 13px var(--kufi); letter-spacing: 0.18em; text-transform: uppercase; color: var(--lapis); }
+.games { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.powers .player { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; font: 600 11px var(--kufi); color: var(--turquoise); }
+.powers .player svg { width: 12px; height: 12px; }
+@media (max-width: 760px) { .rule { left: 10px; right: 10px; top: 64px; width: auto; } }
+.rule-form label > span { display: inline-flex; align-items: center; gap: 5px; }

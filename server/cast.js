@@ -19,9 +19,15 @@ const parse = (text) => {
 };
 
 // The realms whose people the AI plays: the great powers, by land.
-const spotlight = (s, n = 16) => living(s).map((r) => [r.id, provincesOf(s, r.id).length]).filter(([, k]) => k > 0).sort((a, b) => b[1] - a[1]).slice(0, n).map(([id]) => id);
+const ranked = (s, n) => living(s).map((r) => [r.id, provincesOf(s, r.id).length]).filter(([, k]) => k > 0).sort((a, b) => b[1] - a[1]).slice(0, n).map(([id]) => id);
 
 export function makeCast(env, era) {
+  // In a game the AI speaks only for the realms whose players asked for it; in the living world, for the great powers.
+  const spotlight = (s, n = 16) => {
+    if (!era.meta?.game) return ranked(s, n);
+    const seats = era.get('seats') ?? {};
+    return Object.keys(seats).filter((r) => seats[r].delegate === 'ai' && s.realms[r] && !s.realms[r].fallen);
+  };
   const usage = era.get('castUsage') ?? { big: {}, small: {} };
   const key = env.LLM_API_KEY ? env : null;
   const big = makeLLM({ ...env, LLM_MODEL: env.CAST_MODEL || 'openai/gpt-oss-120b', MAX_LLM_TOKENS_PER_DAY: env.CAST_TOKENS || '110000', MAX_LLM_CALLS_PER_DAY: '700', LLM_EXTRA: '{"reasoning_effort":"low"}' }, usage.big);
@@ -35,6 +41,7 @@ export function makeCast(env, era) {
 
   // ---------- 1. personas ----------
   async function personas(s, m) {
+    if (era.meta?.game) return; // games keep the free budget for decisions
     const stars = new Set(spotlight(s));
     const want = Object.values(s.chars).filter((c) => c.alive && !c.persona && stars.has(c.realm) && (['ruler', 'heir', 'vizier'].includes(c.role) || (c.role === 'consort' && s.realms[c.realm]?.ruler === c.spouse) || (c.role === 'general' && (c.famous || (s.armies[c.army]?.size ?? 0) >= 15))))
       .sort((a, b) => (b.role === 'ruler') - (a.role === 'ruler') || (b.famous ? 1 : 0) - (a.famous ? 1 : 0)).slice(0, 4);

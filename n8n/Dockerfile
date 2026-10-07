@@ -1,4 +1,4 @@
-# n8n for Render's free tier: the official image plus our four workflows. Webhooks only; the editor is switched off.
+# n8n for Render's free tier: the official image plus our workflows. Webhooks only; the editor is switched off.
 # Render builds this from n8n/ (the service's root directory) and redeploys when n8n/ changes.
 # Pulled from Docker Hub: docker.n8n.io rate-limits Render's shared build machines (HTTP 429).
 FROM n8nio/n8n:2.40.7

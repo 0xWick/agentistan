@@ -67,7 +67,7 @@ export const KIND = {
   marriage: ['rings', G, 1], 'match.refused': ['rings', I, 0], birth: ['circlet', G, 1], regency: ['crown', I, 1], vizier: ['scroll', I, 0], reform: ['seal', L, 1], feast: ['coin', G, 0],
   epithet: ['quill', I, 1], built: ['hammer', '#8c6b3f', 1], invention: ['book', L, 1], season: ['sun', L, 1], toll: ['snow', '#5d7f86', 1], golden: ['sun', G, 1], decline: ['skull', I, 1],
   poverty: ['wheat', I, 1], charter: ['seal', V, 1], uprising: ['flame', V, 1], commune: ['banner', T, 1], separatist: ['banner', V, 1], broken: ['scroll', V, 1],
-  dispute: ['scales', L, 1], verdict: ['scales', L, 1], ceded: ['scales', T, 1], defied: ['scales', V, 1], 'age.started': ['scroll', L, 1], 'age.ended': ['crown', G, 1],
+  skies: ['rain', '#3d6b8c', 1], dispute: ['scales', L, 1], verdict: ['scales', L, 1], ceded: ['scales', T, 1], defied: ['scales', V, 1], 'age.started': ['scroll', L, 1], 'age.ended': ['crown', G, 1],
 };
 const WEATHER_ICON = { snow: 'snow', rains: 'rain', heat: 'sun', harvest: 'wheat' };
 export const kindOf = (e) => {

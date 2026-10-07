@@ -1,0 +1,91 @@
+{
+  "id": "nbpDailyDigest01",
+  "name": "Daily Digest",
+  "active": true,
+  "versionId": "5b0e6a86-1f1d-4c2a-9f55-0d7a3c1e0013",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": [],
+  "nodes": [
+    {
+      "id": "2f2f2bbf-7978-5a70-ae9b-e6309c10c0d5",
+      "name": "Every morning",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "1e0be422-19d8-52d9-bada-a53f7829179e",
+      "name": "Ask the world for its day",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.WORLD_URL }}/api/era/digest",
+        "options": {}
+      }
+    },
+    {
+      "id": "3d9dca01-ab1e-52e6-85b4-07b86004fc66",
+      "name": "Post the digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ username: \"Agentistan\", embeds: [{ title: $json.title, description: $json.text, color: 2573934, url: $json.url, footer: { text: 'Posted by an n8n automation \\u00b7 agentistan.umarkhatana.com' } }] }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Every morning": {
+      "main": [
+        [
+          {
+            "node": "Ask the world for its day",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask the world for its day": {
+      "main": [
+        [
+          {
+            "node": "Post the digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

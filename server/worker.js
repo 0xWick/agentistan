@@ -27,8 +27,12 @@ export default {
     const p = new URL(req.url).pathname;
     if (p === '/internal/art') return art(req, env);
     const game = p.match(/^\/api\/game\/([\w-]{3,40})\/era/)?.[1];
-    if (game) return era(env, `game:${game}`).fetch(req);
-    if (p === '/api/era' || p.startsWith('/api/era/') || p.startsWith('/internal/era/')) return era(env).fetch(req);
+    if (game) { // a game's own world; it must have been started from the lobby
+      const r = new Request(req);
+      r.headers.set('x-era-game', game);
+      return era(env, `game:${game}`).fetch(r);
+    }
+    if (p === '/api/era' || p.startsWith('/api/era/') || p.startsWith('/internal/era/') || p === '/api/games') return era(env).fetch(req);
     return world(env).fetch(req);
   },
   scheduled: (_event, env, ctx) => ctx.waitUntil(Promise.all([
