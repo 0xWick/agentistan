@@ -36,6 +36,24 @@ test('the world stays coherent for decades', () => {
   });
 });
 
+test('the inner life of the world happens: courts, battles over months, works, learning, the registry', () => {
+  const seen = new Set();
+  let longBattle = false, decided = 0;
+  const { s } = run(5, 300, (s, events) => {
+    for (const e of events) seen.add(e.type);
+    if (events.some((e) => e.type === 'battle' && e.rounds > 1)) longBattle = true;
+    decided += s.pending.length;
+    for (const p of PROVINCES) {
+      const d = s.deeds[p.id];
+      if (s.provinces[p.id].owner) assert.equal(d.at(-1).realm, s.provinces[p.id].owner, `the registry of ${p.id} disagrees with the map`);
+    }
+  });
+  for (const t of ['clash', 'battle', 'marriage', 'built', 'invention', 'season', 'peace', 'crowned']) assert.ok(seen.has(t), `no ${t} in 25 years`);
+  assert.ok(longBattle, 'no battle lasted more than a month');
+  assert.ok(decided > 0, 'no character ever faced a decision');
+  assert.ok(Object.values(s.chars).some((c) => c.alive && c.temper), 'nobody has a temperament');
+});
+
 test('the realms of 1200 start where history put them', () => {
   const s = newAge(1);
   assert.equal(s.provinces.baghdad.owner, 'abbasid');

@@ -1,11 +1,13 @@
-// The living map: the Silk Road world, simulated month by month right here in the browser, drawn like an old map.
-import { newAge, tick, PROVINCES, PROV, living, provincesOf, armiesOf, dateText, yearOf, atWar, friendly, yieldOf, cavalryOf, rations, isWinter } from './engine.js';
+// The living map: the world simulated month by month right here in the browser, drawn like an old map. The cards,
+// the chronicle and the great-event pictures all read the moment on the timeline (S.s).
+import { newAge, tick, PROVINCES, PROV, LAND, living, provincesOf, armiesOf, menOf, dateText, yearOf, atWar, weatherOf, seasonName, cityOf, prosperityOf, steersman, rulingTemper } from './engine.js';
 import { brain } from './doctrine.js';
-import { RULES } from './rules.js';
+import { TEMPER_TEXT } from './names.js';
+import { S, $, esc, icon, symbols, kindOf, worth, colorOf, ink, men } from './ui.js';
+import { card, openCard, closeCard, backCard, refreshCard, eventCard, isGreat, ART } from './cards.js';
+import { PAINTED } from './portrait.js';
 
 const NS = 'http://www.w3.org/2000/svg';
-const $ = (s) => document.querySelector(s);
-const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 function el(tag, attrs = {}, text) {
   const e = document.createElementNS(NS, tag);
   for (const [k, v] of Object.entries(attrs)) if (v !== undefined && v !== null) e.setAttribute(k, v);
@@ -13,60 +15,6 @@ function el(tag, attrs = {}, text) {
   return e;
 }
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-// ---------- ink glyphs: every icon on the page, drawn once ----------
-const ICON = {
-  castle: { f: 'M3 21V10h2V7h3v3h2V7h4v3h2V7h3v3h2v11h-7v-5a2 2 0 0 0-4 0v5z' },
-  crown: { f: 'M3 18 4.5 7 9 11.5 12 4l3 7.5L19.5 7 21 18zM3 19.6h18v1.8H3z' },
-  swords: { s: 'M4 4l11 11M20 4 9 15M7 13l4 4M17 13l-4 4M5 19l3-3M19 19l-3-3' },
-  dagger: { s: 'M12 2l1.6 3v9h-3.2V5zM8.5 14h7M12 14v5M10.8 21h2.4' },
-  flame: { f: 'M12 2c.8 3.5 5.5 5.6 5.5 11.2a5.5 5.5 0 0 1-11 0c0-2.6 1.5-4.4 2.6-5.8.2 2.4 1.5 3.6 2.6 3.8-.4-2.9-.6-6 .3-9.2z' },
-  skull: { f: 'M12 2a8 8 0 0 0-8 8c0 2.8 1.4 4.5 3 5.6V19h2v2h2v-2h2v2h2v-2h2v-3.4c1.6-1.1 3-2.8 3-5.6a8 8 0 0 0-8-8zm-3 7.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm6 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4z', even: true },
-  bow: { s: 'M6 3c7 3.5 7 14.5 0 18M6 3v18M3 12h17M17 9l3 3-3 3' },
-  wheat: { s: 'M12 22V8m0 0c-3-1-4-4-4-6 3 0 4 3 4 6m0 0c3-1 4-4 4-6-3 0-4 3-4 6m0 5c-3-1-4-3-4-5 3 0 4 2 4 5m0 0c3-1 4-3 4-5-3 0-4 2-4 5' },
-  tower: { f: 'M7 21V9L5 7V3h3v2h2V3h4v2h2V3h3v4l-2 2v12z' },
-  banner: { f: 'M5 2h2v20H5zM7 3h12l-3 4 3 4H7z' },
-  coin: { s: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 6.5v11M9.2 9.3c0-1 1.2-1.7 2.8-1.7s2.8.7 2.8 1.7-1.2 1.4-2.8 1.7-2.8.8-2.8 1.9 1.2 1.7 2.8 1.7 2.8-.8 2.8-1.7' },
-  people: { s: 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20c0-3.3 2.7-6 6-6s6 2.7 6 6M12.5 15.5A6 6 0 0 1 22 20' },
-  eye: { s: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z' },
-  scroll: { s: 'M6 3h11a2 2 0 0 1 2 2v13a3 3 0 0 1-3 3H7M6 3a2 2 0 0 0-2 2v2h4M6 3a2 2 0 0 1 2 2v13a3 3 0 0 0 3 3M11 8h5M11 12h5' },
-  rings: { s: 'M4 12a5 5 0 1 0 10 0 5 5 0 1 0-10 0M10 12a5 5 0 1 0 10 0 5 5 0 1 0-10 0' },
-  quake: { s: 'M2 12h4l2-5 3 10 3-12 2 7h6' },
-  star: { f: 'M12 2l2.6 6.3 6.8.5-5.2 4.4 1.6 6.6L12 16.3l-5.8 3.5 1.6-6.6-5.2-4.4 6.8-.5z' },
-  play: { f: 'M7 4l13 8-13 8z' },
-  prev: { s: 'M15 4.5 7.5 12l7.5 7.5', w: 2.8 },
-  next: { s: 'M9 4.5 16.5 12 9 19.5', w: 2.8 },
-  pause: { f: 'M6 4h4v16H6zM14 4h4v16h-4z' },
-  dice: { s: 'M4 4h16v16H4zM8.5 8.5h.01M15.5 15.5h.01M15.5 8.5h.01M8.5 15.5h.01M12 12h.01', w: 2.6 },
-  key: { s: 'M15 4a5 5 0 1 1-4.3 7.6L4 18.3V21h3v-2h2v-2h2l1.6-1.6A5 5 0 0 1 15 4zM16 8h.01', w: 2 },
-  plus: { s: 'M12 5v14M5 12h14', w: 2.4 },
-  minus: { s: 'M5 12h14', w: 2.4 },
-  hill: { s: 'M2 19l6-9 4 5 3-4 7 8z' },
-  quill: { s: 'M20 3c-7 1-12 6-14 14M20 3c1 4-2 8-6 9l-4 1M20 3c-1 3-4 5-7 6M6 17l-2 4' },
-  horse: { f: 'M4 21l1.6-6.4L4 12l2.4-4.4L10 6l1.4-3 1.8 2.2 2.6.4 3.6 3.6-1.2 2.2-2.6-.8-1.2 2.6 1.4 4.2-1.8.6-1.8-3.6-3.4.4-.8 4.8z' },
-  anvil: { f: 'M3 7h13c0 2.6 2.4 3.6 5 3.6V12c-2.8 0-4.4 1-5.4 2.6L17 18h2v2.6H6V18h2l1.4-3.4C6.6 13.6 4 11.6 3 7z' },
-  palace: { f: 'M12 1.5c1.6 1.9 3.6 2.9 3.6 5.4V9H8.4V6.9C8.4 4.4 10.4 3.4 12 1.5zM2.5 10h3.2v2h2v-2h8.6v2h2v-2h3.2v11.5h-7.2V17a2.3 2.3 0 0 0-4.6 0v4.5H2.5z' },
-  citadel: { f: 'M1.5 22l3.2-6.5h14.6l3.2 6.5zM7 15V7.5H5V3.5h3v2h2v-2h4v2h2v-2h3v4h-2V15h-3.6v-3.2a1.4 1.4 0 0 0-2.8 0V15z' },
-  helmet: { f: 'M12 1.8l1.7 3.4c3.6 1.2 5.3 4.4 5.3 7.8V16H5v-3c0-3.4 1.7-6.6 5.3-7.8zM7.5 17h9v4.5h-3v-2.8h-3v2.8h-3z' },
-  circlet: { f: 'M3.5 17l1.6-7.5 3.7 3.6L12 7.6l3.2 5.5 3.7-3.6 1.6 7.5zM3.5 18.6h17v2.2h-17z' },
-};
-const icon = (name, cls = '') => {
-  const i = ICON[name];
-  return `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${i.f ? `<path d="${i.f}" fill="currentColor"${i.even ? ' fill-rule="evenodd"' : ''}/>` : `<path d="${i.s}" fill="none" stroke="currentColor" stroke-width="${i.w ?? 1.8}" stroke-linecap="round" stroke-linejoin="round"/>`}</svg>`;
-};
-
-// What each event looks like, and whether it earns a place in the feed (the rest only flash on the map).
-const KIND = {
-  battle: ['swords', '#a3361f', 1], storm: ['swords', '#a3361f', 0], capture: ['castle', '#27466e', 1], siege: ['tower', '#8c6b3f', 0],
-  revolt: ['flame', '#c2541f', 1], founded: ['crown', '#b3852c', 1], split: ['crown', '#a3361f', 1], fallen: ['skull', '#3a2816', 1],
-  death: ['skull', '#5a4630', 1], crowned: ['crown', '#b3852c', 1], plot: ['dagger', '#5a4630', 1], coup: ['dagger', '#a3361f', 1],
-  horde: ['bow', '#a3361f', 1], raid: ['bow', '#8c6b3f', 1], plague: ['skull', '#4f6b3a', 1], famine: ['wheat', '#9a7a2a', 1],
-  earthquake: ['quake', '#6a5032', 1], power: ['star', '#b3852c', 1], war: ['swords', '#a3361f', 1], peace: ['scroll', '#2b7d7a', 1],
-  alliance: ['rings', '#27466e', 1], vassal: ['scroll', '#6a5032', 1], broke: ['coin', '#8c6b3f', 0], guild: ['dagger', '#3a2816', 1],
-  'army.raised': ['banner', '#27466e', 0], 'army.destroyed': ['skull', '#a3361f', 1], capital: ['crown', '#6a5032', 0], heir: ['crown', '#b3852c', 0],
-  'age.started': ['scroll', '#27466e', 1], 'age.ended': ['crown', '#b3852c', 1], hunger: ['wheat', '#9a5a2a', 1],
-};
-const kindOf = (e) => (e.type === 'death' && e.cause === 'assassin' ? ['dagger', '#a3361f', 1] : KIND[e.type] ?? ['scroll', '#6a5032', 0]);
 
 // Regions, seas and the lands beyond this world, in English and in a script of their time.
 const REGIONS = [
@@ -83,13 +31,6 @@ const SEAS = [['Caspian Sea', 'دریای خزر', 41.6, 50.9], ['Sea of Khwaraz
 const DISTANT = [['Frankish kingdoms', 47.5, 2.0], ['Iberia', 40.0, -4.0], ['Holy Roman Empire', 50.5, 10.0], ['Rus’ principalities', 54.5, 34.0], ['Volga Bulgaria', 55.0, 50.0],
   ['Sahara', 23.0, 5.0], ['Lands of the Blacks', 13.0, 0.0], ['Ethiopia', 11.5, 38.5], ['Arabia', 23.0, 45.0], ['Tibet', 32.0, 87.0], ['Siberia', 62.0, 95.0],
   ['Deccan', 17.0, 77.5], ['Goryeo', 37.5, 127.5], ['Japan', 36.5, 137.5], ['Khmer & Dai Viet', 15.0, 104.0], ['Swahili Coast', -4.0, 39.5]];
-// The Silk Road, Constantinople to Chang'an, and its branches south to Baghdad and India.
-const ROADS = [
-  ['constantinople', 'nicaea', 'ankara', 'sivas', 'erzurum', 'tabriz', 'qazvin', 'rey', 'kumis', 'nishapur', 'sarakhs', 'merv', 'bukhara', 'samarkand', 'ushrusana', 'ferghana', 'kashgar', 'khotan', 'shazhou', 'ganzhou', 'liangzhou', 'jingzhao'],
-  ['aleppo', 'edessa', 'mosul', 'baghdad', 'hamadan', 'rey'],
-  ['merv', 'balkh', 'bamiyan', 'kabul', 'peshawar', 'lahore', 'delhi'],
-  ['shazhou', 'hami', 'qocho', 'almaliq', 'balasagun', 'talas', 'shash', 'samarkand'],
-];
 // Equal Earth, the projection the map is drawn in (mirrors tools/map/build.py).
 let xyOf = () => [0, 0];
 function projector({ lon0, x0, y1, scale }) {
@@ -107,10 +48,12 @@ let W = 8192, H = 6245;
 // History, so the timeline can go back and forth: the world is a pure function of (age, month), so a snapshot each
 // year plus the months' events is enough to rebuild any month in a few milliseconds.
 const story = { keys: {}, events: [], frontier: 0 };
-const SPEED = { 1: 2600, 4: 800, 16: 200 }; // ms per month
-const HOLD = { 1: 2200, 4: 1000, 16: 0 }; // extra pause after a great event, so it can be read
-const GREAT = (e) => ['founded', 'fallen', 'split', 'coup', 'horde', 'age.ended'].includes(e.type) || (e.type === 'capture' && e.capital) || (e.type === 'death' && e.ruler);
+S.story = story;
+const SPEED = { 1: 3000, 4: 900, 16: 220 }; // ms per month
+const HOLD = { 1: 1800, 4: 900, 16: 0 }; // extra pause after a great event, so it can be read
 const shown = []; // the feed
+const setState = (x) => { s = x; S.s = x; };
+const total = () => s?.months ?? 672;
 
 // ---------- the map, drawn once ----------
 const map = $('#map');
@@ -118,23 +61,25 @@ const layer = {};
 async function boot() {
   // The icons first, so the buttons and the welcome card show them before the map has loaded.
   const defs = el('defs');
-  defs.innerHTML = Object.entries(ICON).map(([k, i]) => `<symbol id="i-${k}" viewBox="0 0 24 24">${i.f ? `<path d="${i.f}" fill="currentColor"${i.even ? ' fill-rule="evenodd"' : ''}/>` : `<path d="${i.s}" fill="none" stroke="currentColor" stroke-width="${i.w ?? 1.9}" stroke-linecap="round" stroke-linejoin="round"/>`}</symbol>`).join('');
+  defs.innerHTML = `${symbols()}
+    <pattern id="w-snow" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="5" cy="6" r="2.2" fill="#fff"/><circle cx="16" cy="15" r="1.6" fill="#fff"/><circle cx="12" cy="3" r="1" fill="#fff"/></pattern>
+    <pattern id="w-rains" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(18)"><path d="M3 0v9M11 6v9" stroke="#3d6b8c" stroke-width="1.6" stroke-linecap="round"/></pattern>
+    <pattern id="w-heat" width="26" height="14" patternUnits="userSpaceOnUse"><path d="M0 7q3.25-5 6.5 0t6.5 0 6.5 0 6.5 0" fill="none" stroke="#c2541f" stroke-width="1.4"/></pattern>`;
   map.append(defs);
-  geo = await fetch('/world/geo.json').then((r) => r.json());
+  const [g, art] = await Promise.all([fetch('/world/geo.json').then((r) => r.json()), fetch('/art/manifest.json').then((r) => r.json()).catch(() => ({ events: [], people: [] }))]);
+  geo = g;
+  for (const k of art.events ?? []) ART.add(k);
+  for (const k of art.people ?? []) PAINTED.add(k);
   ({ width: W, height: H } = geo);
   xyOf = projector(geo.proj);
   map.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  for (const name of ['base', 'tiles', 'rivers', 'provs', 'edges', 'road', 'regions', 'realms', 'cities', 'seats', 'marks', 'sieges', 'arrows', 'armies', 'pulses']) map.append((layer[name] = el('g', { class: `l-${name}` })));
+  for (const name of ['base', 'tiles', 'rivers', 'provs', 'weather', 'edges', 'road', 'regions', 'realms', 'cities', 'seats', 'marks', 'sieges', 'arrows', 'battles', 'armies', 'pulses']) map.append((layer[name] = el('g', { class: `l-${name}` })));
   // The parchment: a small picture of the whole world at once, then sharper tiles as the view closes in.
   layer.base.append(el('image', { href: '/world/base.webp', width: W, height: H, preserveAspectRatio: 'none' }));
   for (let lv = 1; lv < 4; lv++) layer.tiles.append((tileLayers[lv] = el('g')));
   for (const r of geo.rivers) layer.rivers.append(el('path', { class: 'river', d: r.d, 'stroke-width': Math.max(1, 4.2 - r.rank * 0.45) }));
-  geo.provinces.forEach((p) => {
-    const path = el('path', { class: 'prov', d: p.d, 'data-id': p.id, fill: 'transparent', 'fill-opacity': 0.5 });
-    layer.provs.append(path);
-  });
+  geo.provinces.forEach((p) => layer.provs.append(el('path', { class: 'prov', d: p.d, 'data-id': p.id, fill: 'transparent', 'fill-opacity': 0.5 })));
   geo.edges.forEach(([a, b, d]) => layer.edges.append(el('path', { class: 'edge inner', d, 'data-a': a, 'data-b': b })));
-  for (const road of ROADS) layer.road.append(el('path', { class: 'silkroad', d: `M${road.map((id) => PROV[id].xy.join(' ')).join('L')}` }));
   for (const [en, fa, lat, lon] of REGIONS) {
     const [x, y] = xyOf(lat, lon);
     layer.regions.append(el('text', { class: 'region', x, y }, en), el('text', { class: 'region-fa', x, y: y + 26 }, fa));
@@ -169,28 +114,34 @@ let welcome = 0;
 // ---------- one month on the map ----------
 function newWorld(seed) {
   age = seed ?? 1 + Math.floor(Math.random() * 99999);
-  s = newAge(age);
+  setState(newAge(age));
   Object.assign(story, { keys: { 0: structuredClone(s) }, events: [], frontier: 0 });
   last = {};
   shown.length = 0;
   $('#feed-list').innerHTML = '';
   $('#track-events').innerHTML = '';
   closeCard();
-  render([{ type: 'age.started', text: 'The year 1200. The realms of the Old World stand as history left them.', date: 'January 1200' }]);
+  layer.road.innerHTML = '';
+  for (const road of s.roads ?? []) layer.road.append(el('path', { class: 'silkroad', d: `M${road.map((id) => PROV[id].xy.join(' ')).join('L')}` }));
+  ticks();
+  render([{ type: 'age.started', text: `The year ${yearOf(0, s)}. The realms of the Old World stand as history left them.`, date: dateText(0, s) }]);
 }
 
 // One month forward. At the edge of what has been lived, the world is simulated (and remembered); behind it, the
 // recorded month is simply replayed.
 function advance() {
+  const before = s;
   const r = tick(s, brain);
-  s = r.state;
+  setState(r.state);
+  S.prev = before;
   story.events[s.month - 1] = r.events;
   if (s.month > story.frontier) {
     story.frontier = s.month;
     if (s.month % 12 === 0) story.keys[s.month] = structuredClone(s);
     markTrack(r.events);
+    r.fresh = true;
   }
-  return r.events;
+  return r;
 }
 
 // Jump to any month already lived: back to the year's snapshot, then forward month by month.
@@ -198,19 +149,20 @@ function seek(month) {
   const m = Math.max(0, Math.min(story.frontier, Math.round(month)));
   if (m === s.month) return;
   const k = Math.max(...Object.keys(story.keys).map(Number).filter((x) => x <= m));
-  s = structuredClone(story.keys[k]);
-  while (s.month < m) s = tick(s, brain).state;
+  let x = structuredClone(story.keys[k]);
+  while (x.month < m) x = tick(x, brain).state;
+  setState(x);
   last = {};
   $('#feed-list').innerHTML = '';
   // The chronicle as it stood that month: its latest entries.
   const recent = [];
-  for (let i = m - 1; i >= 0 && recent.length < 7; i--) for (const e of [...(story.events[i] ?? [])].reverse()) if (kindOf(e)[2] && recent.length < 7) recent.push(e);
+  for (let i = m - 1; i >= 0 && recent.length < 7; i--) for (const e of [...(story.events[i] ?? [])].reverse()) if (worth(e) && recent.length < 7) recent.push(e);
   render(recent.reverse(), { quiet: true });
 }
 function step(months) {
   playPause(false);
   if (months > 0 && s.month + months > story.frontier) {
-    for (let i = 0; i < months && s.status === 'running'; i++) render(advance());
+    for (let i = 0; i < months && s.status === 'running'; i++) render(advance().events);
   } else seek(s.month + months);
 }
 
@@ -222,17 +174,20 @@ function render(events, { quiet = false } = {}) {
     paintRealmLabels();
     last.owner = ownerKey;
   }
+  paintWeather();
   paintSeats();
   paintArmies();
+  paintBattles();
   paintSieges();
   paintMarks();
   if (!quiet) for (const e of events) pulse(e);
   feed(events);
   powers();
-  $('#date').textContent = dateText(s.month);
-  $('#ask-date').textContent = dateText(s.month);
-  $('#yr').textContent = yearOf(s.month);
-  const at = (m) => `${(Math.min(m, RULES.months) / RULES.months) * 100}%`;
+  $('#date').textContent = dateText(s.month, s);
+  $('#ask-date').textContent = dateText(s.month, s);
+  $('#yr').textContent = yearOf(s.month, s);
+  seasonBadge();
+  const at = (m) => `${(Math.min(m, total()) / total()) * 100}%`;
   $('#done').style.width = at(story.frontier);
   $('#now').style.left = at(s.month);
   $('#back').disabled = s.month === 0;
@@ -242,22 +197,27 @@ function render(events, { quiet = false } = {}) {
 // Great moments marked on the timeline, where they happened in the age.
 function markTrack(events) {
   for (const e of events) {
-    if (!(['founded', 'fallen', 'horde', 'split', 'coup'].includes(e.type) || (e.type === 'capture' && e.capital))) continue;
+    if (!(['founded', 'fallen', 'horde', 'split', 'coup', 'golden', 'charter', 'commune', 'uprising'].includes(e.type) || (e.type === 'capture' && e.capital))) continue;
     const m = document.createElement('i');
     m.className = 'ev';
-    m.style.left = `${(Math.min(e.month, RULES.months) / RULES.months) * 100}%`;
+    m.style.left = `${(Math.min(e.month, total()) / total()) * 100}%`;
     m.style.background = kindOf(e)[1];
     m.title = `${e.date}: ${e.text}`;
     m.dataset.month = e.month + 1;
     $('#track-events').append(m);
   }
 }
-
-const colorOf = (id) => s.realms[id]?.color ?? 'transparent';
-const ink = (hex, k = 0.5) => {
-  const n = parseInt(hex.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * k + 40 * (1 - k)));
-  return `rgb(${c.join(',')})`;
-};
+function ticks() {
+  $('#track-ticks').innerHTML = '';
+  const y0 = yearOf(0, s), years = Math.round(total() / 12);
+  for (let y = 0; y <= years; y += 10) {
+    const t = document.createElement('span');
+    t.className = 'tick';
+    t.style.left = `${((y * 12) / total()) * 100}%`;
+    t.textContent = y0 + y < 0 ? `${-(y0 + y)} BC` : y0 + y;
+    $('#track-ticks').append(t);
+  }
+}
 
 function paintProvinces(owner) {
   layer.provs.querySelectorAll('.prov').forEach((path, i) => {
@@ -271,7 +231,33 @@ function paintProvinces(owner) {
   });
 }
 
-// A realm's name across its lands, sized to its reach, in English and in the Persian of its chroniclers.
+// The season on the map: snow over the cold lands in winter, rain over the monsoon lands, heat over the deserts.
+function paintWeather() {
+  const key = s.month % 12;
+  if (key === last.weather) return;
+  last.weather = key;
+  layer.weather.innerHTML = '';
+  geo.provinces.forEach((p, i) => {
+    const w = weatherOf(PROVINCES[i].id, s.month);
+    if (w) layer.weather.append(el('path', { d: p.d, class: `wx ${w}`, fill: `url(#w-${w})` }));
+  });
+}
+const SEASON = {
+  winter: ['snow', 'Winter', 'Snow closes the northern passes; armies keep to winter quarters'],
+  spring: ['wheat', 'Spring', 'The roads open again; spring harvests in the south'],
+  summer: ['sun', 'Summer', 'Heat in the deserts; in India the monsoon rains halt all campaigns'],
+  autumn: ['wheat', 'Autumn', 'The campaigning season: granaries full after the harvest'],
+};
+function seasonBadge() {
+  const [ic, name, text] = SEASON[seasonName(s.month)];
+  const b = $('#season');
+  if (b.dataset.key === name) return;
+  b.dataset.key = name;
+  b.innerHTML = `${icon(ic)}<span>${name}</span>`;
+  b.title = text;
+}
+
+// A realm's name across its lands, sized to its reach, in English and in the script of its chroniclers.
 function paintRealmLabels() {
   layer.realms.innerHTML = '';
   for (const r of living(s)) {
@@ -286,15 +272,15 @@ function paintRealmLabels() {
     x /= area;
     y /= area;
     const size = Math.max(17, Math.min(64, Math.sqrt(area) / 6.4));
-    const g = el('g', { 'data-realm': r.id });
+    const g = el('g', { 'data-realm': r.id, class: r.golden > s.month ? 'golden' : '' });
     g.append(el('text', { class: 'realm-label', x, y, 'font-size': size, fill: ink(r.color, 0.62) }, r.short));
     if (r.fa && size > 22) g.append(el('text', { class: 'realm-fa', x, y: y + size * 0.72, 'font-size': size * 0.55, fill: ink(r.color, 0.7) }, r.fa));
     layer.realms.append(g);
   }
 }
 
-// Seats of power on the map: a crowned palace for each capital, a fortress for each citadel (walls 3+), a small
-// tower for a walled town (shown when zoomed in).
+// Seats of power: a crowned palace for each capital, a fortress for each citadel (walls 3+), a small tower for a
+// walled town (shown when zoomed in).
 function paintSeats() {
   const caps = new Map(living(s).filter((r) => s.provinces[r.capital]?.owner === r.id).map((r) => [r.capital, r]));
   const key = `${[...caps].map(([p, r]) => `${p}:${r.id}`).join(',')}|${PROVINCES.map((p) => s.provinces[p.id].walls).join('')}`;
@@ -339,7 +325,8 @@ function paintArmies() {
       g.querySelector('.medal').setAttribute('fill', colorOf(a.realm));
       g.querySelector('.leader').setAttribute('href', `#i-${lead}`);
       g.classList.toggle('royal', lead !== 'helmet');
-      g.querySelector('text').textContent = `${Math.round(a.size)}k`;
+      g.classList.toggle('fighting', !!a.battle);
+      g.querySelector('text').textContent = men(a.size);
       if (a.path[0] && a.mode === 'march') arrow(PROV[pid].xy, PROV[a.path[0]].xy, colorOf(a.realm));
     });
   }
@@ -359,6 +346,20 @@ function arrow([x1, y1], [x2, y2], color) {
   const ang = Math.atan2(ey - (my + ny), ex - (mx + nx));
   const head = [[0, 0], [-16, -8], [-16, 8]].map(([px, py]) => [ex + px * Math.cos(ang) - py * Math.sin(ang), ey + px * Math.sin(ang) + py * Math.cos(ang)]);
   layer.arrows.append(el('path', { class: 'arrow-head', d: `M${head.map((p) => p.join(' ')).join('L')}Z`, fill: ink(color, 0.8) }));
+}
+
+// A battle in progress: crossed swords between the two banners, and the month of fighting it has reached.
+function paintBattles() {
+  layer.battles.innerHTML = '';
+  for (const b of Object.values(s.battles ?? {})) {
+    const [x, y] = PROV[b.at].xy;
+    const g = el('g', { class: 'battle', 'data-war': b.war ?? '', 'data-prov': b.at });
+    g.append(el('circle', { cx: x, cy: y - 14, r: 34, class: 'battle-ring' }));
+    g.append(el('circle', { cx: x - 20, cy: y - 64, r: 9, fill: colorOf(b.ra[0]), class: 'battle-side' }), el('circle', { cx: x + 20, cy: y - 64, r: 9, fill: colorOf(b.rd[0]), class: 'battle-side' }));
+    g.append(el('use', { href: '#i-swords', x: x - 15, y: y - 79, width: 30, height: 30, class: 'battle-swords' }));
+    g.append(el('text', { x, y: y + 44, class: 'battle-text' }, `month ${b.rounds + 1}`));
+    layer.battles.append(g);
+  }
 }
 
 function paintSieges() {
@@ -381,7 +382,8 @@ function paintMarks() {
     if (q.famine > 0) marks.push(['wheat', '#9a7a2a']);
     if (q.ravaged > 0) marks.push(['flame', '#4a3626']);
     else if (q.owner && q.loyalty < 28) marks.push(['flame', '#c2541f']);
-    marks.forEach(([n, c], i) => layer.marks.append(el('use', { href: `#i-${n}`, x: x + 10 + i * 20, y: y - 26, width: 20, height: 20, style: `color:${c}`, class: 'mark' })));
+    if (q.building) marks.push(['hammer', '#6a5032']);
+    marks.forEach(([n, c], i) => layer.marks.append(el('use', { href: `#i-${n}`, x: x + 10 + i * 20, y: y - 26, width: 20, height: 20, style: `color:${c}`, class: `mark${n === 'hammer' ? ' works' : ''}` })));
   }
 }
 
@@ -398,150 +400,33 @@ function pulse(e) {
 function feed(events) {
   const list = $('#feed-list');
   for (const e of events) {
-    const [ic, color, worth] = kindOf(e);
-    if (!worth) continue;
+    if (!worth(e)) continue;
+    const [ic, color] = kindOf(e);
     const li = document.createElement('li');
     li.innerHTML = `<span style="color:${color}">${icon(ic)}</span><span class="t">${esc(e.text)}<span class="d">${esc(e.date)}</span></span>`;
     if (e.at) li.dataset.at = e.at;
-    if (e.realms?.[0]) li.dataset.realm = e.realms[0];
+    if (e.war) li.dataset.war = e.war;
+    else if (e.chars?.[0] && ['death', 'crowned', 'birth', 'epithet', 'marriage', 'regency', 'turncoat', 'intrigue'].includes(e.type) && s.chars[e.chars[0]]) li.dataset.char = e.chars[0];
+    else if (e.realms?.[0]) li.dataset.realm = e.realms[0];
     list.prepend(li);
   }
   while (list.children.length > 7) list.lastElementChild.remove();
 }
 
-// Each power at a glance: its share of the land, its king, its soldiers and its gold. Ranked by land.
-const LAND = PROVINCES.reduce((t, p) => t + p.area, 0);
+// Each power at a glance: its share of the land, its ruler, its soldiers and its gold. Ranked by land.
 const statsOf = (r) => {
   const mine = provincesOf(s, r.id);
-  return { r, n: mine.length, land: mine.reduce((t, p) => t + p.area, 0) / LAND, men: armiesOf(s, r.id).reduce((t, a) => t + a.size, 0), ruler: s.chars[r.ruler] };
+  return { r, n: mine.length, land: mine.reduce((t, p) => t + p.area, 0) / LAND, men: menOf(s, r.id), ruler: s.chars[r.ruler] };
 };
 function powers() {
   const rows = living(s).map(statsOf).filter((x) => x.n > 0).sort((a, b) => b.land - a.land);
-  const key = rows.map((x) => `${x.r.id}${x.n}${x.ruler?.name}${Math.round(x.men)}${Math.round(x.r.gold / 10)}`).join();
+  const key = rows.map((x) => `${x.r.id}${x.n}${x.ruler?.name}${Math.round(x.men)}${Math.round(x.r.gold / 10)}${x.r.golden > s.month}`).join();
   if (key === last.powers) return;
   last.powers = key;
-  $('#powers-list').innerHTML = rows.map(({ r, land, men, ruler }) => `<li><button data-realm="${r.id}">
-      <i class="shield" style="--c:${r.color}"></i><span class="nm">${esc(r.short)}</span><span class="n">${Math.max(1, Math.round(land * 100))}%</span>
-      <span class="sub"><span>${icon('crown')}${esc(ruler?.name ?? '—')}</span><span>${icon('banner')}${Math.round(men)}k</span><span>${icon('coin')}${Math.round(r.gold)}</span>${(r.grain ?? 0) < men * 1.2 ? `<span class="hungry" title="Granaries nearly empty">${icon('wheat')}</span>` : ''}</span>
+  $('#powers-list').innerHTML = rows.map(({ r, land, men: m, ruler }) => `<li><button data-realm="${r.id}">
+      <i class="shield" style="--c:${r.color}"></i><span class="nm">${esc(r.short)}${r.golden > s.month ? `<span class="gold" title="A golden age">${icon('sun')}</span>` : ''}</span><span class="n">${Math.max(1, Math.round(land * 100))}%</span>
+      <span class="sub"><span>${icon('crown')}${esc(ruler?.name ?? '—')}</span><span>${icon('banner')}${men(m)}</span><span>${icon('coin')}${Math.round(r.gold)}</span>${(r.grain ?? 0) < m * 1.2 && !r.nomad ? `<span class="hungry" title="Granaries nearly empty">${icon('wheat')}</span>` : ''}</span>
     </button></li>`).join('');
-}
-
-// ---------- popups: a province, a realm ----------
-const card = { kind: null, id: null };
-function openCard(kind, id, at) {
-  Object.assign(card, { kind, id, at });
-  refreshCard();
-  const c = $('#card');
-  c.hidden = false;
-  if (at && innerWidth > 760) {
-    const r = c.getBoundingClientRect();
-    c.style.left = `${Math.min(innerWidth - r.width - 12, Math.max(12, at.x + 16))}px`;
-    c.style.top = `${Math.min(innerHeight - r.height - 90, Math.max(80, at.y - 40))}px`;
-  }
-}
-function closeCard() {
-  card.kind = null;
-  $('#card').hidden = true;
-}
-const pips = (n, max) => `<span class="pips">${Array.from({ length: max }, (_, i) => `<span class="${i < n ? '' : 'off'}">●</span>`).join('')}</span>`;
-const age_ = (c) => (c ? yearOf(s.month) - c.born : '');
-const months = (n) => `${n} ${n === 1 ? 'month' : 'months'}`;
-const sign = (n) => `${(n ?? 0) >= 0 ? '+' : '−'}${Math.abs(Math.round(n ?? 0))}`;
-const chip = (id) => `<span class="chip" data-realm="${id}"><i class="shield" style="--c:${colorOf(id)}"></i>${esc(s.realms[id]?.short ?? id)}</span>`;
-
-function refreshCard() {
-  const c = $('#card');
-  if (card.kind === 'province') {
-    const p = PROV[card.id], q = s.provinces[card.id], r = s.realms[q.owner];
-    const loyal = Math.round(q.loyalty), lc = loyal < 30 ? '#c2541f' : loyal < 55 ? '#b3852c' : '#4f7a3a';
-    const here = Object.values(s.armies).filter((a) => a.at === card.id);
-    c.innerHTML = `<button class="x" aria-label="Close">×</button>
-      <div class="who">${r ? `<i class="shield" style="--c:${r.color}"></i>${esc(r.short)}` : 'Unclaimed land'}</div>
-      <h3>${esc(p.city)}</h3><p class="fa">${esc(p.fa)}</p>
-      <div class="stats">
-        <span class="stat" title="Wealth">${icon('coin')}${pips(p.wealth, 5)}</span>
-        <span class="stat" title="Walls">${icon('tower')}${pips(q.walls, 4)}</span>
-        <span class="stat" title="Loyalty of the people">${icon('people')}<span class="meter"><i style="width:${loyal}%;background:${lc}"></i></span></span>
-        <span class="stat" title="Terrain">${icon('hill')}${esc(p.terrain)}</span>
-      </div>
-      <div class="gives">${(() => { const y = yieldOf(s, card.id); return [['wheat', y.grain, 'grain'], ['horse', y.horses, 'horses'], ['anvil', y.iron, 'iron']].filter(([, v]) => v > 0).map(([i, v, w]) => `<span title="${w} a month">${icon(i)}${Math.round(v * 10) / 10}</span>`).join(''); })()}<small>a month</small></div>
-      ${q.siege ? `<div class="row" style="color:var(--vermilion)">${icon('tower', 'i')} Besieged by ${chip(q.siege.realm)} · ${months(q.siege.left)}</div>` : ''}
-      ${here.length ? `<div class="row">${icon('banner')} ${here.map((a) => `${chip(a.realm)} ${Math.round(a.size)}k`).join(' ')}</div>` : ''}
-      <p class="fact">${esc(p.fact)}</p>`;
-  } else if (card.kind === 'army') {
-    // One army: who leads it, what it is doing, what it costs to feed, and what it has done.
-    const a = s.armies[card.id];
-    if (!a) return closeCard();
-    const r = s.realms[a.realm], g = s.chars[a.general], lead = leaderOf(a), P = PROV[a.at], n = a.path.length;
-    const doing = a.mode === 'siege' ? ['tower', `Besieging ${P.city} · ${months(s.provinces[a.at].siege?.left ?? 1)} to go`]
-      : a.mode === 'garrison' ? ['castle', `Holding the walls of ${P.city}`]
-      : a.rest > 0 ? ['swords', `Recovering from battle at ${P.city}`]
-      : n ? ['banner', `Marching on ${PROV[a.path[n - 1]].city} · ${n} ${n === 1 ? 'province' : 'provinces'} to go`]
-      : isWinter(s.month) && !r.nomad ? ['wheat', `In winter quarters at ${P.city}`]
-      : ['banner', `Camped at ${P.city}`];
-    const deeds = [];
-    for (let m = s.month - 1; g && m >= 0 && deeds.length < 4; m--) for (const e of [...(story.events[m] ?? [])].reverse()) if (deeds.length < 4 && kindOf(e)[2] && e.chars?.includes(g.id)) deeds.push(e);
-    c.innerHTML = `<button class="x" aria-label="Close">×</button>
-      <div class="who">${chip(a.realm)}<span>${lead === 'crown' ? 'The ruler leads in person' : lead === 'circlet' ? 'Led by the heir' : 'An army in the field'}</span></div>
-      <div class="king">
-        <span class="medal" style="--c:${r.color}">${icon(lead)}</span>
-        <span><b>${esc(g ? `${g.title ?? ''} ${g.name}`.trim() : 'No commander')}</b>
-          <small>${g ? `aged ${age_(g)}${g.invented ? ' · invented by this age' : ''}` : 'its general has fallen'}</small></span>
-      </div>
-      ${g ? `<div class="stats"><span class="stat" title="Skill in war">${icon('swords')}${pips(g.skill, 5)}</span>${g.traits.map((t) => `<span class="trait">${esc(t)}</span>`).join('')}</div>` : ''}
-      <div class="stores four">
-        <span title="Soldiers">${icon('banner')}<b>${Math.round(a.size * 10) / 10}k</b><small>soldiers</small></span>
-        <span title="Share that rides">${icon('horse')}<b>${Math.round(cavalryOf(s, a.realm) * 100)}%</b><small>ride</small></span>
-        <span title="Grain this army eats each month">${icon('wheat')}<b>${Math.round(rations(s, a) * 10) / 10}</b><small>grain a month</small></span>
-        <span title="Spirit: battles won lift it, defeats and hunger sink it">${icon('flame')}<b>${Math.round(a.morale * 100)}%</b><small>spirit</small></span>
-      </div>
-      <div class="row doing">${icon(doing[0])}${esc(doing[1])}</div>
-      ${deeds.length ? `<ol class="deeds">${deeds.map((e) => `<li><span style="color:${kindOf(e)[1]}">${icon(kindOf(e)[0])}</span><span>${esc(e.text)}<small>${esc(e.date)}</small></span></li>`).join('')}</ol>` : ''}`;
-  } else if (card.kind === 'realm') {
-    const r = s.realms[card.id];
-    if (!r) return closeCard();
-    const ruler = s.chars[r.ruler], heir = s.chars[r.heir];
-    const men = armiesOf(s, r.id).reduce((t, a) => t + a.size, 0);
-    const wars = living(s).filter((o) => atWar(s, r.id, o.id)).map((o) => o.id);
-    const friends = living(s).filter((o) => o.id !== r.id && friendly(s, r.id, o.id)).map((o) => o.id);
-    const p = r.plan ?? {}, aims = (p.targets ?? []).filter((t) => t !== 'neutral' && s.realms[t] && !s.realms[t].fallen);
-    const thoughts = [
-      aims.length ? `Wants ${aims.slice(0, 3).map((t) => esc(s.realms[t].short)).join(', ')}` : null,
-      (p.targets ?? []).includes('neutral') ? 'Eyes the free lands next door' : null,
-      p.peace?.length ? `Seeks peace with ${p.peace.map((t) => esc(s.realms[t]?.short)).join(', ')}` : null,
-      r.tax === 'high' ? 'Taxes are heavy' : r.tax === 'low' ? 'Taxes eased to calm the people' : null,
-      r.power ? `Has spent the reign's power move: ${{ levy: 'Great Levy', walls: 'Mighty Walls', bribe: 'a bribe', feast: 'a Royal Feast', silktax: 'Silk Tax' }[r.power]}` : null,
-    ].filter(Boolean);
-    const st = statsOf(r), cap = PROV[r.capital];
-    const leads = ruler?.army && s.armies[ruler.army] ? s.armies[ruler.army] : null;
-    const court = Object.values(s.chars).filter((x) => x.alive && x.realm === r.id && x.role === 'courtier');
-    const END = { age: 'skull', battle: 'swords', assassin: 'dagger', overthrown: 'dagger', coup: 'dagger', poisoned: 'dagger' };
-    const past = (r.lineage ?? []).slice().reverse();
-    c.innerHTML = `<button class="x" aria-label="Close">×</button>
-      <div class="who"><i class="shield big" style="--c:${r.color}"></i>${r.rebel ? 'A rebellion' : r.origin === 'historic' ? 'A power of 1200' : r.origin === 'horde' ? 'A horde from the steppe' : `Founded ${yearOf(r.founded)}`}</div>
-      <h3>${esc(r.name)}</h3>${r.fa ? `<p class="fa">${esc(r.fa)}</p>` : ''}
-      <div class="king">
-        <span class="medal" style="--c:${r.color}">${icon('crown')}</span>
-        <span><b>${esc(ruler ? `${ruler.title ?? ''} ${ruler.name}` : 'No ruler')}</b>
-          <small>${ruler ? `aged ${age_(ruler)}${ruler.since ? ` · reigning since ${ruler.since}` : ''}` : ''}${leads ? ` · leads ${Math.round(leads.size)}k at ${esc(PROV[leads.at].city)}` : ''}</small></span>
-      </div>
-      ${heir || court.length ? `<div class="family">${heir ? `<span>${icon('circlet')}<b>${esc(heir.name)}</b> ${esc(heir.relation ?? 'heir')}${heir.relation ? ' and heir' : ''}, ${age_(heir)}</span>` : ''}${court.map((x) => `<span>${icon('people')}<b>${esc(x.name)}</b> ${esc(x.title ?? x.role)}</span>`).join('')}</div>` : ''}
-      <div class="grid4">
-        <span>${icon('castle')}<b>${st.n}</b><small>provinces · ${Math.max(1, Math.round(st.land * 100))}% of the land</small></span>
-        <span>${icon('palace')}<b>${esc(cap?.city ?? '—')}</b><small>capital</small></span>
-      </div>
-      <div class="stores">
-        <span title="Soldiers under arms">${icon('banner')}<b>${Math.round(men)}k</b><small>soldiers</small></span>
-        <span title="Gold in the treasury">${icon('coin')}<b>${Math.round(r.gold)}</b><small>${sign(r.lastIncome)} gold</small></span>
-        <span class="${(r.grain ?? 0) < men * 1.2 ? 'low' : ''}" title="Grain in the granaries, and this month's harvest less what the armies ate">${icon('wheat')}<b>${Math.round(r.grain ?? 0)}</b><small>${sign(r.lastSupply?.grain)} grain</small></span>
-        <span title="Horses, and the share of the army that rides">${icon('horse')}<b>${Math.round(r.horses ?? 0)}</b><small>${Math.round(cavalryOf(s, r.id) * 100)}% ride</small></span>
-        <span title="Iron to arm new soldiers">${icon('anvil')}<b>${Math.round(r.iron ?? 0)}</b><small>${sign(r.lastSupply?.iron)} iron</small></span>
-      </div>
-      ${wars.length ? `<div class="row">${icon('swords')}<span>At war with</span> ${wars.map(chip).join('')}</div>` : ''}
-      ${friends.length ? `<div class="row">${icon('rings')}<span>Friends</span> ${friends.map(chip).join('')}</div>` : ''}
-      ${thoughts.length ? `<div class="mind"><b>${icon('eye')} In the ruler's mind</b>${thoughts.join('. ')}.</div>` : ''}
-      ${past.length ? `<details class="lineage"><summary>${icon('scroll')} The ${esc(r.dynasty ?? 'line')}: ${past.length} before</summary><ol>${past.map((l) => `<li><span>${esc(l.name)}</span><small>${l.since}–${l.until}</small>${l.cause && END[l.cause] ? `<i title="${esc(l.cause)}">${icon(END[l.cause])}</i>` : ''}</li>`).join('')}</ol></details>` : ''}`;
-  }
 }
 
 // ---------- the free plan: a visitor's business in, the AI's plan out (POST /api/plan, server/plan.js) ----------
@@ -577,36 +462,39 @@ async function draftPlan(text) {
 
 // ---------- the chronicler: ask about the world at this moment ----------
 // The world lives in this browser, so the question goes with what the chronicles record now: the realms and their
-// rulers, who holds which cities, the lines of kings, and the great events of the age so far.
+// rulers and courts, their wars and treaties, who holds which cities, and the great events of the age so far.
 function factsNow() {
   const out = [], rows = living(s).map(statsOf).filter((x) => x.n > 0).sort((a, b) => b.land - a.land);
+  const ageOf = (c) => (c ? yearOf(s.month, s) - c.born : '');
   out.push('Realms, largest first:');
-  for (const { r, n, men, ruler } of rows.slice(0, 22)) {
-    const heir = s.chars[r.heir], wars = living(s).filter((o) => atWar(s, r.id, o.id)).map((o) => o.short);
-    const line = (r.lineage ?? []).slice(-3).map((l) => `${l.name} ${l.since}-${l.until}${l.cause ? ` (${l.cause})` : ''}`).join(', ');
-    out.push(`- ${r.name} (${r.short}): ${ruler ? `${ruler.title ?? ''} ${ruler.name}, aged ${age_(ruler)}${ruler.since ? `, reigning since ${ruler.since}` : ''}` : 'no ruler'}${heir ? `; heir ${heir.name} (${heir.relation ?? 'heir'})` : ''}; house: ${r.dynasty}${line ? `; before: ${line}` : ''}; ${n} provinces, capital ${PROV[r.capital]?.city}, holds ${provincesOf(s, r.id).map((p) => p.city).slice(0, 14).join(', ')}; ${Math.round(men)}k soldiers, gold ${Math.round(r.gold)}, grain ${Math.round(r.grain ?? 0)}, horses ${Math.round(r.horses ?? 0)}${wars.length ? `; at war with ${wars.join(', ')}` : ''}${r.overlord ? `; vassal of ${s.realms[r.overlord]?.short}` : ''}${r.origin !== 'historic' ? `; founded ${yearOf(r.founded)}` : ''}.`);
+  for (const { r, n, men: m, ruler } of rows.slice(0, 20)) {
+    const heir = s.chars[r.heir], consort = s.chars[ruler?.spouse], vizier = s.chars[r.vizier], regent = s.chars[r.regent];
+    const wars = [...new Set(living(s).filter((o) => atWar(s, r.id, o.id)).map((o) => s.conflicts[s.wars[[r.id, o.id].sort().join('|')]?.conflict]?.name ?? `war with ${o.short}`))];
+    const line = (r.lineage ?? []).slice(-3).map((l) => `${l.name}${l.epithet ? ` ${l.epithet}` : ''} ${l.since}-${l.until}${l.cause ? ` (${l.cause})` : ''}`).join(', ');
+    const temper = TEMPER_TEXT[rulingTemper(s, r)]?.[0];
+    out.push(`- ${r.name} (${r.short}): ${ruler ? `${ruler.title ?? ''} ${ruler.name}${ruler.epithet ? ` ${ruler.epithet}` : ''}, aged ${ageOf(ruler)}${temper ? `, a ${temper.toLowerCase()}` : ''}${ruler.since ? `, reigning since ${ruler.since}` : ''}` : 'no ruler'}${regent ? `; regent ${regent.name}` : ''}${consort?.alive ? `; consort ${consort.name}` : ''}${heir ? `; heir ${heir.name} (${heir.relation ?? 'heir'})` : ''}${vizier?.alive ? `; ${vizier.title} ${vizier.name}` : ''}; house: ${r.dynasty}${line ? `; before: ${line}` : ''}; ${n} provinces, capital ${cityOf(s, r.capital)}, holds ${provincesOf(s, r.id).map((p) => cityOf(s, p.id)).slice(0, 12).join(', ')}; ${Math.round(m)}k soldiers, gold ${Math.round(r.gold)}, prosperity ${Math.round(prosperityOf(s, r.id))}/100${r.golden > s.month ? ', in a golden age' : ''}${wars.length ? `; at war: ${wars.join(', ')}` : ''}${r.overlord ? `; vassal of ${s.realms[r.overlord]?.short}` : ''}${r.origin !== 'historic' ? `; founded ${yearOf(r.founded, s)}` : ''}.`);
   }
-  if (rows.length > 22) out.push(`- smaller realms: ${rows.slice(22).map((x) => `${x.r.short} (${x.n})`).join(', ')}.`);
-  const fallen = Object.values(s.realms).filter((r) => r.fallen).map((r) => `${r.name} (fell ${yearOf(r.fellAt ?? 0)})`);
+  if (rows.length > 20) out.push(`- smaller realms: ${rows.slice(20).map((x) => `${x.r.short} (${x.n})`).join(', ')}.`);
+  const fallen = Object.values(s.realms).filter((r) => r.fallen).map((r) => `${r.name} (fell ${yearOf(r.fellAt ?? 0, s)})`);
   if (fallen.length) out.push(`Fallen realms: ${fallen.join('; ')}.`);
   const great = [], lately = [];
   for (let m = 0; m < s.month; m++) for (const e of story.events[m] ?? []) {
-    if (GREAT(e) || ['crowned', 'war', 'peace', 'power', 'plague'].includes(e.type) || (e.type === 'death' && e.cause === 'assassin')) great.push(`${e.date}: ${e.text}`);
-    if (m >= s.month - 6 && kindOf(e)[2]) lately.push(`${e.date}: ${e.text}`);
+    if (isGreat(e, s) || ['crowned', 'war', 'peace', 'power', 'plague', 'marriage', 'golden', 'invention', 'verdict', 'reform'].includes(e.type) && !e.minor || (e.type === 'death' && e.cause === 'assassin')) great.push(`${e.date}: ${e.text}`);
+    if (m >= s.month - 6 && worth(e)) lately.push(`${e.date}: ${e.text}`);
   }
-  out.push('Great events of the age so far:', ...great.slice(-50).map((x) => `- ${x}`), 'The last few months:', ...lately.slice(-15).map((x) => `- ${x}`));
+  out.push('Great events of the age so far:', ...great.slice(-55).map((x) => `- ${x}`), 'The last few months:', ...lately.slice(-15).map((x) => `- ${x}`));
   return out.join('\n').slice(0, 9000);
 }
 async function askChronicler(q) {
   const question = q.trim();
   if (question.length < 3) return;
   const log = $('#ask-log'), li = document.createElement('li');
-  li.innerHTML = `<p class="q">${esc(question)}<small>${esc(dateText(s.month))}</small></p><p class="a thinking">${icon('quill')} The chronicler searches his pages…</p>`;
+  li.innerHTML = `<p class="q">${esc(question)}<small>${esc(dateText(s.month, s))}</small></p><p class="a thinking">${icon('quill')} The chronicler searches his pages…</p>`;
   log.append(li);
   log.scrollTop = log.scrollHeight;
   $('#ask-q').value = '';
   try {
-    const d = await fetch('/api/chronicle', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, date: dateText(s.month), facts: factsNow() }) }).then((r) => r.json());
+    const d = await fetch('/api/chronicle', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, date: dateText(s.month, s), facts: factsNow() }) }).then((r) => r.json());
     li.querySelector('.a').outerHTML = `<p class="a">${esc(d.answer ?? d.error ?? 'The chronicles are silent.')}</p>`;
   } catch {
     li.querySelector('.a').outerHTML = '<p class="a">The chronicler cannot be reached just now. Try again in a minute.</p>';
@@ -622,16 +510,28 @@ function playPause(on = !playing) {
   clearTimeout(timer);
   if (playing) loop();
 }
+let lastCard = -99;
 function loop() {
   if (!playing) return;
   if (s.status !== 'running') {
     playPause(false);
     return;
   }
-  const events = advance();
-  render(events);
-  timer = setTimeout(loop, SPEED[speed] + (events.some(GREAT) ? HOLD[speed] : 0));
+  const r = advance();
+  render(r.events);
+  // A great event, freshly lived, gets its card: at 1× the story waits for the reader; at 4× it shows for a moment.
+  const great = r.fresh && speed < 16 && s.month - lastCard >= (speed === 1 ? 3 : 8) ? r.events.filter((e) => isGreat(e, s)).sort((a, b) => rank(b) - rank(a))[0] : null;
+  if (great) {
+    lastCard = s.month;
+    eventCard(great, S.prev, s, r.events);
+    if (speed === 1) { playing = false; $('#play').innerHTML = icon('play'); resumeAfterCard = true; return; }
+    clearTimeout(cardTimer);
+    cardTimer = setTimeout(() => $('#event').open && $('#event').close('auto'), 3500);
+  }
+  timer = setTimeout(loop, SPEED[speed] + (r.events.some((e) => isGreat(e, s)) ? HOLD[speed] : 0));
 }
+let resumeAfterCard = false, cardTimer = 0;
+const rank = (e) => ({ 'age.ended': 9, horde: 8, fallen: 7, capture: 6, split: 6, coup: 6, golden: 5, death: 5, battle: 4, turncoat: 4, uprising: 4, commune: 3, charter: 3, separatist: 3, invention: 2, defied: 2, war: 2 })[e.type] ?? 1;
 function setSpeed(v) {
   speed = v;
   document.documentElement.style.setProperty('--step', `${Math.min(1.1, (SPEED[v] * 0.85) / 1000)}s`);
@@ -694,7 +594,7 @@ function setupPanZoom() {
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     start = { ...view, px: e.clientX, py: e.clientY, d: pts.size === 2 ? dist() : 0 };
     moved = false;
-    map.setPointerCapture(e.pointerId);
+    try { map.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer */ }
   });
   const dist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
   map.addEventListener('pointermove', (e) => {
@@ -723,12 +623,12 @@ function setupPanZoom() {
 }
 function click(e) {
   const t = document.elementFromPoint(e.clientX, e.clientY);
-  const realm = t?.closest('[data-realm]')?.dataset.realm;
-  const army = t?.closest('[data-army]')?.dataset.army;
-  const prov = t?.closest('.prov')?.dataset.id;
-  if (army && s.armies[army]) return openCard('army', army, { x: e.clientX, y: e.clientY });
-  if (realm) return openCard('realm', realm, { x: e.clientX, y: e.clientY });
-  if (prov) return openCard('province', prov, { x: e.clientX, y: e.clientY });
+  const at = { x: e.clientX, y: e.clientY };
+  const army = t?.closest('[data-army]')?.dataset.army, battle = t?.closest('.battle'), realm = t?.closest('[data-realm]')?.dataset.realm, prov = t?.closest('.prov')?.dataset.id;
+  if (army && s.armies[army]) return openCard('army', army, at);
+  if (battle?.dataset.war) return openCard('war', battle.dataset.war, at);
+  if (realm) return openCard('realm', realm, at);
+  if (prov) return openCard('province', prov, at);
   closeCard();
 }
 function focus(pid) {
@@ -746,7 +646,7 @@ function wire() {
   const seekAt = (e) => {
     const r = track.getBoundingClientRect();
     playPause(false);
-    seek(((e.clientX - r.left) / r.width) * RULES.months);
+    seek(((e.clientX - r.left) / r.width) * total());
   };
   track.addEventListener('pointerdown', (e) => {
     seekAt(e);
@@ -775,6 +675,17 @@ function wire() {
   });
   $('#plan-go').addEventListener('click', () => draftPlan($('#plan-text').value));
   addEventListener('hashchange', () => location.hash === '#plan' && openPlan());
+  // The great-event card: Continue resumes the story; the other button opens the war or the realm.
+  $('#event').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (e.target === $('#event') || b) $('#event').close(b?.value ?? 'go');
+    if (b?.dataset.war) openCard('war', b.dataset.war);
+    else if (b?.dataset.realm) openCard('realm', b.dataset.realm);
+  });
+  $('#event').addEventListener('close', () => {
+    clearTimeout(cardTimer);
+    if (resumeAfterCard) { resumeAfterCard = false; playPause(true); }
+  });
   const toggleAsk = (open = $('#ask').hidden) => {
     $('#ask').hidden = !open;
     $('#ask-btn').setAttribute('aria-pressed', String(open));
@@ -794,29 +705,28 @@ function wire() {
     k.hidden = !open;
     $('#powers-btn').setAttribute('aria-pressed', String(open));
   });
+  // Anything that names a realm, a person, a war, an army or a town opens its card.
   document.addEventListener('click', (e) => {
-    const r = e.target.closest('.chip[data-realm], .powers [data-realm], .feed li');
-    if (!r) return;
-    if (r.matches('.feed li')) {
-      if (r.dataset.at) focus(r.dataset.at);
-      if (r.dataset.realm && s.realms[r.dataset.realm]) openCard('realm', r.dataset.realm);
-      return;
-    }
-    openCard('realm', r.dataset.realm, e.target.closest('.card') ? null : { x: e.clientX, y: e.clientY });
+    if (e.target.closest('#map, dialog')) return;
+    const inCard = !!e.target.closest('.card');
+    const at = inCard ? null : { x: e.clientX, y: e.clientY };
+    if (e.target.closest('.card .x')) return closeCard();
+    if (e.target.closest('.card .back')) return backCard();
+    const feedItem = e.target.closest('.feed li');
+    if (feedItem?.dataset.at) focus(feedItem.dataset.at);
+    const t = e.target.closest('[data-war]:not([data-war=""]), [data-char], [data-army], [data-prov], [data-realm]');
+    if (!t) return;
+    if (t.dataset.war) return openCard('war', t.dataset.war, at);
+    if (t.dataset.char && s.chars[t.dataset.char]) return openCard('char', t.dataset.char, at);
+    if (t.dataset.army && s.armies[t.dataset.army]) return openCard('army', t.dataset.army, at);
+    if (t.dataset.prov) { focus(t.dataset.prov); return openCard('province', t.dataset.prov, at); }
+    if (t.dataset.realm && s.realms[t.dataset.realm]) return openCard('realm', t.dataset.realm, at);
   });
-  $('#card').addEventListener('click', (e) => { if (e.target.closest('.x')) closeCard(); });
   addEventListener('keydown', (e) => {
     if (e.key === ' ' && !e.target.closest('button, a, input, textarea')) { e.preventDefault(); playPause(); }
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.target.closest('input, textarea')) step((e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 12 : 1));
     if (e.key === 'Escape') { closeCard(); toggleAsk(false); }
   });
-  for (const y of [1200, 1210, 1220, 1230, 1240, 1250]) {
-    const t = document.createElement('span');
-    t.className = 'tick';
-    t.style.left = `${((y - 1200) * 12 / RULES.months) * 100}%`;
-    t.textContent = y;
-    $('#track-ticks').append(t);
-  }
   if (innerWidth < 760) { // a phone: the map comes first, the powers list on request
     $('#powers').hidden = true;
     $('#powers-btn').setAttribute('aria-pressed', 'false');

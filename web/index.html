@@ -30,6 +30,7 @@
     <h1>Agentistan</h1>
     <p class="fa" lang="fa">ایجنتستان</p>
     <p class="date" id="date">January 1200</p>
+    <p class="season" id="season"></p>
   </header>
 
   <nav class="tools" aria-label="Tools">
@@ -54,6 +55,12 @@
       <li><svg viewBox="0 0 24 24"><use href="#i-skull" style="color:#4f6b3a"/></svg>Plague</li>
       <li><svg viewBox="0 0 24 24"><use href="#i-wheat" style="color:#9a7a2a"/></svg>Famine</li>
       <li><svg viewBox="0 0 24 24"><use href="#i-flame" style="color:#4a3626"/></svg>Ravaged</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-swords" style="color:#a3361f"/></svg>Battle</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-hammer" style="color:#6a5032"/></svg>Building</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-snow" style="color:#8aa3ad"/></svg>Snow</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-rain" style="color:#3d6b8c"/></svg>Monsoon</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-sun" style="color:#c2541f"/></svg>Heat</li>
+      <li><svg viewBox="0 0 24 24"><use href="#i-sun" style="color:#b3852c"/></svg>Golden age</li>
       <li><svg viewBox="0 0 24 24"><path d="M2 12h20" stroke="#301e0e" stroke-width="2.6"/></svg>Border</li>
       <li><svg viewBox="0 0 24 24"><path d="M2 12h20" stroke="#b3852c" stroke-width="3" stroke-dasharray="1 5" stroke-linecap="round"/></svg>Silk Road</li>
     </ul>
@@ -98,12 +105,14 @@
       <ul>
         <li><svg viewBox="0 0 24 24"><use href="#i-crown" style="color:#b3852c"/></svg>The real realms and rulers of 1200</li>
         <li><svg viewBox="0 0 24 24"><use href="#i-dagger" style="color:#a3361f"/></svg>Revolts, assassins, successions, hordes</li>
-        <li><svg viewBox="0 0 24 24"><use href="#i-eye" style="color:#27466e"/></svg>Soon: an AI mind for every ruler</li>
+        <li><svg viewBox="0 0 24 24"><use href="#i-rings" style="color:#27466e"/></svg>Kings, queens, viziers and their plots</li>
       </ul>
       <div class="go"><button class="btn main" id="begin" value="go">Begin 1200</button><button class="btn" id="forge-plan" type="button">Free plan</button></div>
       <div class="countdown" aria-hidden="true"><i></i></div>
     </form>
   </dialog>
+
+  <dialog class="event" id="event" aria-label="A great event"><div class="panel"></div></dialog>
 
   <dialog class="plan" id="plan" aria-labelledby="plan-title">
     <form method="dialog" class="panel" id="plan-box">

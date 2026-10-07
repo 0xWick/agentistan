@@ -86,3 +86,78 @@ export const randomTraits = (rng, n = 2) => {
   while (out.size < n) out.add(pick(rng, TRAITS));
   return [...out];
 };
+
+// Daughters, consorts and queens, by the customs of each land.
+const WOMEN = {
+  persian: ['Shirin', 'Gawhar', 'Mahin', 'Khurshid', 'Parvin', 'Roshanak', 'Banu', 'Mihrnaz', 'Turan', 'Zarrin'],
+  turk: ['Altun', 'Qutlugh', 'Ay Khatun', 'Toghay', 'Inanch Khatun', 'Khan Sultan', 'Saljuq Khatun', 'Ay Chichek', 'Türkan'],
+  steppe: ['Ay Chichek', 'Altunchek', 'Saru', 'Bike', 'Kunchek', 'Aylin'],
+  mongol: ['Altani', 'Qulan', 'Qadaqan', 'Oghul', 'Tümelün', 'Checheyigen', 'Alaqai', 'Qojin', 'Bulughan', 'Nomolun'],
+  arab: ['Fatima', 'Zaynab', 'Maymuna', 'Dayfa', 'Shajar', 'Sitt al-Sham', 'Asma', 'Layla', 'Rabi\'a', 'Zumurrud'],
+  kurd: ['Gulnar', 'Khanzad', 'Hamida', 'Rabi\'a', 'Nergis'],
+  georgian: ['Rusudan', 'Gurandukht', 'Borena', 'Khoreshan', 'Mariam', 'Ketevan', 'Nestan', 'Tinatin'],
+  afghan: ['Razia', 'Shah Turkan', 'Malika-yi Jahan', 'Gawhar', 'Zarrin', 'Banu'],
+  punjabi: ['Kaulan', 'Sundari', 'Rupmati', 'Harbans', 'Jindan'],
+  sindhi: ['Marui', 'Sasui', 'Nuri', 'Lila', 'Sohni'],
+  kashmiri: ['Kota', 'Didda', 'Suryamati', 'Sugandha', 'Lalla'],
+  rajput: ['Padmini', 'Samyukta', 'Karnavati', 'Rupmati', 'Durgavati', 'Hamsa'],
+  hindustani: ['Lakshmi', 'Kumaradevi', 'Prabhavati', 'Sarasvati', 'Kamala'],
+  bengali: ['Bhavani', 'Shyama', 'Chandra', 'Kamala', 'Malati'],
+  greek: ['Eirene', 'Anna', 'Theodora', 'Maria', 'Euphrosyne', 'Zoe', 'Helena', 'Eudokia'],
+  latin: ['Constance', 'Isabella', 'Margaret', 'Beatrice', 'Matilda', 'Adelaide', 'Agnes', 'Sibylla', 'Alice', 'Joanna'],
+  armenian: ['Zabel', 'Rita', 'Stephanie', 'Tamta', 'Mariun'],
+  berber: ['Zaynab', 'Tamima', 'Kanza', 'Fanu', 'Hawwa'],
+  nubian: ['Mariam', 'Martha', 'Kyra', 'Eiparta'],
+  slavic: ['Anna', 'Elena', 'Desislava', 'Irina', 'Kira', 'Milica'],
+  magyar: ['Margaret', 'Gertrude', 'Elizabeth', 'Yolanda', 'Constance'],
+  chinese: ['Li Fengniang', 'Yang Meizi', 'Wu Yun', 'Xie Daoqing', 'Zhou Ying', 'Han Yueniang', 'Zhao Jiao', 'Wanyan Ying'],
+};
+export function womanName(rng, culture, used = new Set()) {
+  const pool = WOMEN[culture] ?? WOMEN.persian;
+  for (let i = 0; i < 8; i++) {
+    const n = pick(rng, pool);
+    if (!used.has(n)) return n;
+  }
+  return `${pick(rng, pool)} ${['the Younger', 'II', 'the Elder'][Math.floor(rng() * 3)]}`;
+}
+const WOMEN_SET = new Set(Object.values(WOMEN).flat());
+export const isWomanName = (n) => WOMEN_SET.has(n);
+
+const CONSORT = { turk: 'Khatun', steppe: 'Khatun', mongol: 'Khatun', persian: 'Khatun', kurd: 'Khatun', afghan: 'Malika', arab: 'Sayyida', berber: 'Sayyida', punjabi: 'Rani', sindhi: 'Rani',
+  rajput: 'Rani', hindustani: 'Rani', bengali: 'Rani', kashmiri: 'Queen', greek: 'Empress', chinese: 'Empress', latin: 'Queen', georgian: 'Queen', armenian: 'Queen', slavic: 'Queen', magyar: 'Queen', nubian: 'Queen' };
+export const consortTitle = (culture, female = true) => (female ? CONSORT[culture] ?? 'Queen' : 'Prince consort');
+const VIZIER = { greek: 'Logothete', slavic: 'Logothete', latin: 'Chancellor', magyar: 'Chancellor', georgian: 'Chancellor', armenian: 'Chancellor', chinese: 'Chancellor', rajput: 'Mantri', hindustani: 'Mantri', bengali: 'Mantri', kashmiri: 'Mantri', nubian: 'Eparch' };
+export const vizierTitle = (culture) => VIZIER[culture] ?? 'Vizier';
+
+// What each temperament means, in a word and a line: the card shows it, and the AI plays to it.
+export const TEMPER_TEXT = {
+  conqueror: ['Conqueror', 'lives for war and glory'], builder: ['Builder', 'raises canals, markets and caravanserais'], miser: ['Miser', 'hoards gold and keeps small armies'],
+  negligent: ['Negligent', 'leaves famine, revolt and the frontier to others'], paranoid: ['Paranoid', 'sees plots everywhere and purges the court'], hedonist: ['Pleasure-lover', 'spends the treasury on feasts and palaces'],
+  reformer: ['Reformer', 'changes laws, taxes and the army'], diplomat: ['Diplomat', 'prefers marriages and treaties to war'], just: ['Just', 'loved for fair judgement'], tyrant: ['Tyrant', 'rules by fear and heavy taxes'],
+  loyal: ['Loyal', 'would die for the crown'], steady: ['Steady', 'does his duty'], glory: ['Glory-hunter', 'storms walls and attacks against the odds'], cautious: ['Cautious', 'breaks off a losing fight'],
+  treacherous: ['Treacherous', 'may turn his coat in battle'], butcher: ['Butcher', 'ravages what he takes'], mercenary: ['Mercenary', 'follows the gold, and leaves when it stops'],
+  devoted: ['Devoted', 'stands by the crown'], schemer: ['Schemer', 'plots to crown her own son'], regent: ['Born regent', 'rules well when the crown passes to a child'],
+  able: ['Able', 'fills the treasury'], corrupt: ['Corrupt', 'skims the revenues'], kingmaker: ['Kingmaker', 'would rule through a puppet, or take the throne'],
+};
+// A weighted draw from a table of temperaments ({ name: { w } }).
+export function pickTemper(rng, table) {
+  const all = Object.entries(table), total = all.reduce((t, [, v]) => t + v.w, 0);
+  let x = rng() * total;
+  for (const [k, v] of all) if ((x -= v.w) < 0) return k;
+  return all[0][0];
+}
+// Old traits suggest a temperament for the historic rulers who were given none.
+export function temperFromTraits(traits = [], rng) {
+  const t = new Set(traits);
+  if (t.has('relentless') || (t.has('ambitious') && (t.has('bold') || t.has('proud')))) return 'conqueror';
+  if (t.has('cruel')) return 'tyrant';
+  if (t.has('builder') || t.has('learned')) return 'builder';
+  if (t.has('carefree') || t.has('idle')) return 'hedonist';
+  if (t.has('timid')) return 'negligent';
+  if (t.has('greedy')) return 'miser';
+  if (t.has('secretive') || t.has('scheming')) return 'paranoid';
+  if (t.has('wise') || t.has('beloved') || t.has('just')) return 'just';
+  if (t.has('shrewd') || t.has('cautious')) return 'diplomat';
+  if (t.has('bold') || t.has('ambitious') || t.has('restless')) return 'conqueror';
+  return rng && rng() < 0.5 ? 'builder' : 'diplomat';
+}

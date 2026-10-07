@@ -1,54 +1,106 @@
-# Agentistan: the Silk Road world (design)
+# Agentistan: design and build plan
 
-Agentistan is becoming a medieval world on a real map that writes its own history. It's the Silk Road in 1200 AD. AI plays the rulers, viziers, generals and assassins; kingdoms rise, split and fall on their own, and visitors watch it like a war-history video. The game comes first and the tech second. The two-kingdom war keeps running at `/classic/` until the new world replaces it.
+Agentistan is a living map of the Old World that writes its own history. Real realms and rulers start each age; rules,
+AI characters and (later) players carry it on. Watching it should feel like a war-history video. Playing it should feel
+like a slow Rome II or Frostpunk you can check twice a day.
 
-Decided with Umar on 2026-10-07. We change it as we go.
+Decided with Umar on 2026-10-07: keep the stack (Cloudflare Worker + Durable Objects, plain web page, Groq, Base
+Sepolia, n8n). Rebuild the engine's structure inside it, and build every phase below without stopping for reviews
+("I would rather change things once everything is built").
 
-## The world
+## Principles
 
-- **Map:** from Baghdad and Georgia to Bengal, and from the Aral steppe to Gujarat (39.5–90.5°E, 18.5–47.5°N). It's built from Natural Earth (public domain) by `tools/map/build.py`. The relief is cropped, graded warm and earthy, and given deep seas. The Aral Sea is restored to its extent before the 20th century.
-- **Provinces:** about 70, with their names of the time (Khorasan, Transoxiana, Ghor, Punjab, Sindh, Jibal, Fars, the Doab…). Their borders come from real administrative borders, so they follow rivers and ridges.
-  - Each has a city, terrain, walls (0–3), wealth and a Silk Road flag.
-  - Famous fortresses start with the strongest walls: Alamut, Ranthambore, Kalinjar, Bamiyan.
-- **Realms in 1200:** the real powers and their real rulers. When those rulers die, the AI invents their successors.
-  - With AI rulers: Khwarazm, the Ghurids, Qara Khitai, the Karakhanids, the Abbasids, the Eldiguzids, Georgia and Alamut.
-  - Rule-based: the Salghurids, Zengids, Shirvanshahs, Soomras, Kashmir, Chaulukyas, Paramaras, Chandelas, Chahamanas, Sena and the Kipchaks.
-- **No religion** in any rule or AI line.
+- **The game first.** Every mechanic must show on the map or in a card, and must change what happens.
+- **Pure engine.** `tick(state, brain, inputs)` has no I/O and no clock. Every random draw comes from
+  `rngFor(age, month, ...)`. The same age and the same inputs give the same history, in Node, in a Worker and in a
+  browser.
+- **Decisions are requests.** The rules (doctrine), the AI and players all send the same acts. The engine applies an
+  act only if the rules allow it. If nobody answers in time, doctrine decides.
+- **Free tiers only.** One Durable Object per world (alarms, SQLite, hibernating WebSockets, 30 s CPU per request).
+  Groq free tier: three models, 200k tokens a day each. Workers AI: 10k neurons a day (about 230 Flux pictures).
+  Base Sepolia testnet.
+- **No religion** in rules or AI text.
 
-## The rules (few, and each one visible on the map)
+## Engine layout (web/silk/, shared by browser and server)
 
-- **Gold** is the only resource. Provinces pay it, scaled by their loyalty. It pays for armies, walls, bribes and assassins. A realm with no gold loses soldiers to desertion.
-- **Loyalty** is the mood of each province's people. Conquest, war, distance from the capital and disasters lower it; peace and garrisons raise it. Low loyalty shows a 🔥 and can turn into a revolt.
-- **Armies** are led by named generals with a skill and a trait.
-  - They move one province a month; mountains, deserts and big rivers take two. Mountain passes close in winter.
-  - Every army costs upkeep.
-- **Battles:** soldiers × general skill × terrain × morale × provable dice (seeded, like the classic war). Generals can die.
-- **Sieges:** walls make a siege last walls × 2 months, unless the attacker storms them at a heavy cost.
-- **Diplomacy:** war, peace, alliance or vassal. Vassals pay tribute.
-- **Power moves:** one per reign, at a moment the ruler chooses: Great Levy, Mighty Walls, Bribe a Governor, Royal Feast or Silk Tax.
+| Module | What it owns |
+|---|---|
+| `core.js` | map data, randomness, calendar, climate, indexes, lookups, text helpers, ids |
+| `ages/1200.js` | the age pack: realms, starting wars and alliances, roads, inventions, scripted forces (the steppe, Alamut) |
+| `economy.js` | gold, grain, horses, iron, prosperity, trade, works (canals, caravanserais, markets, libraries) |
+| `war.js` | conflicts (wars as stories), marching, battles over 1–3 months, sieges, captures, the fall of realms |
+| `court.js` | characters: temperaments, families, marriages, offices (consort, heir, vizier, generals), succession, betrayal, plots, intrigue, epithets |
+| `people.js` | loyalty, revolts, separatists, charters, uprisings, communes |
+| `world.js` | seasons, disasters, inventions, golden ages and decline, legends |
+| `acts.js` | the acts any ruler can take, each with its check |
+| `engine.js` | `newAge`, the monthly pipeline, the end of an age, re-exports |
+| `doctrine.js` | the rule-based brain: plans, acts, army orders, answers to decisions |
 
-## How it grows on its own
+Monthly pipeline: inputs → plans/acts → economy → orders → march → battles → sieges → people → court → world → settle.
 
-- **Revolts:** rebels who hold 2 provinces for a year found a new kingdom, and the AI names it.
-- **Succession:** a ruler dies (old age, battle or an assassin). A weak heir may face a pretender who splits the realm.
-- **Assassins:** Alamut's agents, plus guilds that form at random in rich cities. Rulers hire them.
-- **Betrayal:** an ambitious, disloyal general can defect with his army or seize the throne.
-- **The steppe:** frequent Kipchak raids, and the Mongol horde from the east at a random time (most likely 1215–1225).
-- **Disasters:** plague along the trade roads, famine, earthquakes.
-- **History check:** the world knows the real timeline from 1200 to 1256 and says where this age diverges from it.
+## Systems
 
-## Time and the AI
+- **Characters.** Each has an office, a temperament, traits, skill, loyalty, family ties and deeds.
+  - Rulers: conqueror, builder, miser, negligent, paranoid, hedonist, reformer, diplomat, just, tyrant.
+  - Generals: loyal, glory-hunter, treacherous, cautious, butcher, mercenary.
+  - Consorts: devoted, schemer, regent.
+  - Viziers: able, corrupt, kingmaker.
+  - Temperaments change behaviour: war appetite, building, purges, neglect, betrayal, defection mid-battle.
+  - Epithets are earned ("the Builder", "the Unready").
+- **Families.**
+  - Rulers marry, often across borders, which makes an alliance and kin.
+  - Children are born, and heirs follow blood.
+  - Regencies come with child kings; schemers push their own sons; a line dying out can pass a crown to kin.
+- **Wars as stories.**
+  - A conflict records its cause, sides, every battle, siege and capture, its deaths, the treaty and the gains.
+  - Battles last 1–3 months, with reinforcements, withdrawals and turncoats.
+  - Peace is a treaty with terms: cessions, tribute, truce.
+- **Seasons.** Each province has a climate (cold, monsoon, arid, temperate).
+  - Winter snow closes passes and thins herds.
+  - The monsoon floods rivers and halts campaigns.
+  - Summer heat wears armies in the desert.
+  - Harvests come in their months, so granaries must last until the next one.
+- **Life inside realms.**
+  - Prosperity rises in peace and falls in war, plague and famine; it scales wealth.
+  - The Silk Road pays only along its open stretches.
+  - Works raise prosperity, grain, trade or learning.
+  - Inventions spread across borders and by conquest.
+  - Poverty breeds unrest. Golden ages and declines are proclaimed.
+- **Unrest.** Provinces revolt; distant governors break away; barons force charters; capitals rise; rich cities
+  become communes.
+- **Agreements and the registry.**
+  - Every change of hands is a deed: who, when, how. Treaties have terms, and the engine pays them like escrow.
+  - Breaking a treaty is possible, but it is recorded and costs reputation, which other rulers read.
+  - Claims go to arbitration by a neutral power, judged on the registry; the losing side accepts or defies.
+- **Event cards.** Great events stop the 1× playback with a picture, what happened, a before/after infographic and
+  the consequences.
+- **Portraits.** Every character has a miniature portrait drawn by code (culture, age, rank, sex). Famous figures and
+  event types get illustrations made once with Workers AI (`web/art/`).
 
-- **Timing:** 1 turn = 1 month, every 15 minutes. An age lasts about a week (1200–1256) and ends early if one realm rules 60% of the map. Every age restarts in 1200; past ages stay replayable.
-- **No AI required:** every decision has a rule-based default, so the world runs with no AI at all.
-  - Rulers set a plan every few turns with the big model.
-  - Cheaper models voice the viziers, generals and rebels, and write the chronicle.
-  - Groq's free tier gives each of gpt-oss-120b, gpt-oss-20b and qwen3.8-27b its own daily allowance.
-- **Recording:** each month is saved as a small frame, so the page can replay "while you were away".
+## Server, AI, chain, players
 
-## Parts
+- **One shared world** in a Durable Object (`Era`). An alarm ticks one month at a set pace. It stores yearly
+  snapshots, monthly events and inputs, and streams months to viewers. The page replays history from snapshots and
+  inputs, and the sandbox (dice) still runs a private age in the browser.
+- **The AI cast.** Personas (ambition, secret, fear, voice) are written once per notable character by the small
+  model. Turning-point decisions of AI-led characters are batched into one call per month. Doctrine decides whenever
+  the AI is late, out of budget or wrong.
+- **The chain.** `Chronicle.sol` on Base Sepolia. Once per game year, one transaction seals the state hash, the inputs
+  hash, the year's deeds, its treaties, and the treaties broken. The game never waits for it.
+- **Players.** A player claims a realm in a game. Orders are acts, and turns resolve at the deadline; an absent
+  player's realm is played by its AI or by doctrine. n8n carries heralds (great events), turn reminders and daily
+  digests.
+- **Ages.** The Old World of 1200 filled with playable realms; the ancient world of 200 BC; the age of world wars
+  from 1914.
 
-1. **The world:** the map, the engine, the emergent events, and a balance simulator. Targets: 2–5 new kingdoms per age, realms that rise and fall, and no runaway empire before about 1230.
-2. **The cast:** the AI roles and the token budget.
-3. **The new page:** map first, a timelapse, Pick a side and a simple plan popup. The classic war is retired then (its replays stay).
-4. **The tech re-fit:** the chronicle on-chain, real weather for the real cities, n8n as heralds, and the How-it's-built page.
+## Progress
+
+- [x] 0. Old World map, resources, crossings, lineages, timeline, chronicler (2026-10-07)
+- [ ] 1. Engine split, acts, characters and temperaments, families, wars as stories, battles over months, seasons,
+      war/army/character cards, event cards, portraits, art
+- [ ] 2. Prosperity, trade, works, inventions, unrest, golden ages, treaties, registry, disputes, legends
+- [ ] 3. Shared world on the server (Era DO), page as its window, classic war retired
+- [ ] 4. AI cast: personas and batched decisions
+- [ ] 5. Chronicle.sol: yearly seals of deeds and treaties
+- [ ] 6. Multiplayer games, delegation, n8n heralds and reminders
+- [ ] 7. Ages: full 1200 map, 200 BC, 1914
