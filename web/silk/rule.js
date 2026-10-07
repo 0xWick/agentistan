@@ -197,6 +197,7 @@ function councilHTML() {
   </div>` : ''}
   <footer class="c-foot">
     ${open ? (c.ended ? `<button class="btn" data-reopen>${icon('quill')} Reopen my orders</button>` : `<span class="saved" id="saved"></span><button class="btn main" data-end>${icon('seal')} End my turn</button>`) : ''}
+    <button class="btn" data-treasury>${icon('coin')} Your treasury</button>
     <button class="link" data-leave>Give up the throne</button>
   </footer>`;
 }
@@ -440,6 +441,7 @@ function wireCouncil(d) {
     }
     const v = e.target.closest('[data-vz]');
     if (v) { e.preventDefault(); return vizierFill(v.dataset.vz, v); }
+    if (e.target.closest('[data-treasury]')) return openTreasury();
     if (e.target.closest('[data-end]')) { const x = await save(true); if (x.saved) openCouncil(true); return; }
     if (e.target.closest('[data-reopen]')) { await post(`${API}/orders`, { token: me.token, ...draft, end: false }); return openCouncil(true); }
     if (e.target.closest('[data-leave]') && confirm('Give up your throne? Your house goes on, ruled by the vizier and the rules.')) {
@@ -455,6 +457,57 @@ function wireCouncil(d) {
   if (f) f.onchange = () => { clearTimeout(saving); saving = setTimeout(() => save(), 400); };
   $('#talk')?.addEventListener('submit', (e) => { e.preventDefault(); d.querySelector('[data-ask]')?.click(); });
   d.querySelectorAll('.army-orders select').forEach((x) => (x.onchange = async () => { await save(); if (x.name.startsWith('order-')) openCouncil(true); }));
+}
+
+// ---------- the treasury: a wallet, and the regalia earned ----------
+// A wallet made here lives only in this browser (export the key to keep it); or give the address of your own.
+const WALLET = 'agentistan:wallet';
+const myWallet = () => { try { return JSON.parse(localStorage.getItem(WALLET) ?? 'null'); } catch { return null; } };
+const hex = (b) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+async function makeWallet() {
+  const [{ secp256k1 }, { keccak_256 }] = await Promise.all([import('https://esm.sh/@noble/curves@1.9.1/secp256k1'), import('https://esm.sh/@noble/hashes@1.8.0/sha3')]);
+  const key = secp256k1.utils.randomPrivateKey(), pub = secp256k1.getPublicKey(key, false).slice(1);
+  const w = { key: `0x${hex(key)}`, address: `0x${hex(keccak_256(pub).slice(-20))}`, made: Date.now() };
+  try { localStorage.setItem(WALLET, JSON.stringify(w)); } catch { /* private window: export it at once */ }
+  return w;
+}
+function exportKey(w) {
+  const text = `Agentistan wallet (Base Sepolia testnet)\nAddress: ${w.address}\nPrivate key: ${w.key}\n\nKeep this file secret: whoever has the key owns the regalia.\nTo see them in MetaMask: add the Base Sepolia network, import this private key, then import the NFT contract ${council?.contract ?? ''}.\nThese tokens are on a test network and have no money value.\n`;
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text], { type: 'text/plain' })), download: `agentistan-wallet-${w.address.slice(2, 8)}.txt` });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+const STATUS = { waiting: 'waiting for your address', queued: 'goes out with the next mint', sent: 'on its way to your wallet', minted: 'in your wallet' };
+export async function openTreasury(note = '') {
+  const t = await post(`${API}/treasury`, { token: me.token }), mine = myWallet(), d = $('#dash');
+  if (t.error) return;
+  if (council) council.contract = t.contract;
+  const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+  d.innerHTML = `<div class="panel treasury"><button class="x" data-close aria-label="Close">×</button>
+    <header class="d-head"><i class="shield big" style="--c:#b3852c"></i><div><h2>Your treasury</h2><p class="sub">The regalia of ${esc(me.name)}: keepsakes of your reign, as NFTs on Base Sepolia (a test network: no money value).</p></div></header>
+    ${note ? `<p class="note">${esc(note)}</p>` : ''}
+    <section class="wallet">
+      ${t.wallet ? `<p>${icon('key')} Your address: <code>${esc(t.wallet)}</code> <a href="${t.explorer}/address/${esc(t.wallet)}" target="_blank" rel="noopener">see it on Basescan</a></p>
+        ${mine?.address?.toLowerCase() === t.wallet.toLowerCase() ? `<p class="sub">This wallet was made in this browser and lives only here. <button class="btn" data-export>${icon('key')} Export the key</button></p>` : '<p class="sub">Your own wallet: the regalia go straight to it.</p>'}`
+      : `<p>Where shall your regalia go? Until you choose, they wait for you.</p>
+        <div class="go"><button class="btn main" data-makewallet>${icon('key')} Make me a wallet</button>
+        <form class="talk-form" id="own-wallet"><input name="address" placeholder="or your own address: 0x…" maxlength="42"><button class="btn">Use it</button></form></div>`}
+      <p class="fine">The contract: <a href="${t.explorer}/address/${t.contract}" target="_blank" rel="noopener">${short(t.contract)}</a>. A Seal of the Throne for every throne taken, a Battle Honour for each battle won by your own plan, a Reign Scroll when a reign ends, and an Era Crown for the master of an era.</p>
+    </section>
+    <div class="regalia">${t.regalia.map((x) => `<figure><img src="/nft/${x.id}.svg" alt="${esc(x.title)}" loading="lazy" width="160" height="200"><figcaption><b>${esc(x.title)}</b><small>${esc(x.meta.realm)} · ${esc(x.meta.year)}</small><span class="st ${x.status}">${esc(STATUS[x.status] ?? x.status)}</span>${x.tx ? `<a href="${t.explorer}/tx/${x.tx}" target="_blank" rel="noopener">the mint</a>` : ''}</figcaption></figure>`).join('') || '<p class="sub">No regalia yet: take your throne, win a battle with your own plan, and they will come.</p>'}</div>
+  </div>`;
+  if (!d.open) d.showModal();
+  d.querySelector('[data-makewallet]')?.addEventListener('click', async () => {
+    const w = await makeWallet();
+    const x = await post(`${API}/wallet`, { token: me.token, address: w.address });
+    openTreasury(x.error ?? 'A wallet is made, in this browser. Export the key now, and keep it somewhere safe.');
+  });
+  d.querySelector('[data-export]')?.addEventListener('click', () => exportKey(myWallet()));
+  d.querySelector('#own-wallet')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const x = await post(`${API}/wallet`, { token: me.token, address: new FormData(e.target).get('address').trim() });
+    openTreasury(x.error ?? 'Your regalia will go to that address.');
+  });
 }
 
 // ---------- private games (off the menu): the month-by-month seat ----------

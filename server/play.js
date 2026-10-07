@@ -5,11 +5,12 @@
 // players' reminders, a daily digest, and the real sky over the great capitals into the world.
 import { RULES as R } from '../web/silk/rules.js';
 import { living, provincesOf, steersman, PROV, isGreat, dateText, cityOf, AGES, acceptsPeace, acceptsAlliance, menOf, prosperityOf } from '../web/silk/engine.js';
-import { rngFor, usedNames, yearOf, atWar, pick } from '../web/silk/core.js';
+import { rngFor, usedNames, yearOf, yearLabel, atWar, pick } from '../web/silk/core.js';
 import { brain, neighbours, bestWork } from '../web/silk/doctrine.js';
 import { strength } from '../web/silk/economy.js';
 import { personName, womanName, TEMPER_TEXT } from '../web/silk/names.js';
 import { clean, makeLLM } from './agent.js';
+import { award, claimRegalia, regaliaOf, isAddress, REGALIA_AT } from './regalia.js';
 
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'content-type': 'application/json', 'cache-control': 'no-store' };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: HEADERS });
@@ -93,7 +94,7 @@ export async function play(era, req, p, url) {
     } else if (Object.keys(seats).length >= 12) return json(409, { error: 'this game is full' });
     const webhook = typeof body.webhook === 'string' && DISCORD.test(body.webhook.trim()) ? body.webhook.trim() : null;
     const token = newToken();
-    seats[r.id] = { name, hash: await hash(token), since: era.meta.quarter ? Date.now() : s.month, delegate: 'me', webhook, ready: null, ended: false, lastSeen: Date.now() };
+    seats[r.id] = { name, hash: await hash(token), since: era.meta.quarter ? Date.now() : s.month, sinceYear: yearLabel(yearOf(s.month, s)), delegate: 'me', webhook, ready: null, ended: false, lastSeen: Date.now() };
     era.put('seats', seats);
     if (era.meta.quarter) era.queue(s.month, 'seize', r.id, { name, female: !!body.female, temper: R.temper.ruler[body.temper] ? body.temper : 'conqueror', line: clean(body.line ?? '', 30).slice(0, 160) });
     era.broadcast({ t: 'seats', seats: publicSeats(era, s) });
@@ -166,9 +167,21 @@ export async function play(era, req, p, url) {
     }
     return json(400, { error: 'seize or orders' });
   }
+  if ((p === '/api/era/wallet' || p === '/api/era/treasury') && req.method === 'POST') {
+    const me = await seatOf(era, body.token);
+    if (!me) return json(403, { error: 'not seated' });
+    if (p === '/api/era/wallet') {
+      if (typeof body.address !== 'string' || !isAddress(body.address)) return json(400, { error: 'that is not an address' });
+      me.seat.wallet = body.address;
+      era.put('seats', me.seats);
+      claimRegalia(era, me.seat.hash, body.address); // what was waiting goes into the next mint
+    }
+    return json(200, { wallet: me.seat.wallet ?? null, contract: REGALIA_AT.address, explorer: 'https://sepolia.basescan.org', regalia: regaliaOf(era, { seat: me.seat.hash, owner: me.seat.wallet }) });
+  }
   if (p === '/api/era/leave' && req.method === 'POST') {
     const me = await seatOf(era, body.token);
     if (!me) return json(404, { error: 'not seated' });
+    if (s.players?.[me.realm]) award(era, me.seat, 'scroll', { realm: s.realms[me.realm]?.name, ruler: me.seat.name, era: AGES[s.ageId]?.name ?? 'an age', color: s.realms[me.realm]?.color, year: yearLabel(yearOf(s.month, s)), from: me.seat.sinceYear ?? '?', story: 'he gave up the throne of his own will', provinces: provincesOf(s, me.realm).length });
     delete me.seats[me.realm];
     era.put('seats', me.seats);
     if (s.players?.[me.realm]) era.queue(s.month, 'leave', me.realm, true);
@@ -396,18 +409,20 @@ export function flushCouncil(era, s) {
 }
 // After the quarter: a throne lost (to a usurper, to conquest) frees its seat.
 export function tidySeats(era, s, events) {
-  const seats = era.get('seats') ?? {};
+  const seats = era.get('seats') ?? {}, lost = [];
   let changed = false;
   for (const realm of Object.keys(seats)) {
     const queued = era.sql.exec('SELECT COUNT(*) AS n FROM queue WHERE kind = ? AND k = ?', 'seize', realm).toArray()[0]?.n;
     if (s.players?.[realm] || queued) continue;
     const why = events.find((e) => e.usurped === realm) ?? (s.realms[realm]?.fallen ? { text: `${s.realms[realm].name} is no more` } : null);
     const hook = seats[realm].webhook;
+    lost.push({ seat: seats[realm], realm, ruler: seats[realm].name, since: seats[realm].sinceYear ?? '?', why: why?.text ?? 'the throne passed from his hands' });
     delete seats[realm];
     changed = true;
     if (hook) n8nPost(era.env, 'reminder', { webhook: hook, title: `Your throne is lost: ${dateText(s.month, s)}`, text: `${why?.text ?? 'Your realm has passed from your hands.'} Seize another throne whenever you like.`, url: site(era.env) });
   }
   if (changed) { era.put('seats', seats); era.broadcast({ t: 'seats', seats: publicSeats(era, s) }); }
+  return lost;
 }
 // The council opens: each player with a Discord address hears of it, with the matters waiting.
 export async function councilOpen(era) {

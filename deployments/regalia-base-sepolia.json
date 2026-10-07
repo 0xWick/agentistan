@@ -1,0 +1,10 @@
+{
+  "chain": "base-sepolia",
+  "chainId": 84532,
+  "address": "0x265efc0a8cfde6a97e5c89fb6317c96e8b202cb2",
+  "block": 47810422,
+  "keeper": "0xaB24D8e5d6dEcEC70e5B10E215cD9B1A1e38F046",
+  "base": "https://agentistan.umarkhatana.com/nft/",
+  "tx": "0x7023ce10ff0f5af49cfe70d83870fa971e00af6fc71089ab44bf55ff98b15e03",
+  "deployedAt": "2026-10-07T16:05:30.765Z"
+}

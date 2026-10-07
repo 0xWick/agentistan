@@ -169,7 +169,7 @@ Build:
 - [x] 1. Quarters, the council, seizing a throne, dynasties, absence
 - [x] 2. Army orders, battle plans and tactics, resources
 - [x] 3. Letters, the viziers' counsel, dashboards
-- [ ] 4. Wallet and NFTs, kingdom art
+- [x] 4. Wallet and NFTs (Regalia 0x265efc0a8cfde6a97e5c89fb6317c96e8b202cb2 on Base Sepolia); painted kingdom art still to come
 - [ ] 5. Hegemony ends the era, battle animation, Discord
 
 ## Progress

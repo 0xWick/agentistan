@@ -36,7 +36,7 @@ export default {
       r.headers.set('x-era-game', game);
       return era(env, `game:${game}`).fetch(r);
     }
-    if (p === '/api/era' || p.startsWith('/api/era/') || p.startsWith('/internal/era/') || p === '/api/games') return era(env).fetch(req);
+    if (p === '/api/era' || p.startsWith('/api/era/') || p.startsWith('/internal/era/') || p === '/api/games' || p.startsWith('/nft/')) return era(env).fetch(req);
     return world(env).fetch(req);
   },
   scheduled: (_event, env, ctx) => ctx.waitUntil(Promise.all([

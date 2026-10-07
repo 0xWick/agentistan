@@ -666,3 +666,17 @@ table.ranks { width: 100%; border-collapse: collapse; font-size: 14px; }
 .ranks td { padding: 3px 4px; border-bottom: 1px solid rgba(140, 107, 63, 0.18); }
 .ranks td:first-child { color: var(--ink-soft); width: 22px; }
 @media (max-width: 900px) { .d-grid { grid-template-columns: 1fr; } }
+
+/* ---------- the treasury ---------- */
+.treasury .wallet { margin: 10px 0; padding: 10px 12px; border: 1px solid rgba(140, 107, 63, 0.4); border-radius: 8px; background: rgba(255, 250, 235, 0.55); }
+.treasury .wallet p { margin: 4px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.treasury .wallet p.fine { display: block; }
+.treasury code { font: 13px ui-monospace, monospace; background: rgba(140, 107, 63, 0.12); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+.treasury .go { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.treasury .go form { flex: 1; min-width: 260px; }
+.regalia { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 10px; }
+.regalia figure { margin: 0; padding: 8px; border: 1px solid rgba(140, 107, 63, 0.4); border-radius: 8px; background: rgba(255, 250, 235, 0.6); text-align: center; }
+.regalia img { width: 100%; height: auto; border-radius: 4px; }
+.regalia figcaption { display: grid; gap: 2px; font-size: 13px; }
+.regalia .st { font: 12px var(--kufi); color: var(--ink-soft); }
+.regalia .st.minted { color: #2b7d7a; font-weight: 700; }

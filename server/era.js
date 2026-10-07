@@ -8,6 +8,7 @@ import { brain } from '../web/silk/doctrine.js';
 import { makeCast } from './cast.js';
 import { makeSealer, DEPLOYED, EXPLORER } from './seal.js';
 import { play, makeHeralds, flushCouncil, councilOpen, tidySeats, penReplies } from './play.js';
+import { setupRegalia, makeMinter, awardsFor, metadata, picture } from './regalia.js';
 
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' };
 const json = (status, body, cache = 'no-store') => new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': cache } });
@@ -35,6 +36,8 @@ export class Era extends DurableObject {
       if (sealer) this.hooks.push(sealer);
       const heralds = makeHeralds(env, this);
       if (heralds) this.hooks.push(heralds);
+      const minter = makeMinter(env, this);
+      if (minter) this.hooks.push(minter);
     });
   }
 
@@ -43,7 +46,8 @@ export class Era extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS months (age INTEGER, m INTEGER, inputs TEXT, events TEXT, chk TEXT, PRIMARY KEY (age, m))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS snaps (age INTEGER, m INTEGER, state TEXT, PRIMARY KEY (age, m))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS queue (id INTEGER PRIMARY KEY AUTOINCREMENT, m INTEGER, kind TEXT, k TEXT, json TEXT)');
-    this.sql.exec('CREATE TABLE IF NOT EXISTS ledger (age INTEGER, m INTEGER, rows TEXT, PRIMARY KEY (age, m))'); // each year: every realm's land, strength, gold, prosperity
+    this.sql.exec('CREATE TABLE IF NOT EXISTS ledger (age INTEGER, m INTEGER, rows TEXT, PRIMARY KEY (age, m))');
+    setupRegalia(this); // each year: every realm's land, strength, gold, prosperity
     this.meta = this.get('meta');
     this.s = null;
   }
@@ -125,7 +129,9 @@ export class Era extends DurableObject {
     this.ctx.storage.setAlarm(state.status !== 'running' ? this.meta.restUntil : this.meta.quarter ? this.meta.councilOpens : this.meta.next);
     if (this.meta.quarter) {
       this.broadcast({ t: 'quarter', m: state.month, next: this.meta.next, opens: this.meta.councilOpens });
-      tidySeats(this, state, events);
+      const seatsNow = this.get('seats') ?? {};
+      const lost = tidySeats(this, state, events);
+      try { awardsFor(this, state, events, seatsNow, lost); } catch (err) { console.error('regalia awards failed:', err); } // keepsakes for thrones taken, battles won, reigns ended
       await penReplies(this).catch((err) => console.error('letters failed:', err)); // the AI courts answer their letters
     }
     for (const hook of this.hooks) {
@@ -194,6 +200,14 @@ export class Era extends DurableObject {
   async fetch(req) {
     const url = new URL(req.url), p = url.pathname.replace(/^\/api\/(game\/[\w-]+\/)?era/, '/api/era'), ip = req.headers.get('cf-connecting-ip') ?? 'local';
     try {
+      if (p.startsWith('/nft/')) { // the regalia: metadata, and the picture
+        const id = +p.slice(5).replace(/\.(svg|json)$/, '');
+        if (!Number.isInteger(id) || id < 1) return json(404, { error: 'no such token' });
+        const site = this.env.PUBLIC_URL || 'https://agentistan.umarkhatana.com';
+        if (p.endsWith('.svg')) { const svg = picture(this, id); return svg ? new Response(svg, { headers: { ...HEADERS, 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=86400' } }) : json(404, { error: 'no such token' }); }
+        const m = metadata(this, id, site);
+        return m ? json(200, m, 'public, max-age=3600') : json(404, { error: 'no such token' });
+      }
       if (p === '/internal/era/watch') { // the cron's wake-up: a world must always be turning
         if (!this.meta) this.begin();
         else if (!(await this.ctx.storage.getAlarm())) this.ctx.storage.setAlarm(Math.max(Date.now() + 1000, this.state()?.status !== 'running' ? this.meta.restUntil ?? 0 : this.meta.quarter && (this.meta.opened ?? 0) < this.meta.councilOpens ? this.meta.councilOpens : this.meta.next));
