@@ -44,7 +44,7 @@ export function plan(s, id, rng) {
   for (const w of wars) if (!r.overlord && me < strength(s, w) * 0.2 && provincesOf(s, id).length <= 3 && rng() < 0.08 && !s.realms[w].rebel) p.submit = w;
 
   // War on a weaker neighbour, if the ruler has the stomach for it.
-  if (!r.nomad && wars.length < (bold ? 2 : 1) && rng() < (bold ? 0.55 : cautious ? 0.12 : 0.3)) {
+  if (!r.nomad && wars.length < (bold ? 2 : 1) && rng() < (bold ? 0.3 : cautious ? 0.06 : 0.14)) {
     const prey = next.filter((n) => !atWar(s, id, n) && !friendly(s, id, n) && truceUntil(s, id, n) <= s.month && !s.realms[n].nomad && strength(s, n) * R.diplomacy.warRatio * (cautious ? 1.4 : 1) < me)
       .map((n) => ({ n, score: provincesOf(s, n).reduce((t, q) => t + q.wealth, 0) / Math.max(1, strength(s, n)) + rng() }))
       .sort((a, b) => b.score - a.score)[0];
@@ -72,7 +72,7 @@ export function plan(s, id, rng) {
   }
 
   // A schemer at war buys a dagger for the enemy's best man.
-  if (wars.length && r.gold > R.agents.contractCost * 1.6 && rng() < (has(ruler, 'scheming', 'shrewd', 'cruel') ? 0.2 : 0.04)) {
+  if (wars.length && r.gold > R.agents.contractCost * 1.6 && rng() < (has(ruler, 'scheming', 'shrewd', 'cruel') ? 0.1 : 0.02)) {
     const foe = wars.map((w) => s.realms[w]).filter((o) => !o.rebel).sort((a, b) => strength(s, b.id) - strength(s, a.id))[0];
     const marks = foe && Object.values(s.chars).filter((c) => c.alive && c.realm === foe.id && ['ruler', 'general'].includes(c.role)).sort((a, b) => b.skill - a.skill);
     if (marks?.length) p.hire = (rng() < 0.4 ? marks.find((c) => c.role === 'ruler') : marks[0])?.id ?? null;

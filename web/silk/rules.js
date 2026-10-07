@@ -25,7 +25,7 @@ export const RULES = {
   },
 
   garrison: { base: 1, perWealth: 0.6 }, // thousand defenders in a province with no army
-  walls: { defence: 0.45, siegeMonths: 3, stormRatio: 2.6, stormLoss: 0.35 }, // walls x3 months of siege, or a costly storm
+  walls: { defence: 0.4, baseMonths: 2, siegeMonths: 3, stormRatio: 3.2, stormLoss: 0.4 }, // 2 + walls x3 months of siege, or a costly storm; walls count squared
 
   move: { plains: 1, river: 1, steppe: 1, forest: 1, hills: 1, desert: 2, mountains: 2 }, // months to enter a province
   winter: [11, 0, 1], // December to February: the high passes close
@@ -42,7 +42,7 @@ export const RULES = {
   },
 
   armies: { perProvinces: 7, min: 1, max: 4, startPerWealth: 0.55, minSize: 2 }, // armies below minSize disband
-  campaign: { start: 0.3 }, // an idle army sets out on a campaign in a given month (never in winter, unless it rides the steppe)
+  campaign: { start: 0.15 }, // an idle army sets out on a campaign in a given month (never in winter, unless it rides the steppe)
   sustain: { war: 0.95, peace: 0.75 }, // recruit only while upkeep stays under this share of income
 
   life: { // chance of dying each month, by age band; "ailing" multiplies it
@@ -56,7 +56,7 @@ export const RULES = {
   rebels: { foundAfter: 12, minProvinces: 2 }, // rebels holding 2 provinces for a year found a kingdom
 
   agents: {
-    alamutEvery: 30, alamutStrike: 8, alamutDues: 3, // months between Alamut's own strikes; their cost; what fear brings in each month
+    alamutEvery: 40, alamutStrike: 8, alamutDues: 3, // months between Alamut's own strikes; their cost; what fear brings in each month
     contractCost: 35, success: 0.35, exposed: 0.5, // a hired killing: price, odds, and the chance the employer is unmasked
     guildChance: 0.002, // per month and rich city: a guild of daggers forms
   },

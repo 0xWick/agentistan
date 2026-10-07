@@ -64,7 +64,7 @@ export const wealthOf = (s, pid) => {
   return Math.max(0.5, PROV[pid].wealth - (p.ravaged > 0 ? 1.5 : 0) - (p.plague > 0 ? 1 : 0) - (p.famine > 0 ? 1 : 0));
 };
 export const garrisonOf = (s, pid) => R.garrison.base + R.garrison.perWealth * PROV[pid].wealth;
-export const wallPower = (s, pid) => garrisonOf(s, pid) * (1 + s.provinces[pid].walls * R.walls.defence) * (0.5 + s.provinces[pid].loyalty / 100);
+export const wallPower = (s, pid) => garrisonOf(s, pid) * (1 + s.provinces[pid].walls ** 2 * R.walls.defence) * (R.battle.terrain[PROV[pid].terrain] ?? 1) * (0.5 + s.provinces[pid].loyalty / 100);
 export function strength(s, id) {
   return armiesOf(s, id).reduce((t, a) => t + a.size, 0) + 0.3 * provincesOf(s, id).reduce((t, p) => t + garrisonOf(s, p.id), 0);
 }
@@ -132,9 +132,10 @@ export function newAge(age = 1) {
     const realm = s.realms[r.id];
     // Where the chronicles have lost a name, the world gives one from the region's customs (marked as invented).
     const named = (c) => (c.name.startsWith('the ') ? { ...c, name: personName(rng, realm.culture, usedNames(s)), invented: true } : c);
-    realm.ruler = newChar(s, { ...named(r.ruler), role: 'ruler', realm: r.id, skill: 3 });
-    if (r.heir) realm.heir = newChar(s, { ...r.heir, role: 'heir', realm: r.id, skill: 3 });
-    for (const c of r.court ?? []) newChar(s, { ...c, role: 'courtier', realm: r.id, skill: 3 });
+    Object.assign(realm, { dynasty: r.dynasty ?? r.short, lineage: (r.lineage ?? []).map((l) => ({ name: l.name, title: r.ruler.title, since: l.since, until: l.until, cause: null })) });
+    realm.ruler = newChar(s, { ...named(r.ruler), role: 'ruler', realm: r.id, skill: 3, family: realm.dynasty });
+    if (r.heir) realm.heir = newChar(s, { ...r.heir, role: 'heir', realm: r.id, skill: 3, family: realm.dynasty, parent: s.chars[realm.ruler].name });
+    for (const c of r.court ?? []) newChar(s, { ...c, role: 'courtier', title: c.role, realm: r.id, skill: 3, family: r.dynasty });
     const wealth = provincesOf(s, r.id).reduce((t, p) => t + p.wealth, 0) * (r.levy ?? 1);
     const generals = r.generals.length ? r.generals : r.agents ? [] : [{ name: personName(rng, realm.culture, usedNames(s)), invented: true, skill: 2, traits: randomTraits(rng, 1), at: r.capital }];
     for (const g0 of generals) {
@@ -146,7 +147,15 @@ export function newAge(age = 1) {
       newArmy(s, r.id, gid, at, Math.max(R.armies.minSize, round1((R.armies.startPerWealth * wealth) / generals.length)));
     }
   }
-  for (const r of living(s)) r.gold = round1(incomeOf(s, r.id) * R.economy.startGold);
+  for (const r of living(s)) {
+    r.gold = round1(incomeOf(s, r.id) * R.economy.startGold);
+    const ruler = s.chars[r.ruler], main = armiesOf(s, r.id).sort((a, b) => b.size - a.size)[0];
+    if (main && ruler.traits.some((t) => CAMPAIGNERS.includes(t))) { // a bold ruler rides at the head of the main army
+      if (main.general && s.chars[main.general]) s.chars[main.general].army = null;
+      main.general = ruler.id;
+      ruler.army = main.id;
+    }
+  }
   // The quarrels already under way in 1200.
   for (const [a, b] of [['khwarazm', 'ghurid'], ['georgia', 'eldiguzid'], ['ghurid', 'chandela']]) s.wars[key(a, b)] = { since: 0 };
   s.allies[key('karakhanid', 'qarakhitai')] = { since: 0 };
@@ -159,10 +168,12 @@ export function newAge(age = 1) {
   return s;
 }
 
+const CAMPAIGNERS = ['ambitious', 'bold', 'relentless', 'restless'];
+
 function newChar(s, c) {
   const id = `c${s.nextId++}`;
   s.chars[id] = { id, name: c.name, title: c.title ?? null, role: c.role, realm: c.realm, born: c.born ?? 1170, traits: c.traits ?? [], skill: c.skill ?? 3, loyalty: c.loyalty ?? 70, alive: true, died: null, cause: null,
-    female: !!c.female || FEMALE.has(c.name), invented: !!c.invented };
+    female: !!c.female || FEMALE.has(c.name), invented: !!c.invented, since: c.since ?? null, relation: c.relation ?? null, parent: c.parent ?? null, family: c.family ?? null };
   return id;
 }
 
@@ -180,8 +191,8 @@ function newArmy(s, realm, general, at, size) {
 function newRealm(s, rng, { name, short, capital, ruler, origin, color, nomad = false, rebel = false, cause = null }) {
   const id = `${origin}${s.nextId++}`;
   s.realms[id] = { id, name, short, plural: rebel, color: color ?? colorFor(rng), capital, ai: false, nomad, agents: false, overlord: null, gold: 10, tax: 'normal', ruler, heir: null, power: null,
-    origin, founded: s.month, fallen: false, plan: null, rebel, cause, culture: cultureOf(capital), fa: PROV[capital].fa };
-  if (ruler) Object.assign(s.chars[ruler], { realm: id, role: 'ruler' });
+    origin, founded: s.month, fallen: false, plan: null, rebel, cause, culture: cultureOf(capital), fa: PROV[capital].fa, lineage: [], dynasty: ruler ? `House of ${s.chars[ruler].name}` : null };
+  if (ruler) Object.assign(s.chars[ruler], { realm: id, role: 'ruler', since: yearOf(s.month), family: s.realms[id].dynasty });
   return id;
 }
 
@@ -370,7 +381,7 @@ function arrive(s, rng, emit, a) {
   if (owner !== a.realm && !friendly(s, a.realm, owner) && (owner === null || atWar(s, a.realm, owner))) {
     const p = s.provinces[pid];
     if (!p.siege || !s.armies[p.siege.army]) {
-      p.siege = { realm: a.realm, army: a.id, left: Math.max(1, p.walls * R.walls.siegeMonths - ((s.chars[a.general]?.skill ?? 2) >= 4 ? 1 : 0)), since: s.month };
+      p.siege = { realm: a.realm, army: a.id, left: Math.max(1, R.walls.baseMonths + p.walls * R.walls.siegeMonths - ((s.chars[a.general]?.skill ?? 2) >= 4 ? 1 : 0)), since: s.month };
       emit('siege', `${say(s, a.realm, 'lays')} siege to ${PROV[pid].city}`, { realms: [a.realm, owner].filter(Boolean), at: pid, chars: [a.general] });
     }
     a.mode = 'siege';
@@ -572,7 +583,9 @@ function lives(s, rng, emit) {
   for (const r of living(s)) {
     if (!r.heir && !r.rebel && s.month % 12 === 0 && chance(rng, R.life.heirEachYear)) {
       const ruler = s.chars[r.ruler];
-      r.heir = newChar(s, { name: personName(rng, r.culture, usedNames(s)), role: 'heir', realm: r.id, born: Math.max((ruler?.born ?? 1170) + 18, yearOf(s.month) - 20), traits: randomTraits(rng, 2), skill: 1 + Math.floor(rng() * 4) });
+      const old = yearOf(s.month) - (ruler?.born ?? 1170) > 58, relation = old && rng() < 0.5 ? pick(rng, ['brother', 'nephew', 'grandson']) : 'son';
+      r.heir = newChar(s, { name: personName(rng, r.culture, usedNames(s)), role: 'heir', realm: r.id, born: relation === 'brother' ? (ruler?.born ?? 1170) + 4 : Math.max((ruler?.born ?? 1170) + 18, yearOf(s.month) - 20),
+        traits: randomTraits(rng, 2), skill: 1 + Math.floor(rng() * 4), family: r.dynasty, relation, parent: ruler?.name });
       emit('heir', `${nameOf(s, r.ruler)} of ${r.short} names ${s.chars[r.heir].name} heir`, { realms: [r.id], chars: [r.ruler, r.heir] });
     }
   }
@@ -596,8 +609,16 @@ export function die(s, id, cause, emit, rng, how) {
   }
 }
 
+// The reign that just ended, written into the realm's lineage.
+function endReign(s, r, cause) {
+  const c = s.chars[r.ruler];
+  if (!c) return;
+  r.lineage = [...(r.lineage ?? []), { name: c.name, title: c.title, since: c.since ?? yearOf(s.month), until: yearOf(s.month), cause: cause ?? c.cause ?? null }].slice(-30);
+}
+
 function succession(s, id, rng, emit) {
   const r = s.realms[id], provs = provincesOf(s, id);
+  endReign(s, r);
   let heir = r.heir && s.chars[r.heir]?.alive ? r.heir : null;
   const generals = Object.values(s.chars).filter((c) => c.alive && c.realm === id && c.role === 'general').sort((a, b) => b.skill - a.skill);
   if (!heir) heir = generals[0]?.id ?? newChar(s, { name: personName(rng, r.culture, usedNames(s)), role: 'heir', realm: id, born: yearOf(s.month) - 20 - Math.floor(rng() * 20), traits: randomTraits(rng, 2), skill: 2 + Math.floor(rng() * 3) });
@@ -607,7 +628,11 @@ function succession(s, id, rng, emit) {
   const p = r.rebel ? 0 : S.crisis + S.perProvince * provs.length + (weak ? S.weakHeir : 0);
   const pretenders = generals.filter((g) => g.id !== heir && g.army && s.armies[g.army] && !g.traits.includes('loyal') && (g.traits.includes('ambitious') || g.traits.includes('scheming') || chance(rng, 0.5)));
   const title = titled(s.chars[r.ruler]?.title ?? titleFor(r.culture), h);
-  Object.assign(h, { role: 'ruler', title, realm: id });
+  if (h.family !== r.dynasty && !h.relation) { // no blood heir: a general takes the crown and founds a house
+    r.dynasty = `House of ${h.name}`;
+    h.family = r.dynasty;
+  }
+  Object.assign(h, { role: 'ruler', title, realm: id, since: yearOf(s.month) });
   r.ruler = heir;
   r.heir = null;
   r.power = null; // a new reign may make its own power move
@@ -705,9 +730,10 @@ function betrayals(s, rng, emit) {
       const old = s.chars[r.ruler];
       emit('coup', `${c.name} seizes the throne of ${r.short}${old ? `, overthrowing ${old.name}` : ''}`, { realms: [r.id], chars: [c.id, old?.id].filter(Boolean) });
       if (old) Object.assign(old, { alive: false, died: s.month, cause: 'overthrown' });
+      endReign(s, r, 'overthrown');
       if (r.heir && s.chars[r.heir]) s.chars[r.heir].role = 'exile';
-      Object.assign(c, { role: 'ruler', title: old?.title ?? titleFor(r.culture) });
-      Object.assign(r, { ruler: c.id, heir: null, plan: null, power: null });
+      Object.assign(c, { role: 'ruler', title: old?.title ?? titleFor(r.culture), since: yearOf(s.month), family: `House of ${c.name}` });
+      Object.assign(r, { ruler: c.id, heir: null, plan: null, power: null, dynasty: `House of ${c.name}` });
     } else split(s, r.id, c.id, rng, emit, 'rebels against his master');
   }
 }
@@ -730,10 +756,10 @@ function steppe(s, rng, emit) {
   // The Mongols.
   if (s.mongolsAt === s.month && !s.realms.mongol) {
     const entry = ['almaliq', 'otrar', 'kashgar', 'balasagun', 'jand'].find((pid) => PROV[pid]) ?? 'almaliq';
-    const khan = newChar(s, { name: 'Genghis Khan', title: 'Great Khan', role: 'ruler', realm: null, born: 1162, traits: ['relentless', 'cruel', 'shrewd'], skill: 5 });
+    const khan = newChar(s, { name: 'Genghis Khan', title: 'Great Khan', role: 'ruler', realm: null, born: 1162, traits: ['relentless', 'cruel', 'shrewd'], skill: 5, since: 1206, family: 'Borjigin' });
     const id = 'mongol';
     s.realms[id] = { id, name: 'Mongol Empire', short: 'Mongols', plural: true, color: '#e9e2c6', capital: entry, ai: true, nomad: true, agents: false, overlord: null, gold: 120, tax: 'normal', ruler: khan, heir: null, power: null,
-      origin: 'horde', founded: s.month, fallen: false, plan: null, culture: 'mongol', fa: 'مغولان' };
+      origin: 'horde', founded: s.month, fallen: false, plan: null, culture: 'mongol', fa: 'مغولان', dynasty: 'Borjigin', lineage: [{ name: 'Yesügei', title: 'Chief', since: 1160, until: 1171, cause: 'poisoned' }] };
     s.chars[khan].realm = id;
     const old = s.provinces[entry].owner;
     s.provinces[entry].owner = id;

@@ -41,6 +41,10 @@ const ICON = {
   plus: { s: 'M12 5v14M5 12h14', w: 2.4 },
   minus: { s: 'M5 12h14', w: 2.4 },
   hill: { s: 'M2 19l6-9 4 5 3-4 7 8z' },
+  palace: { f: 'M12 1.5c1.6 1.9 3.6 2.9 3.6 5.4V9H8.4V6.9C8.4 4.4 10.4 3.4 12 1.5zM2.5 10h3.2v2h2v-2h8.6v2h2v-2h3.2v11.5h-7.2V17a2.3 2.3 0 0 0-4.6 0v4.5H2.5z' },
+  citadel: { f: 'M1.5 22l3.2-6.5h14.6l3.2 6.5zM7 15V7.5H5V3.5h3v2h2v-2h4v2h2v-2h3v4h-2V15h-3.6v-3.2a1.4 1.4 0 0 0-2.8 0V15z' },
+  helmet: { f: 'M12 1.8l1.7 3.4c3.6 1.2 5.3 4.4 5.3 7.8V16H5v-3c0-3.4 1.7-6.6 5.3-7.8zM7.5 17h9v4.5h-3v-2.8h-3v2.8h-3z' },
+  circlet: { f: 'M3.5 17l1.6-7.5 3.7 3.6L12 7.6l3.2 5.5 3.7-3.6 1.6 7.5zM3.5 18.6h17v2.2h-17z' },
 };
 const icon = (name, cls = '') => {
   const i = ICON[name];
@@ -74,7 +78,9 @@ const xyOf = (lat, lon) => [((lon - 39.5) / 51) * W, ((47.5 - lat) / 29) * H];
 
 // ---------- state ----------
 let geo, s, age, timer = 0, playing = false, speed = 1, last = {};
-const SPEED = { 1: 1300, 4: 420, 16: 110 }; // ms per month
+const SPEED = { 1: 2600, 4: 800, 16: 200 }; // ms per month
+const HOLD = { 1: 2200, 4: 1000, 16: 0 }; // extra pause after a great event, so it can be read
+const GREAT = (e) => ['founded', 'fallen', 'split', 'coup', 'horde', 'age.ended'].includes(e.type) || (e.type === 'capture' && e.capital) || (e.type === 'death' && e.ruler);
 const shown = []; // the feed
 
 // ---------- the map, drawn once ----------
@@ -88,7 +94,7 @@ async function boot() {
   map.setAttribute('viewBox', `0 0 ${W} ${H}`);
   geo = await fetch('/world/geo.json').then((r) => r.json());
   defs.insertAdjacentHTML('beforeend', `<mask id="sea"><rect width="${W}" height="${H}" fill="#fff"/><path d="${geo.coast}" fill="#000"/></mask>`);
-  for (const name of ['base', 'ripples', 'rivers', 'provs', 'edges', 'coastline', 'road', 'regions', 'realms', 'cities', 'marks', 'sieges', 'arrows', 'armies', 'pulses']) map.append((layer[name] = el('g', { class: `l-${name}` })));
+  for (const name of ['base', 'ripples', 'rivers', 'provs', 'edges', 'coastline', 'road', 'regions', 'realms', 'cities', 'seats', 'marks', 'sieges', 'arrows', 'armies', 'pulses']) map.append((layer[name] = el('g', { class: `l-${name}` })));
   layer.base.append(el('image', { href: '/world/paper.webp', width: W, height: H }));
   // Engraved ripples along the shore, only on the water.
   layer.ripples.setAttribute('mask', 'url(#sea)');
@@ -149,7 +155,7 @@ function render(events) {
     paintRealmLabels();
     last.owner = ownerKey;
   }
-  paintCapitals();
+  paintSeats();
   paintArmies();
   paintSieges();
   paintMarks();
@@ -202,17 +208,27 @@ function paintRealmLabels() {
   }
 }
 
-function paintCapitals() {
+// Seats of power on the map: a crowned palace for each capital, a fortress for each citadel (walls 3+), a small
+// tower for a walled town (shown when zoomed in).
+function paintSeats() {
   const caps = new Map(living(s).filter((r) => s.provinces[r.capital]?.owner === r.id).map((r) => [r.capital, r]));
-  const key = [...caps].map(([p, r]) => `${p}:${r.id}`).join(',');
-  if (key === last.caps) return;
-  last.caps = key;
-  layer.cities.querySelectorAll('.cap').forEach((n) => n.remove());
-  for (const [pid, r] of caps) {
-    const [x, y] = PROV[pid].xy;
-    const u = el('use', { class: 'cap', href: '#i-crown', x: x - 11, y: y - 30, width: 22, height: 22, style: `color:${ink(r.color, 0.7)}` });
-    layer.cities.append(u);
+  const key = `${[...caps].map(([p, r]) => `${p}:${r.id}`).join(',')}|${PROVINCES.map((p) => s.provinces[p.id].walls).join('')}`;
+  if (key === last.seats) return;
+  last.seats = key;
+  layer.seats.innerHTML = '';
+  for (const p of PROVINCES) {
+    const [x, y] = p.xy, r = caps.get(p.id), walls = s.provinces[p.id].walls;
+    if (r) layer.seats.append(el('use', { href: '#i-palace', x: x - 16, y: y - 34, width: 32, height: 32, class: 'seat capital', style: `color:${ink(r.color, 0.72)}` }));
+    else if (walls >= 3) layer.seats.append(el('use', { href: '#i-citadel', x: x - 12, y: y - 27, width: 24, height: 24, class: 'seat citadel' }));
+    else if (walls >= 1) layer.seats.append(el('use', { href: '#i-tower', x: x - 7, y: y - 18, width: 14, height: 14, class: 'seat town' }));
   }
+}
+
+// Who leads an army: the king himself, a prince of the blood, or a general.
+function leaderOf(a) {
+  const r = s.realms[a.realm];
+  if (!a.general) return 'helmet';
+  return a.general === r?.ruler ? 'crown' : a.general === r?.heir ? 'circlet' : 'helmet';
 }
 
 function paintArmies() {
@@ -225,16 +241,19 @@ function paintArmies() {
       live.add(a.id);
       const [cx, cy] = PROV[pid].xy, dx = (i - (list.length - 1) / 2) * 34;
       let g = layer.armies.querySelector(`[data-army="${a.id}"]`);
-      if (!g) {
+      if (!g) { // a standard over a medallion that shows who leads, and the army's size beneath
         g = el('g', { class: 'army', 'data-army': a.id });
-        g.innerHTML = '<line class="pole" x1="0" y1="2" x2="0" y2="-40"/><path class="cloth" d="M0 -39h26l-6 7 6 7H0z"/><circle r="3" cy="-41" fill="#b3852c"/><text y="18"></text>';
+        g.innerHTML = '<line class="pole" x1="0" y1="-12" x2="0" y2="-46"/><path class="cloth" d="M0 -45h24l-5 6 5 6H0z"/><circle r="2.6" cy="-47" fill="#b3852c"/><circle class="medal" r="13"/><use class="leader" x="-9" y="-9" width="18" height="18"/><text y="28"></text>';
         g.style.opacity = 0;
         layer.armies.append(g);
         requestAnimationFrame(() => (g.style.opacity = 1));
       }
-      const scale = Math.max(0.8, Math.min(1.5, 0.75 + a.size / 30));
-      g.style.transform = `translate(${cx + dx}px, ${cy - 4}px) scale(${scale})`;
+      const scale = Math.max(0.8, Math.min(1.45, 0.75 + a.size / 30)), lead = leaderOf(a);
+      g.style.transform = `translate(${cx + dx}px, ${cy - 14}px) scale(${scale})`;
       g.querySelector('.cloth').setAttribute('fill', colorOf(a.realm));
+      g.querySelector('.medal').setAttribute('fill', colorOf(a.realm));
+      g.querySelector('.leader').setAttribute('href', `#i-${lead}`);
+      g.classList.toggle('royal', lead !== 'helmet');
       g.querySelector('text').textContent = `${Math.round(a.size)}k`;
       if (a.path[0] && a.mode === 'march') arrow(PROV[pid].xy, PROV[a.path[0]].xy, colorOf(a.realm));
     });
@@ -313,13 +332,21 @@ function feed(events) {
   while (list.children.length > 7) list.lastElementChild.remove();
 }
 
+// Each power at a glance: its share of the land, its king, its soldiers and its gold. Ranked by land.
+const LAND = PROVINCES.reduce((t, p) => t + p.area, 0);
+const statsOf = (r) => {
+  const mine = provincesOf(s, r.id);
+  return { r, n: mine.length, land: mine.reduce((t, p) => t + p.area, 0) / LAND, men: armiesOf(s, r.id).reduce((t, a) => t + a.size, 0), ruler: s.chars[r.ruler] };
+};
 function powers() {
-  const rows = living(s).map((r) => [r, provincesOf(s, r.id).length]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
-  const key = rows.map(([r, n]) => `${r.id}${n}`).join();
+  const rows = living(s).map(statsOf).filter((x) => x.n > 0).sort((a, b) => b.land - a.land);
+  const key = rows.map((x) => `${x.r.id}${x.n}${x.ruler?.name}${Math.round(x.men)}${Math.round(x.r.gold / 10)}`).join();
   if (key === last.powers) return;
   last.powers = key;
-  $('#powers-list').innerHTML = rows.slice(0, 10).map(([r, n]) => `<li><button data-realm="${r.id}"><i class="shield" style="--c:${r.color}"></i><span>${esc(r.short)}</span><span class="n">${n}</span></button></li>`).join('')
-    + (rows.length > 10 ? `<li class="n" style="text-align:center">+${rows.length - 10} more</li>` : '');
+  $('#powers-list').innerHTML = rows.map(({ r, land, men, ruler }) => `<li><button data-realm="${r.id}">
+      <i class="shield" style="--c:${r.color}"></i><span class="nm">${esc(r.short)}</span><span class="n">${Math.max(1, Math.round(land * 100))}%</span>
+      <span class="sub"><span>${icon('crown')}${esc(ruler?.name ?? '—')}</span><span>${icon('banner')}${Math.round(men)}k</span><span>${icon('coin')}${Math.round(r.gold)}</span></span>
+    </button></li>`).join('');
 }
 
 // ---------- popups: a province, a realm ----------
@@ -376,18 +403,30 @@ function refreshCard() {
       r.tax === 'high' ? 'Taxes are heavy' : r.tax === 'low' ? 'Taxes eased to calm the people' : null,
       r.power ? `Has spent the reign's power move: ${{ levy: 'Great Levy', walls: 'Mighty Walls', bribe: 'a bribe', feast: 'a Royal Feast', silktax: 'Silk Tax' }[r.power]}` : null,
     ].filter(Boolean);
+    const st = statsOf(r), cap = PROV[r.capital];
+    const leads = ruler?.army && s.armies[ruler.army] ? s.armies[ruler.army] : null;
+    const court = Object.values(s.chars).filter((x) => x.alive && x.realm === r.id && x.role === 'courtier');
+    const END = { age: 'skull', battle: 'swords', assassin: 'dagger', overthrown: 'dagger', coup: 'dagger', poisoned: 'dagger' };
+    const past = (r.lineage ?? []).slice().reverse();
     c.innerHTML = `<button class="x" aria-label="Close">×</button>
-      <div class="who"><i class="shield" style="--c:${r.color};width:22px;height:27px"></i>${r.rebel ? 'Rebellion' : r.origin === 'historic' ? 'A power of 1200' : r.origin === 'horde' ? 'A horde from the east' : `Founded ${yearOf(r.founded)}`}</div>
+      <div class="who"><i class="shield big" style="--c:${r.color}"></i>${r.rebel ? 'A rebellion' : r.origin === 'historic' ? 'A power of 1200' : r.origin === 'horde' ? 'A horde from the steppe' : `Founded ${yearOf(r.founded)}`}</div>
       <h3>${esc(r.name)}</h3>${r.fa ? `<p class="fa">${esc(r.fa)}</p>` : ''}
-      <div class="row">${icon('crown')} <b>${esc(ruler ? `${ruler.title ?? ''} ${ruler.name}` : 'No ruler')}</b>${ruler ? `, ${age_(ruler)}` : ''}${heir ? ` · heir ${esc(heir.name)}` : ''}</div>
-      <div class="stats">
-        <span class="stat" title="Provinces">${icon('castle')}${provincesOf(s, r.id).length}</span>
-        <span class="stat" title="Soldiers">${icon('banner')}${Math.round(men)}k</span>
-        <span class="stat" title="Gold">${icon('coin')}${Math.round(r.gold)}</span>
+      <div class="king">
+        <span class="medal" style="--c:${r.color}">${icon('crown')}</span>
+        <span><b>${esc(ruler ? `${ruler.title ?? ''} ${ruler.name}` : 'No ruler')}</b>
+          <small>${ruler ? `aged ${age_(ruler)}${ruler.since ? ` · reigning since ${ruler.since}` : ''}` : ''}${leads ? ` · leads ${Math.round(leads.size)}k at ${esc(PROV[leads.at].city)}` : ''}</small></span>
       </div>
-      ${wars.length ? `<div class="row">${icon('swords')} ${wars.map(chip).join('')}</div>` : ''}
-      ${friends.length ? `<div class="row">${icon('rings')} ${friends.map(chip).join('')}</div>` : ''}
-      ${thoughts.length ? `<div class="mind"><b>${icon('eye')} In the ruler's mind</b>${thoughts.join('. ')}.</div>` : ''}`;
+      ${heir || court.length ? `<div class="family">${heir ? `<span>${icon('circlet')}<b>${esc(heir.name)}</b> ${esc(heir.relation ?? 'heir')}${heir.relation ? ' and heir' : ''}, ${age_(heir)}</span>` : ''}${court.map((x) => `<span>${icon('people')}<b>${esc(x.name)}</b> ${esc(x.title ?? x.role)}</span>`).join('')}</div>` : ''}
+      <div class="grid4">
+        <span>${icon('castle')}<b>${st.n}</b><small>provinces · ${Math.max(1, Math.round(st.land * 100))}% of the land</small></span>
+        <span>${icon('palace')}<b>${esc(cap?.city ?? '—')}</b><small>capital</small></span>
+        <span>${icon('banner')}<b>${Math.round(men)}k</b><small>soldiers</small></span>
+        <span>${icon('coin')}<b>${Math.round(r.gold)}</b><small>gold · +${Math.round(r.lastIncome ?? 0)} a month</small></span>
+      </div>
+      ${wars.length ? `<div class="row">${icon('swords')}<span>At war with</span> ${wars.map(chip).join('')}</div>` : ''}
+      ${friends.length ? `<div class="row">${icon('rings')}<span>Friends</span> ${friends.map(chip).join('')}</div>` : ''}
+      ${thoughts.length ? `<div class="mind"><b>${icon('eye')} In the ruler's mind</b>${thoughts.join('. ')}.</div>` : ''}
+      ${past.length ? `<details class="lineage"><summary>${icon('scroll')} The ${esc(r.dynasty ?? 'line')}: ${past.length} before</summary><ol>${past.map((l) => `<li><span>${esc(l.name)}</span><small>${l.since}–${l.until}</small>${l.cause && END[l.cause] ? `<i title="${esc(l.cause)}">${icon(END[l.cause])}</i>` : ''}</li>`).join('')}</ol></details>` : ''}`;
   }
 }
 
@@ -439,7 +478,7 @@ function loop() {
   const r = tick(s, brain);
   s = r.state;
   render(r.events);
-  timer = setTimeout(loop, SPEED[speed]);
+  timer = setTimeout(loop, SPEED[speed] + (r.events.some(GREAT) ? HOLD[speed] : 0));
 }
 function setSpeed(v) {
   speed = v;

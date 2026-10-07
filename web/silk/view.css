@@ -209,6 +209,59 @@ dialog.plan::backdrop { background: rgba(43, 33, 22, 0.5); }
 .care svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
 .plan .fine { margin: 10px 0 0; font: 13px var(--kufi); color: var(--ink-soft); }
 
+/* dragging the map never selects text; the visitor's own text stays selectable */
+html, body { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+textarea, input, .plan-result { -webkit-user-select: text; user-select: text; }
+
+/* every icon inside the chrome has a size (an unsized SVG grows to fill its box) */
+.card svg, .powers svg, .feed svg, .mind svg, .plan svg { width: 18px; height: 18px; flex: none; }
+.card .row { gap: 6px; }
+.card .row > svg { color: var(--ink-soft); }
+.card .row > span:not(.chip) { font: 600 13px var(--kufi); letter-spacing: 0.06em; color: var(--ink-soft); }
+.mind b { display: flex; align-items: center; gap: 6px; }
+.mind b svg { width: 16px; height: 16px; }
+.shield.big { width: 22px; height: 27px; }
+
+/* the powers: two lines each */
+.powers { width: 262px; }
+.powers li button { grid-template-columns: 18px 1fr auto; row-gap: 1px; padding: 5px 6px; }
+.powers .nm { font: 700 17px var(--body); }
+.powers .sub { grid-column: 2 / 4; display: flex; gap: 10px; font: 600 12px var(--kufi); color: var(--ink-soft); }
+.powers .sub span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.powers .sub span:first-child { max-width: 120px; }
+.powers .sub svg { width: 13px; height: 13px; }
+
+/* the realm card */
+.card { max-height: calc(100dvh - 120px); overflow: auto; }
+.king { display: flex; gap: 10px; align-items: center; margin: 8px 0 4px; }
+.king .medal { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--c); box-shadow: inset 0 0 0 2px rgba(42, 28, 14, 0.75), 0 2px 5px var(--shadow); color: #fbf3dd; }
+.king .medal svg { width: 22px; height: 22px; }
+.king b { display: block; font: 700 18px/1.15 var(--body); }
+.king small, .grid4 small, .lineage small { font: 12.5px var(--kufi); color: var(--ink-soft); letter-spacing: 0.02em; }
+.family { display: grid; gap: 2px; margin: 4px 0 6px; padding-left: 4px; font-size: 15.5px; }
+.family span { display: flex; align-items: center; gap: 6px; }
+.family svg { width: 16px; height: 16px; color: var(--gold); }
+.grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0 4px; }
+.grid4 span { display: grid; grid-template-columns: 20px 1fr; column-gap: 6px; align-items: center; padding: 5px 7px; border-radius: 5px; background: rgba(255, 250, 235, 0.5); border: 1px solid rgba(140, 107, 63, 0.25); }
+.grid4 svg { grid-row: span 2; width: 20px; height: 20px; color: var(--ink-soft); }
+.grid4 b { font: 700 17px/1.1 var(--body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lineage { margin-top: 8px; font-size: 15px; }
+.lineage summary { cursor: pointer; display: flex; align-items: center; gap: 6px; font: 600 13px var(--kufi); letter-spacing: 0.06em; color: var(--lapis); list-style: none; }
+.lineage summary::-webkit-details-marker { display: none; }
+.lineage ol { list-style: none; margin: 6px 0 0; padding: 0 0 0 10px; border-left: 2px solid rgba(39, 70, 110, 0.35); display: grid; gap: 3px; }
+.lineage li { display: flex; align-items: center; gap: 8px; }
+.lineage li i { display: inline-flex; color: var(--vermilion); }
+.lineage li i svg { width: 14px; height: 14px; }
+
+/* seats and armies on the map */
+.seat { pointer-events: none; }
+.seat.citadel { color: #3d2c1a; }
+.seat.town { color: #5a4630; display: none; }
+#map[data-zoom='2'] .seat.town, #map[data-zoom='3'] .seat.town { display: inline; }
+.army .medal { stroke: #2a1c0e; stroke-width: 1.8; }
+.army .leader { color: #fbf3dd; }
+.army.royal .medal { stroke: #b3852c; stroke-width: 3; }
+
 .zoom { position: fixed; right: 16px; bottom: 92px; display: grid; gap: 8px; }
 .player { grid-template-columns: auto auto 1fr auto auto; }
 .tool svg, .key svg, .forge li svg, .round svg { display: block; }
