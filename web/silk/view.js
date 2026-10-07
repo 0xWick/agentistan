@@ -1,5 +1,5 @@
 // The living map: the Silk Road world, simulated month by month right here in the browser, drawn like an old map.
-import { newAge, tick, PROVINCES, PROV, living, provincesOf, armiesOf, dateText, yearOf, atWar, friendly } from './engine.js';
+import { newAge, tick, PROVINCES, PROV, living, provincesOf, armiesOf, dateText, yearOf, atWar, friendly, yieldOf, cavalryOf } from './engine.js';
 import { brain } from './doctrine.js';
 import { RULES } from './rules.js';
 
@@ -42,6 +42,9 @@ const ICON = {
   plus: { s: 'M12 5v14M5 12h14', w: 2.4 },
   minus: { s: 'M5 12h14', w: 2.4 },
   hill: { s: 'M2 19l6-9 4 5 3-4 7 8z' },
+  quill: { s: 'M20 3c-7 1-12 6-14 14M20 3c1 4-2 8-6 9l-4 1M20 3c-1 3-4 5-7 6M6 17l-2 4' },
+  horse: { f: 'M4 21l1.6-6.4L4 12l2.4-4.4L10 6l1.4-3 1.8 2.2 2.6.4 3.6 3.6-1.2 2.2-2.6-.8-1.2 2.6 1.4 4.2-1.8.6-1.8-3.6-3.4.4-.8 4.8z' },
+  anvil: { f: 'M3 7h13c0 2.6 2.4 3.6 5 3.6V12c-2.8 0-4.4 1-5.4 2.6L17 18h2v2.6H6V18h2l1.4-3.4C6.6 13.6 4 11.6 3 7z' },
   palace: { f: 'M12 1.5c1.6 1.9 3.6 2.9 3.6 5.4V9H8.4V6.9C8.4 4.4 10.4 3.4 12 1.5zM2.5 10h3.2v2h2v-2h8.6v2h2v-2h3.2v11.5h-7.2V17a2.3 2.3 0 0 0-4.6 0v4.5H2.5z' },
   citadel: { f: 'M1.5 22l3.2-6.5h14.6l3.2 6.5zM7 15V7.5H5V3.5h3v2h2v-2h4v2h2v-2h3v4h-2V15h-3.6v-3.2a1.4 1.4 0 0 0-2.8 0V15z' },
   helmet: { f: 'M12 1.8l1.7 3.4c3.6 1.2 5.3 4.4 5.3 7.8V16H5v-3c0-3.4 1.7-6.6 5.3-7.8zM7.5 17h9v4.5h-3v-2.8h-3v2.8h-3z' },
@@ -61,7 +64,7 @@ const KIND = {
   earthquake: ['quake', '#6a5032', 1], power: ['star', '#b3852c', 1], war: ['swords', '#a3361f', 1], peace: ['scroll', '#2b7d7a', 1],
   alliance: ['rings', '#27466e', 1], vassal: ['scroll', '#6a5032', 1], broke: ['coin', '#8c6b3f', 0], guild: ['dagger', '#3a2816', 1],
   'army.raised': ['banner', '#27466e', 0], 'army.destroyed': ['skull', '#a3361f', 1], capital: ['crown', '#6a5032', 0], heir: ['crown', '#b3852c', 0],
-  'age.started': ['scroll', '#27466e', 1], 'age.ended': ['crown', '#b3852c', 1],
+  'age.started': ['scroll', '#27466e', 1], 'age.ended': ['crown', '#b3852c', 1], hunger: ['wheat', '#9a5a2a', 1],
 };
 const kindOf = (e) => (e.type === 'death' && e.cause === 'assassin' ? ['dagger', '#a3361f', 1] : KIND[e.type] ?? ['scroll', '#6a5032', 0]);
 
@@ -227,6 +230,7 @@ function render(events, { quiet = false } = {}) {
   feed(events);
   powers();
   $('#date').textContent = dateText(s.month);
+  $('#ask-date').textContent = dateText(s.month);
   $('#yr').textContent = yearOf(s.month);
   const at = (m) => `${(Math.min(m, RULES.months) / RULES.months) * 100}%`;
   $('#done').style.width = at(story.frontier);
@@ -418,7 +422,7 @@ function powers() {
   last.powers = key;
   $('#powers-list').innerHTML = rows.map(({ r, land, men, ruler }) => `<li><button data-realm="${r.id}">
       <i class="shield" style="--c:${r.color}"></i><span class="nm">${esc(r.short)}</span><span class="n">${Math.max(1, Math.round(land * 100))}%</span>
-      <span class="sub"><span>${icon('crown')}${esc(ruler?.name ?? '—')}</span><span>${icon('banner')}${Math.round(men)}k</span><span>${icon('coin')}${Math.round(r.gold)}</span></span>
+      <span class="sub"><span>${icon('crown')}${esc(ruler?.name ?? '—')}</span><span>${icon('banner')}${Math.round(men)}k</span><span>${icon('coin')}${Math.round(r.gold)}</span>${(r.grain ?? 0) < men * 1.2 ? `<span class="hungry" title="Granaries nearly empty">${icon('wheat')}</span>` : ''}</span>
     </button></li>`).join('');
 }
 
@@ -441,6 +445,7 @@ function closeCard() {
 }
 const pips = (n, max) => `<span class="pips">${Array.from({ length: max }, (_, i) => `<span class="${i < n ? '' : 'off'}">●</span>`).join('')}</span>`;
 const age_ = (c) => (c ? yearOf(s.month) - c.born : '');
+const sign = (n) => `${(n ?? 0) >= 0 ? '+' : '−'}${Math.abs(Math.round(n ?? 0))}`;
 const chip = (id) => `<span class="chip" data-realm="${id}"><i class="shield" style="--c:${colorOf(id)}"></i>${esc(s.realms[id]?.short ?? id)}</span>`;
 
 function refreshCard() {
@@ -458,6 +463,7 @@ function refreshCard() {
         <span class="stat" title="Loyalty of the people">${icon('people')}<span class="meter"><i style="width:${loyal}%;background:${lc}"></i></span></span>
         <span class="stat" title="Terrain">${icon('hill')}${esc(p.terrain)}</span>
       </div>
+      <div class="gives">${(() => { const y = yieldOf(s, card.id); return [['wheat', y.grain, 'grain'], ['horse', y.horses, 'horses'], ['anvil', y.iron, 'iron']].filter(([, v]) => v > 0).map(([i, v, w]) => `<span title="${w} a month">${icon(i)}${Math.round(v * 10) / 10}</span>`).join(''); })()}<small>a month</small></div>
       ${q.siege ? `<div class="row" style="color:var(--vermilion)">${icon('tower', 'i')} Besieged by ${chip(q.siege.realm)} · ${q.siege.left} months</div>` : ''}
       ${here.length ? `<div class="row">${icon('banner')} ${here.map((a) => `${chip(a.realm)} ${Math.round(a.size)}k`).join(' ')}</div>` : ''}
       <p class="fact">${esc(p.fact)}</p>`;
@@ -493,8 +499,13 @@ function refreshCard() {
       <div class="grid4">
         <span>${icon('castle')}<b>${st.n}</b><small>provinces · ${Math.max(1, Math.round(st.land * 100))}% of the land</small></span>
         <span>${icon('palace')}<b>${esc(cap?.city ?? '—')}</b><small>capital</small></span>
-        <span>${icon('banner')}<b>${Math.round(men)}k</b><small>soldiers</small></span>
-        <span>${icon('coin')}<b>${Math.round(r.gold)}</b><small>gold · +${Math.round(r.lastIncome ?? 0)} a month</small></span>
+      </div>
+      <div class="stores">
+        <span title="Soldiers under arms">${icon('banner')}<b>${Math.round(men)}k</b><small>soldiers</small></span>
+        <span title="Gold in the treasury">${icon('coin')}<b>${Math.round(r.gold)}</b><small>${sign(r.lastIncome)} gold</small></span>
+        <span class="${(r.grain ?? 0) < men * 1.2 ? 'low' : ''}" title="Grain in the granaries, and this month's harvest less what the armies ate">${icon('wheat')}<b>${Math.round(r.grain ?? 0)}</b><small>${sign(r.lastSupply?.grain)} grain</small></span>
+        <span title="Horses, and the share of the army that rides">${icon('horse')}<b>${Math.round(r.horses ?? 0)}</b><small>${Math.round(cavalryOf(s, r.id) * 100)}% ride</small></span>
+        <span title="Iron to arm new soldiers">${icon('anvil')}<b>${Math.round(r.iron ?? 0)}</b><small>${sign(r.lastSupply?.iron)} iron</small></span>
       </div>
       ${wars.length ? `<div class="row">${icon('swords')}<span>At war with</span> ${wars.map(chip).join('')}</div>` : ''}
       ${friends.length ? `<div class="row">${icon('rings')}<span>Friends</span> ${friends.map(chip).join('')}</div>` : ''}
@@ -532,6 +543,45 @@ async function draftPlan(text) {
   } finally {
     go.disabled = false;
   }
+}
+
+// ---------- the chronicler: ask about the world at this moment ----------
+// The world lives in this browser, so the question goes with what the chronicles record now: the realms and their
+// rulers, who holds which cities, the lines of kings, and the great events of the age so far.
+function factsNow() {
+  const out = [], rows = living(s).map(statsOf).filter((x) => x.n > 0).sort((a, b) => b.land - a.land);
+  out.push('Realms, largest first:');
+  for (const { r, n, men, ruler } of rows.slice(0, 22)) {
+    const heir = s.chars[r.heir], wars = living(s).filter((o) => atWar(s, r.id, o.id)).map((o) => o.short);
+    const line = (r.lineage ?? []).slice(-3).map((l) => `${l.name} ${l.since}-${l.until}${l.cause ? ` (${l.cause})` : ''}`).join(', ');
+    out.push(`- ${r.name} (${r.short}): ${ruler ? `${ruler.title ?? ''} ${ruler.name}, aged ${age_(ruler)}${ruler.since ? `, reigning since ${ruler.since}` : ''}` : 'no ruler'}${heir ? `; heir ${heir.name} (${heir.relation ?? 'heir'})` : ''}; house: ${r.dynasty}${line ? `; before: ${line}` : ''}; ${n} provinces, capital ${PROV[r.capital]?.city}, holds ${provincesOf(s, r.id).map((p) => p.city).slice(0, 14).join(', ')}; ${Math.round(men)}k soldiers, gold ${Math.round(r.gold)}, grain ${Math.round(r.grain ?? 0)}, horses ${Math.round(r.horses ?? 0)}${wars.length ? `; at war with ${wars.join(', ')}` : ''}${r.overlord ? `; vassal of ${s.realms[r.overlord]?.short}` : ''}${r.origin !== 'historic' ? `; founded ${yearOf(r.founded)}` : ''}.`);
+  }
+  if (rows.length > 22) out.push(`- smaller realms: ${rows.slice(22).map((x) => `${x.r.short} (${x.n})`).join(', ')}.`);
+  const fallen = Object.values(s.realms).filter((r) => r.fallen).map((r) => `${r.name} (fell ${yearOf(r.fellAt ?? 0)})`);
+  if (fallen.length) out.push(`Fallen realms: ${fallen.join('; ')}.`);
+  const great = [], lately = [];
+  for (let m = 0; m < s.month; m++) for (const e of story.events[m] ?? []) {
+    if (GREAT(e) || ['crowned', 'war', 'peace', 'power', 'plague'].includes(e.type) || (e.type === 'death' && e.cause === 'assassin')) great.push(`${e.date}: ${e.text}`);
+    if (m >= s.month - 6 && kindOf(e)[2]) lately.push(`${e.date}: ${e.text}`);
+  }
+  out.push('Great events of the age so far:', ...great.slice(-50).map((x) => `- ${x}`), 'The last few months:', ...lately.slice(-15).map((x) => `- ${x}`));
+  return out.join('\n').slice(0, 9000);
+}
+async function askChronicler(q) {
+  const question = q.trim();
+  if (question.length < 3) return;
+  const log = $('#ask-log'), li = document.createElement('li');
+  li.innerHTML = `<p class="q">${esc(question)}<small>${esc(dateText(s.month))}</small></p><p class="a thinking">${icon('quill')} The chronicler searches his pages…</p>`;
+  log.append(li);
+  log.scrollTop = log.scrollHeight;
+  $('#ask-q').value = '';
+  try {
+    const d = await fetch('/api/chronicle', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, date: dateText(s.month), facts: factsNow() }) }).then((r) => r.json());
+    li.querySelector('.a').outerHTML = `<p class="a">${esc(d.answer ?? d.error ?? 'The chronicles are silent.')}</p>`;
+  } catch {
+    li.querySelector('.a').outerHTML = '<p class="a">The chronicler cannot be reached just now. Try again in a minute.</p>';
+  }
+  log.scrollTop = log.scrollHeight;
 }
 
 // ---------- the player ----------
@@ -695,6 +745,15 @@ function wire() {
   });
   $('#plan-go').addEventListener('click', () => draftPlan($('#plan-text').value));
   addEventListener('hashchange', () => location.hash === '#plan' && openPlan());
+  const toggleAsk = (open = $('#ask').hidden) => {
+    $('#ask').hidden = !open;
+    $('#ask-btn').setAttribute('aria-pressed', String(open));
+    if (open) { $('#key').hidden = true; setTimeout(() => $('#ask-q').focus(), 30); }
+  };
+  $('#ask-btn').addEventListener('click', () => toggleAsk());
+  $('#ask-x').addEventListener('click', () => toggleAsk(false));
+  $('#ask-form').addEventListener('submit', (e) => { e.preventDefault(); askChronicler($('#ask-q').value); });
+  $('#ask').addEventListener('click', (e) => { const b = e.target.closest('.pick'); if (b) askChronicler(b.dataset.q); });
   $('#key-btn').addEventListener('click', () => {
     const k = $('#key'), open = k.hidden;
     k.hidden = !open;
@@ -719,6 +778,7 @@ function wire() {
   addEventListener('keydown', (e) => {
     if (e.key === ' ' && !e.target.closest('button, a, input, textarea')) { e.preventDefault(); playPause(); }
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.target.closest('input, textarea')) step((e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 12 : 1));
+    if (e.key === 'Escape') { closeCard(); $('#ask').hidden = true; }
     if (e.key === 'Escape') closeCard();
   });
   for (const y of [1200, 1210, 1220, 1230, 1240, 1250]) {

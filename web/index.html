@@ -34,6 +34,7 @@
 
   <nav class="tools" aria-label="Tools">
     <button class="tool panel" id="powers-btn" aria-pressed="true"><svg viewBox="0 0 24 24"><use href="#i-crown"/></svg><span>Powers</span></button>
+    <button class="tool panel" id="ask-btn" aria-pressed="false"><svg viewBox="0 0 24 24"><use href="#i-quill"/></svg><span>Ask</span></button>
     <button class="tool panel" id="key-btn" aria-pressed="false"><svg viewBox="0 0 24 24"><use href="#i-key"/></svg><span>Key</span></button>
     <a class="tool panel" href="/classic/"><svg viewBox="0 0 24 24"><use href="#i-swords"/></svg><span>Classic war</span></a>
     <button class="tool panel" id="plan-btn"><svg viewBox="0 0 24 24"><use href="#i-scroll"/></svg><span>Free plan</span></button>
@@ -59,6 +60,20 @@
   </div>
 
   <div class="card panel" id="card" hidden></div>
+
+  <section class="ask panel" id="ask" hidden aria-labelledby="ask-title">
+    <button class="x" id="ask-x" aria-label="Close">×</button>
+    <h2 id="ask-title"><svg viewBox="0 0 24 24"><use href="#i-quill"/></svg>Ask the chronicler</h2>
+    <p class="sub">about the world in <b id="ask-date">January 1200</b>. Move the timeline to ask about another moment.</p>
+    <ol class="ask-log" id="ask-log" aria-live="polite"></ol>
+    <div class="picks" role="group" aria-label="Questions to start with">
+      <button type="button" class="pick" data-q="Who is the mightiest ruler now, and why?">Mightiest ruler?</button>
+      <button type="button" class="pick" data-q="What has happened to the Mongols?">The Mongols?</button>
+      <button type="button" class="pick" data-q="Who rules Samarkand, and since when?">Samarkand?</button>
+      <button type="button" class="pick" data-q="How is this age different from real history so far?">Unlike history?</button>
+    </div>
+    <form class="ask-form" id="ask-form"><input id="ask-q" maxlength="300" autocomplete="off" placeholder="Ask about any realm, ruler or city…" aria-label="Your question"><button class="btn main">Ask</button></form>
+  </section>
 
   <div class="zoom">
     <button class="round" id="zin" aria-label="Zoom in"><svg viewBox="0 0 24 24"><use href="#i-plus"/></svg></button>

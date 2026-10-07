@@ -68,6 +68,8 @@ export function plan(s, id, rng) {
   const mine = provincesOf(s, id), avgLoyalty = mine.reduce((t, q) => t + s.provinces[q.id].loyalty, 0) / Math.max(1, mine.length);
   p.tax = avgLoyalty < 38 ? 'low' : (r.gold < 20 && wars.length) || has(ruler, 'greedy') ? 'high' : 'normal';
   p.recruit = wars.length ? (bold ? 0.85 : 0.7) : cautious ? 0.25 : 0.45;
+  const eats = armiesOf(s, id).reduce((t, a) => t + a.size, 0) * R.supply.eat;
+  if (!r.nomad && (r.grain ?? 0) < eats * 2) { p.recruit *= 0.4; p.hungry = true; } // empty granaries: no new mouths
 
   // One power move per reign, at a moment that suits it.
   if (!r.power && s.month >= 18 && rng() < 0.35) { // a reign's one great gamble is not made in its first months
@@ -110,7 +112,7 @@ export function orders(s, id, rng) {
       Object.assign(a, { path: threat.way.path, target: threat.e.at, mode: 'march', eta: 0 });
       continue;
     }
-    if (!a.path.length && (winter || rng() > R.campaign.start)) continue; // a campaign takes some deciding
+    if (!a.path.length && (winter || r.plan?.hungry || rng() > R.campaign.start)) continue; // a campaign takes some deciding, and grain
     // The best prize: rich, weakly held, not too far, not already someone else's job.
     const prizes = PROVINCES.filter((p) => hostileTo(s.provinces[p.id].owner) && !claimed.has(p.id))
       .map((p) => {

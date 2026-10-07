@@ -25,6 +25,21 @@ export const RULES = {
     revoltBelow: 22, revoltChance: 0.004, // per month and per point below the threshold
   },
 
+  // Resources besides gold. Grain feeds armies, horses make cavalry, iron arms new soldiers. Each province gives what
+  // its land gives; markets sell what a realm lacks, at a price.
+  supply: {
+    grain: { river: 2.2, plains: 1.6, hills: 1, forest: 0.8, steppe: 0.5, desert: 0.3, mountains: 0.4 }, // a month, per point of wealth
+    horses: { steppe: 3, plains: 0.5, desert: 0.6, hills: 0.3 }, // a month, flat per province
+    iron: { mountains: 1.2, hills: 0.8, forest: 0.4 }, // a month, flat per province
+    eat: 1.2, // grain a month per thousand soldiers
+    spoil: 0.04, // share of stored grain that rots each month; horses die off at the same rate
+    eatAbroad: 1.5, eatHard: 2, // on campaign in foreign land; in desert or mountains
+    starve: 0.07, // share of a hungry army lost each month
+    ironPerK: 1, // iron to arm a thousand new soldiers
+    cavalry: 0.3, horsesPerK: 3, // battle power from a full complement of horses, and how many that takes
+    price: { grain: 1.6, iron: 3 }, // gold per unit at the market
+    start: 6, // months of output in the stores at the start
+  },
   garrison: { base: 1, perWealth: 0.6 }, // thousand defenders in a province with no army
   walls: { defence: 0.4, baseMonths: 2, siegeMonths: 3, stormRatio: 3.2, stormLoss: 0.4 }, // 2 + walls x3 months of siege, or a costly storm; walls count squared
 

@@ -65,6 +65,24 @@ export const wealthOf = (s, pid) => {
   const p = s.provinces[pid];
   return Math.max(0.5, PROV[pid].wealth - (p.ravaged > 0 ? 1.5 : 0) - (p.plague > 0 ? 1 : 0) - (p.famine > 0 ? 1 : 0));
 };
+// What a province gives each month besides gold: grain from its fields, horses from its pastures, iron from its hills.
+export function yieldOf(s, pid) {
+  const P = PROV[pid], q = s.provinces[pid], S = R.supply, hurt = q.famine > 0 ? 0 : q.ravaged > 0 ? 0.4 : 1;
+  return { grain: round1((S.grain[P.terrain] ?? 1) * wealthOf(s, pid) * hurt), horses: S.horses[P.terrain] ?? 0, iron: S.iron[P.terrain] ?? 0 };
+}
+export function suppliesOf(s, id) {
+  const t = { grain: 0, horses: 0, iron: 0 };
+  for (const p of provincesOf(s, id)) for (const [k, v] of Object.entries(yieldOf(s, p.id))) t[k] += v;
+  return t;
+}
+// Grain an army eats this month: more far from home, more again in desert and mountains.
+export function rations(s, a) {
+  const S = R.supply, own = s.provinces[a.at].owner === a.realm, t = PROV[a.at].terrain;
+  return a.size * S.eat * (own ? 1 : S.eatAbroad) * (['desert', 'mountains'].includes(t) ? S.eatHard : 1) * (s.realms[a.realm]?.nomad ? 0.5 : 1);
+}
+// Share of a realm's soldiers that ride: horses in the stables against men under arms.
+export const cavalryOf = (s, id) => (s.realms[id]?.nomad ? 1 : clamp((s.realms[id]?.horses ?? 0) / Math.max(1, armiesOf(s, id).reduce((t, a) => t + a.size, 0) * R.supply.horsesPerK), 0, 1));
+
 export const garrisonOf = (s, pid) => (R.garrison.base + R.garrison.perWealth * PROV[pid].wealth) * (s.realms[s.provinces[pid].owner]?.nomad ? R.economy.nomad.garrison : 1); // on the steppe every herder fights
 export const wallPower = (s, pid) => garrisonOf(s, pid) * (1 + s.provinces[pid].walls ** 2 * R.walls.defence) * (R.battle.terrain[PROV[pid].terrain] ?? 1) * (0.5 + s.provinces[pid].loyalty / 100);
 export function strength(s, id) {
@@ -158,6 +176,8 @@ export function newAge(age = 1) {
   }
   for (const r of living(s)) {
     r.gold = round1(incomeOf(s, r.id) * R.economy.startGold);
+    const y = suppliesOf(s, r.id);
+    Object.assign(r, { grain: round1(y.grain * R.supply.start), horses: round1(y.horses * R.supply.start), iron: round1(y.iron * R.supply.start) });
     const ruler = s.chars[r.ruler], main = armiesOf(s, r.id).sort((a, b) => b.size - a.size)[0];
     if (main && ruler.traits.some((t) => CAMPAIGNERS.includes(t))) { // a bold ruler rides at the head of the main army
       if (main.general && s.chars[main.general]) s.chars[main.general].army = null;
@@ -307,6 +327,29 @@ function economy(s, emit) {
     }
     r.gold = round1(r.gold + income - upkeep - tribute);
     r.lastIncome = income;
+    // Granaries, stables and forges.
+    const y = suppliesOf(s, r.id), S = R.supply, mine = armiesOf(s, r.id);
+    const eaten = mine.reduce((t, a) => t + rations(s, a), 0);
+    r.grain = round1((r.grain ?? 0) * (1 - S.spoil) + y.grain - eaten);
+    r.horses = round1(Math.max(0, (r.horses ?? 0) * (1 - S.spoil) + y.horses));
+    r.iron = round1((r.iron ?? 0) + y.iron);
+    r.lastSupply = { grain: round1(y.grain - eaten), horses: y.horses, iron: y.iron, eaten: round1(eaten) };
+    const buy = (what, need) => { // merchants sell what the treasury can pay for
+      const n = Math.min(need, Math.max(0, (r.gold - 15) / S.price[what]));
+      if (n > 0) { r[what] = round1(r[what] + n); r.gold = round1(r.gold - n * S.price[what]); }
+    };
+    if (r.grain < eaten * 2) buy('grain', eaten * 3 - r.grain);
+    if (r.grain < 0) { // hunger: soldiers desert or die, spirits sink
+      r.grain = 0;
+      for (const a of mine) {
+        a.size = round1(a.size * (1 - S.starve));
+        a.morale = clamp(round1(a.morale - 0.05), 0.7, 1.3);
+      }
+      if (s.month - (r.hungerSaid ?? -99) >= 12) {
+        r.hungerSaid = s.month;
+        emit('hunger', `${poss(r.short)} granaries are empty: the soldiers go hungry and desert`, { realms: [r.id] });
+      }
+    }
     if (r.gold < 0) { // unpaid soldiers walk home
       r.gold = 0;
       for (const a of armiesOf(s, r.id)) a.size = round1(a.size * 0.92);
@@ -320,8 +363,14 @@ function economy(s, emit) {
     const affordable = horde ? Infinity : (income * (atWarNow ? R.sustain.war : R.sustain.peace)) / (R.economy.upkeep * (r.nomad ? R.economy.nomad.upkeep : 1)) - men;
     const room = Math.min(manpower(s, r.id) - men, affordable);
     const share = r.plan?.recruit ?? 0.5;
-    const price = recruitPrice(r), spend = Math.min(room * price, Math.max(0, r.gold - 12) * share);
-    if (spend >= price) raise(s, r, spend / price, emit);
+    const price = recruitPrice(r);
+    let recruits = Math.min(room, (Math.max(0, r.gold - 12) * share) / price);
+    if (!r.nomad && r.iron < recruits * R.supply.ironPerK) buy('iron', recruits * R.supply.ironPerK - r.iron);
+    if (!r.nomad) recruits = Math.min(recruits, r.iron / R.supply.ironPerK);
+    if (recruits >= 1) {
+      if (!r.nomad) r.iron = round1(r.iron - recruits * R.supply.ironPerK);
+      raise(s, r, recruits, emit);
+    }
     if (horde) for (const a of armiesOf(s, r.id)) a.size = round1(Math.min(a.size + 0.8, 40)); // the steppe sends riders
     for (const a of armiesOf(s, r.id)) if (a.rest > 0) a.rest--;
   }
@@ -409,8 +458,9 @@ export function fight(s, rng, emit, A, D, pid, garrison = false) {
   const skill = (x) => 1 + B.skill * ((s.chars[x.general]?.skill ?? 2) - 3);
   const luck = () => 1 + between(rng, [-B.luck, B.luck]);
   const home = (x) => (s.provinces[pid].owner === x.realm ? B.home : 1);
-  const pa = A.size * skill(A) * A.morale * luck();
-  const pd = garrison ? D.size * luck() : D.size * skill(D) * D.morale * (B.terrain[P.terrain] ?? 1) * home(D) * luck();
+  const horse = (x) => 1 + R.supply.cavalry * cavalryOf(s, x.realm) * (['mountains', 'forest'].includes(P.terrain) ? 0.4 : 1); // riders count most in the open
+  const pa = A.size * skill(A) * A.morale * horse(A) * luck();
+  const pd = garrison ? D.size * luck() : D.size * skill(D) * D.morale * horse(D) * (B.terrain[P.terrain] ?? 1) * home(D) * luck();
   const won = pa > pd, ratio = won ? pd / pa : pa / pd;
   const [W, L] = won ? [A, D] : [D, A];
   L.size = round1(L.size * (1 - between(rng, B.loserLoss)));
@@ -775,6 +825,7 @@ function steppe(s, rng, emit) {
       const t = pick(rng, targets), p = s.provinces[t], victim = s.realms[p.owner];
       const loot = Math.min(victim.gold, PROV[t].wealth * 4);
       victim.gold = round1(victim.gold - loot);
+      victim.grain = round1(Math.max(0, (victim.grain ?? 0) - PROV[t].wealth * 6));
       kip.gold = round1(kip.gold + loot);
       p.ravaged = Math.max(p.ravaged, 4);
       emit('raid', `Kipchak riders raid ${PROV[t].name}, burning villages and carrying off ${Math.round(loot)} gold`, { realms: ['kipchak', victim.id], at: t });
