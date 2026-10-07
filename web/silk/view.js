@@ -103,7 +103,6 @@ async function boot() {
   }
   setupPanZoom();
   wire();
-  if (GAME) await loadSeats();
   if (!(await joinLive())) {
     if (GAME) { $('#forge .lede').innerHTML = 'This game could not be found.<br>It may have ended.'; }
     newWorld();
@@ -120,7 +119,7 @@ async function boot() {
 let welcome = 0;
 
 // ---------- two kinds of age: the living world (one history on the server, shared by everyone) and your own ----------
-// The living world turns a month every 15 minutes. The page downloads its record (each month's inputs and events)
+// The living world turns a quarter (three months) every 6 hours. The page downloads its record (each month's inputs and events)
 // and replays it with the same engine, so every visitor sees the same history and can scroll back through it.
 let mode = 'own', era = null, ws = null, waiting = false, seekSeq = 0;
 story.inputs = [];
@@ -158,6 +157,8 @@ async function joinLive() {
     for (const evs of story.events) markTrack(evs ?? []);
     render(recentEvents(s.month), { quiet: true });
     connect();
+    Object.assign(S, { live: !GAME, era });
+    await loadSeats();
     liveChip();
     return true;
   } catch (err) {
@@ -173,6 +174,12 @@ function connect() {
     const d = JSON.parse(ev.data);
     if (d.t === 'age' && d.era?.age !== era.age) return location.reload(); // a new age has begun
     if (d.t === 'seats') { onSeats(d.seats); last.powers = null; powers(); }
+    if (d.t === 'quarter' || d.t === 'council') { // a quarter has turned, or its council has opened
+      era.quarter = { opens: d.opens ?? era.quarter?.opens, ends: d.next ?? era.quarter?.ends };
+      if (d.next) era.next = d.next;
+      liveChip();
+      setTimeout(() => refreshRule(), d.t === 'quarter' ? 1500 : 0);
+    }
     if (d.t === 'hello' && d.era) {
       Object.assign(era, d.era);
       S.chain = d.era.chain ?? S.chain;
@@ -210,8 +217,10 @@ function liveChip() {
   }
   if (Date.now() - (S.chainAt ?? 0) > 5 * 60_000) { S.chainAt = Date.now(); getJSON(API).then((e) => { S.chain = e.chain ?? S.chain; }).catch(() => {}); }
   const behind = story.frontier - s.month, mins = Math.max(0, Math.round(((era?.next ?? Date.now()) - Date.now()) / 60000));
+  const until = (t) => { const m = Math.max(0, Math.round((t - Date.now()) / 60000)); return m >= 90 ? `${Math.round(m / 60)} h` : `${m} min`; };
+  const q = era?.quarter, phase = !q ? `next month in ${mins} min` : Date.now() < q.opens ? `reflection · council opens in ${until(q.opens)}` : `council open · quarter turns in ${until(q.ends)}`;
   c.innerHTML = behind <= 0
-    ? `<span class="on"><i></i>Live</span><small>${era?.status === 'running' ? `next month in ${mins} min` : 'the age has ended'}</small>${s.month > 12 ? '<button class="link" data-go="start">Watch from the start</button>' : ''}`
+    ? `<span class="on"><i></i>Live</span><small>${era?.status === 'running' ? phase : 'the age has ended'}</small>${s.month > 12 ? '<button class="link" data-go="start">Watch from the start</button>' : ''}`
     : `<span class="replay">${icon('play')} ${behind >= 24 ? `${Math.round(behind / 12)} years` : behind === 1 ? 'a month' : `${behind} months`} behind</span><button class="link" data-go="now">To the present</button>`;
 }
 function recentEvents(m) {
@@ -844,6 +853,7 @@ function wire() {
   $('#ask-form').addEventListener('submit', (e) => { e.preventDefault(); askChronicler($('#ask-q').value); });
   $('#ask').addEventListener('click', (e) => { const b = e.target.closest('.pick'); if (b) askChronicler(b.dataset.q); });
   $('#rule-btn').addEventListener('click', () => ($('#rule').hidden ? openRule() : closeRule()));
+  if (location.hash === '#council') setTimeout(() => openRule(), 5600); // the link in a council reminder
   $('#rule-x').addEventListener('click', closeRule);
   if (GAME) setTimeout(openRule, 5600); // in a game, the seat comes first
   $('#key-btn').addEventListener('click', () => {

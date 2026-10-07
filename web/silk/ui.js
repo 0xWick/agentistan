@@ -48,6 +48,8 @@ export const ICON = {
   book: { s: 'M12 6.5C9.5 4.8 6.5 4.5 3 5v13c3.5-.5 6.5-.2 9 1.5 2.5-1.7 5.5-2 9-1.5V5c-3.5-.5-6.5-.2-9 1.5zM12 6.5v13' },
   ship: { s: 'M3 15h18l-2.5 5h-13zM12 3v12M12 4l6 8h-6M12 6l-5 6h5' },
   close: { s: 'M6 6l12 12M18 6 6 18', w: 2.2 },
+  clock: { s: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3.5 2' },
+  bell: { s: 'M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0' },
 };
 export const icon = (name, cls = '') => {
   const i = ICON[name] ?? ICON.scroll;

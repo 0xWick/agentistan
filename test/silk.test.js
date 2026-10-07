@@ -78,3 +78,29 @@ test('the other ages start whole, and 1914 goes to war as it did', () => {
   for (const [a, b] of [['austria', 'serbia'], ['germany', 'russia'], ['germany', 'france'], ['uk', 'germany'], ['ottoman', 'russia']]) assert.ok(war(a, b), `${a} and ${b} went to war in 1914`);
   assert.ok(!war('italy', 'france') && !war('italy', 'germany'), 'Italy waits');
 });
+
+test('a player seizes a throne, rules from the council, and loses it by staying away', () => {
+  let s = newAge(5);
+  const id = 'georgia';
+  const step = (inputs = {}) => { const r = tick(s, brain, inputs, { inPlace: true }); s = r.state; return r.events; };
+  const seen = step({ seize: { [id]: { name: 'Vakhtang the Bold', temper: 'conqueror', line: 'a soldier of the mountains' } } });
+  const me = s.chars[s.realms[id].ruler];
+  assert.equal(me.name, 'Vakhtang the Bold');
+  assert.ok(s.players[id] && seen.some((e) => e.type === 'coup' && e.player === id), 'the coup');
+  // Decisions put to the player's ruler wait for the next council; matters arrive for it.
+  for (let i = 0; i < 2; i++) step();
+  const mine = () => s.pending.filter((d) => d.realm === id && d.char === s.realms[id].ruler);
+  assert.ok(mine().some((d) => d.kind === 'matter'), 'matters for the council');
+  const m = mine().find((d) => d.kind === 'matter');
+  step({ councils: { [id]: true }, answers: { [m.id]: { choice: 'ignore' } } }); // the council month: answered
+  assert.ok(!s.pending.some((d) => d.id === m.id), 'settled at the council');
+  assert.equal(s.players[id].missed, 0);
+  // Heir and abdication.
+  const kin = Object.values(s.chars).find((c) => c.alive && c.realm === id && ['general', 'courtier', 'child'].includes(c.role));
+  step({ acts: { [id]: [{ kind: 'heir', char: kin.id }] } });
+  assert.equal(s.realms[id].heir, kin.id);
+  // Away for too long: the vizier skims, and at last someone else takes the throne.
+  let usurped = false;
+  for (let q = 0; q < 16 && !usurped; q++) for (let i = 0; i < 3; i++) usurped ||= step().some((e) => e.usurped === id);
+  assert.ok(usurped && !s.players[id], 'the throne is lost after a long absence');
+});

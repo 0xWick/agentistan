@@ -24,7 +24,7 @@ const ranked = (s, n) => living(s).map((r) => [r.id, provincesOf(s, r.id).length
 export function makeCast(env, era) {
   // In a game the AI speaks only for the realms whose players asked for it; in the living world, for the great powers.
   const spotlight = (s, n = 16) => {
-    if (!era.meta?.game) return ranked(s, n);
+    if (!era.meta?.game) return [...new Set([...Object.keys(s.players ?? {}), ...ranked(s, n)])];
     const seats = era.get('seats') ?? {};
     return Object.keys(seats).filter((r) => seats[r].delegate === 'ai' && s.realms[r] && !s.realms[r].fallen);
   };
@@ -44,11 +44,11 @@ export function makeCast(env, era) {
     if (era.meta?.game) return; // games keep the free budget for decisions
     const stars = new Set(spotlight(s));
     const want = Object.values(s.chars).filter((c) => c.alive && !c.persona && stars.has(c.realm) && (['ruler', 'heir', 'vizier'].includes(c.role) || (c.role === 'consort' && s.realms[c.realm]?.ruler === c.spouse) || (c.role === 'general' && (c.famous || (s.armies[c.army]?.size ?? 0) >= 15))))
-      .sort((a, b) => (b.role === 'ruler') - (a.role === 'ruler') || (b.famous ? 1 : 0) - (a.famous ? 1 : 0)).slice(0, 4);
+      .sort((a, b) => (b.player ? 1 : 0) - (a.player ? 1 : 0) || (b.role === 'ruler') - (a.role === 'ruler') || (b.famous ? 1 : 0) - (a.famous ? 1 : 0)).slice(0, 4);
     if (!want.length) return;
     const lines = want.map((c) => {
       const r = s.realms[c.realm], sp = s.chars[c.spouse];
-      return `- id ${c.id}: ${c.title ?? ''} ${c.name}, ${c.female ? 'woman' : 'man'} of ${ageOf(s, c)}, ${c.role} of ${r?.name} (capital ${cityOf(s, r?.capital)}), ${c.culture} customs. Temperament: ${temperText(c.temper)}.${c.traits?.length ? ` Traits: ${c.traits.join(', ')}.` : ''}${sp ? ` Spouse: ${sp.name}.` : ''}${c.famous ? ' A real figure of history: stay true to what is known of them up to this date.' : ' Not in the chronicles: invent them.'}`;
+      return `- id ${c.id}: ${c.title ?? ''} ${c.name}, ${c.female ? 'woman' : 'man'} of ${ageOf(s, c)}, ${c.role} of ${r?.name} (capital ${cityOf(s, r?.capital)}), ${c.culture} customs. Temperament: ${temperText(c.temper)}.${c.traits?.length ? ` Traits: ${c.traits.join(', ')}.` : ''}${sp ? ` Spouse: ${sp.name}.` : ''}${c.player ? ` A usurper who seized the throne in a coup; they describe themselves: "${clean(s.players?.[c.realm]?.line ?? '', 30)}". Build on that.` : c.famous ? ' A real figure of history: stay true to what is known of them up to this date.' : ' Not in the chronicles: invent them.'}`;
     });
     const out = await ask(small, `You write character sketches for a living simulation of the Old World that began in 1200 AD. For each person give: ambition, fear, secret (each one plain sentence, at most 18 words) and voice (one line they might say, at most 16 words). Fit their temperament, culture, age and rank; be specific and vivid, never modern. ${NO_RELIGION} Reply with JSON only: {"people":[{"id":"...","ambition":"...","fear":"...","secret":"...","voice":"..."}]}`,
       `The date: ${yearOf(s.month, s)}.\n${lines.join('\n')}`, 900);
@@ -67,7 +67,7 @@ export function makeCast(env, era) {
   }
   async function decisions(s, m) {
     const stars = new Set(spotlight(s, 20));
-    const due = s.pending.filter((d) => stars.has(d.realm) || s.chars[d.char]?.famous).slice(0, 5);
+    const due = s.pending.filter((d) => stars.has(d.realm) || s.chars[d.char]?.famous).sort((a, b) => (s.players?.[b.realm] ? 1 : 0) - (s.players?.[a.realm] ? 1 : 0)).slice(0, 5);
     if (!due.length) return;
     const lines = due.map((d) => {
       const c = s.chars[d.char], ruler = s.chars[s.realms[d.realm]?.ruler];
@@ -85,7 +85,7 @@ export function makeCast(env, era) {
   async function counsel(s, m) {
     if (m % 2) return;
     const seen = era.get('counselAt') ?? {};
-    const rid = spotlight(s, 12).filter((id) => !s.realms[id].rebel).sort((a, b) => (seen[a] ?? -99) - (seen[b] ?? -99))[0];
+    const rid = spotlight(s, 12).filter((id) => !s.realms[id].rebel && !s.players?.[id]) // a player sets his own course.sort((a, b) => (seen[a] ?? -99) - (seen[b] ?? -99))[0];
     if (!rid) return;
     seen[rid] = m;
     era.put('counselAt', seen);

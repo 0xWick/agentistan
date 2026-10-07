@@ -6,8 +6,9 @@ import { PROV, PROVINCES, baseWealth, onRoad, word, provincesOf, armiesOf, livin
 import { strength, sideStrength, incomeOf, startWork, canBuild, steersman, rulingTemper, pairTreaties } from './economy.js';
 import { declareWar, makePeace, peaceTerms, fall, breakTreaty } from './war.js';
 import { hire, ask } from './court.js';
+import { nameHeir, abdicate } from './players.js';
 
-export const ACTS = ['war', 'peace', 'ally', 'submit', 'independence', 'power', 'hire', 'build', 'claim'];
+export const ACTS = ['war', 'peace', 'ally', 'submit', 'independence', 'power', 'hire', 'build', 'claim', 'heir', 'abdicate'];
 
 export function act(s, id, a, rng, emit) {
   const r = s.realms[id];
@@ -56,6 +57,8 @@ export function act(s, id, a, rng, emit) {
     case 'hire': return !r.contract && hire(s, id, a.target);
     case 'build': return startWork(s, id, a.place, a.work, emit);
     case 'claim': return arbitrate(s, id, a.place, rng, emit);
+    case 'heir': return nameHeir(s, id, a.char, emit);
+    case 'abdicate': return abdicate(s, id, emit);
   }
   return false;
 }

@@ -127,6 +127,15 @@ export const RULES = {
   succession: { crisis: 0.22, perProvince: 0.006, weakHeir: 0.25, splitShare: 0.4 },
   betrayal: { chance: 0.004, coupShare: 0.4 }, // a disloyal, ambitious general each month; coup instead of defection
   rebels: { foundAfter: 12, minProvinces: 2 }, // rebels holding 2 provinces for a year found a kingdom
+  // Players: what a coup costs at first, and the matters put to them at each council.
+  players: {
+    doubt: 15, unrest: 8, // generals' loyalty and provinces' loyalty lost to a usurper
+    matters: { perCouncil: 2, pretenderFor: 48, pretenderPay: 3, pretenderRises: 0.25, hunt: 0.6, huntFails: 5, ambitionBelow: 50, reward: 15, rewardLoyalty: 25,
+      unrestBelow: 35, grant: 10, grantLoyalty: 15, garrisonLoyalty: 8, garrisonCost: 5, relief: 12, reliefLoyalty: 12, famineAnger: 6 },
+  },
+  // A player away from the council: after `grace` missed councils the vizier skims, provinces and generals drift; at
+  // `bold` he grows bold; at `usurp` he takes the throne.
+  absence: { grace: 4, skim: 0.03, skimMax: 0.25, drift: 0.25, generals: 1, bold: 4, usurp: 8 },
   unrest: { separatistHops: 5, separatist: 0.0007, charter: 0.006, uprising: 0.03, commune: 0.0012 },
 
   agents: {

@@ -98,6 +98,13 @@ function province(id) {
 
 // ---------- a realm ----------
 const END = { age: 'skull', battle: 'swords', assassin: 'dagger', overthrown: 'dagger', coup: 'dagger', poisoned: 'dagger', executed: 'dagger' };
+// In the living world: a free realm can be seized; your own opens your council; a player's realm says who rules it.
+function seizeButton(st, r) {
+  if (!S.live || r.rebel) return '';
+  if (S.mine === r.id) return `<button class="btn main seize" data-council>${icon('crown')} Open your council</button>`;
+  if (st.players?.[r.id]) return `<p class="ruled">${icon('crown')} Ruled by a player: ${esc(st.players[r.id].name)}</p>`;
+  return S.mine ? '' : `<button class="btn seize" data-seize="${r.id}">${icon('dagger')} Seize this throne</button>`;
+}
 function realm(id) {
   const st = s(), r = st.realms[id];
   if (!r) return null;
@@ -123,6 +130,7 @@ function realm(id) {
   const word = r.rep ?? 60;
   return `<div class="who"><i class="shield big" style="--c:${r.color}"></i>${r.rebel ? 'A rebellion' : r.origin === 'historic' ? `A power of ${yearLabel(st.startYear ?? 1200)}` : r.origin === 'commune' ? 'A free city' : `Founded ${yearLabel(yearOf(r.founded, st))}`}${r.golden > st.month ? `<span class="badge gold">${icon('sun')} Golden age</span>` : pros < 30 ? `<span class="badge poor">${icon('wheat')} Poverty</span>` : ''}</div>
     <h3>${esc(r.name)}</h3>${r.fa ? `<p class="fa">${esc(r.fa)}</p>` : ''}
+    ${seizeButton(st, r)}
     ${ruler ? `<div class="king" data-char="${ruler.id}">${face(ruler, 58)}<span><b>${esc(`${ruler.title ?? ''} ${ruler.name}${ruler.epithet ? ` ${ruler.epithet}` : ''}`.trim())}</b>
       <small>${temperLine(ruler)} aged ${ageText(ruler)}${ruler.since ? ` · since ${yearLabel(ruler.since)}` : ''}${leads ? ` · leads ${men(leads.size)} at ${esc(cityOf(st, leads.at))}` : ''}</small></span></div>` : '<div class="king"><b>No ruler</b></div>'}
     ${regent ? `<div class="row">${icon('crown')}<span>Regent</span> ${personChip(regent)} ${temperLine({ temper: regent.ruleAs ?? regent.temper })}</div>` : ''}

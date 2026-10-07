@@ -6,6 +6,7 @@ import { RULES as R } from './rules.js';
 import { PROV, baseWealth, word, provincesOf, armiesOf, armiesChanged, living, atWar, allied, friendly, key, setOwner, hops, clamp, round1, chance, pick, rngFor, newChar, newArmy, newRealm, colorFor,
   short, ofR, say, vb, poss, his, him, nameOf, fullName, cityOf, placeOf, ageOf, usedNames, yearOf, menText } from './core.js';
 import { strength, incomeOf } from './economy.js';
+import { waitsForCouncil, resolveMatter } from './players.js';
 import { declareWar, disband, fall } from './war.js';
 import { cultureOf, personName, womanName, titleFor, kingdomName, consortTitle, vizierTitle, pickTemper } from './names.js';
 
@@ -15,7 +16,7 @@ const QUEENS_REIGN = new Set(['georgian', 'greek', 'latin', 'armenian', 'nubian'
 
 // ---------- decisions: asked now, answered next month ----------
 export function ask(s, d) {
-  if (s.pending.some((x) => x.kind === d.kind && x.char === d.char)) return;
+  if (s.pending.some((x) => x.kind === d.kind && x.char === d.char && x.topic === d.topic)) return;
   s.pending.push({ id: `d${s.nextId++}`, m: s.month, ...d });
 }
 export function settleDecisions(s, inputs, brain, rng, emit) {
@@ -24,6 +25,7 @@ export function settleDecisions(s, inputs, brain, rng, emit) {
   for (const d of due) {
     const c = s.chars[d.char];
     if (!c?.alive || (d.realm && s.realms[d.realm]?.fallen)) continue;
+    if (waitsForCouncil(s, d)) { s.pending.push(d); continue; } // a player answers at the next council
     const given = inputs?.answers?.[d.id];
     const choice = d.options.includes(given?.choice ?? given) ? given?.choice ?? given : brain.decide(s, d, rng);
     if (given?.say) d.said = String(given.say).slice(0, 200);
@@ -42,6 +44,8 @@ function answer(s, d, choice, rng, emit) {
     if (!from || from.fallen || !bride?.alive || !groom?.alive || bride.spouse || groom.spouse) return;
     if (choice !== 'accept') return emit('match.refused', `${fullName(c)} of ${ofR(s, c.realm)} turns down a match with ${ofR(s, d.from)}`, { realms: [c.realm, d.from], chars: [c.id] });
     marry(s, groom.id, bride.id, emit, d.said);
+  } else if (d.kind === 'matter') {
+    resolveMatter(s, d, choice, rng, emit);
   } else if (d.kind === 'peace' || d.kind === 'verdict') {
     s.answers.push({ ...d, choice }); // acts.js applies them, where treaties live
   }
@@ -207,13 +211,13 @@ export function die(s, id, cause, emit, rng, how) {
 }
 
 // The reign that just ended, written into the realm's lineage.
-function endReign(s, r, cause) {
+export function endReign(s, r, cause) {
   const c = s.chars[r.ruler];
   if (!c) return;
   r.lineage = [...(r.lineage ?? []), { name: c.name, epithet: c.epithet, title: c.title, since: c.since ?? yearOf(s.month, s), until: yearOf(s.month, s), cause: cause ?? c.cause ?? null, id: c.id }].slice(-30);
 }
 
-function crown(s, r, h, emit, how = 'becomes') {
+export function crown(s, r, h, emit, how = 'becomes') {
   const title = titled(s.chars[r.ruler]?.title ?? titleFor(r.culture), h);
   Object.assign(h, { role: 'ruler', title, realm: r.id, since: yearOf(s.month, s), landAtStart: provincesOf(s, r.id).length });
   if (!h.temper || !R.temper.ruler[h.temper]) h.temper = pickTemper(rngFor('age', s.age, 'temper', h.id), R.temper.ruler);
@@ -233,7 +237,7 @@ function crown(s, r, h, emit, how = 'becomes') {
   }
   return title;
 }
-const titled = (title, c) => ({ Queen: c.female ? 'Queen' : 'King', King: c.female ? 'Queen' : 'King', Emperor: c.female ? 'Empress' : 'Emperor', Empress: c.female ? 'Empress' : 'Emperor' })[title] ?? title;
+export const titled = (title, c) => ({ Queen: c.female ? 'Queen' : 'King', King: c.female ? 'Queen' : 'King', Emperor: c.female ? 'Empress' : 'Emperor', Empress: c.female ? 'Empress' : 'Emperor' })[title] ?? title;
 
 function succession(s, id, rng, emit) {
   const r = s.realms[id], provs = provincesOf(s, id);

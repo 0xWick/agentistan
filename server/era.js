@@ -3,15 +3,16 @@
 // replays the age so far in the browser with the same engine, then watches it live over a WebSocket.
 // The engine is pure, so the browser's replay and the server's world are the same history.
 import { DurableObject } from 'cloudflare:workers';
-import { newAge, tick, frame, ENGINE, AGES } from '../web/silk/engine.js';
+import { newAge, tick, frame, ENGINE, AGES, QUARTER } from '../web/silk/engine.js';
 import { brain } from '../web/silk/doctrine.js';
 import { makeCast } from './cast.js';
 import { makeSealer, DEPLOYED, EXPLORER } from './seal.js';
-import { play, makeHeralds } from './play.js';
+import { play, makeHeralds, flushCouncil, councilOpen, tidySeats } from './play.js';
 
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' };
 const json = (status, body, cache = 'no-store') => new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': cache } });
-const PACE = 15 * 60_000; // a month every 15 minutes
+const PACE = 15 * 60_000; // a game's month every 15 minutes
+const QUARTER_MS = 6 * 3600_000, REFLECT = 3600_000; // the living world: a quarter every 6 hours, its first hour for reflection
 const REST = 6 * 3600_000; // between ages, six hours of quiet
 export function checksum(s) { // a short fingerprint of the map, so a replay that strays from the record is noticed
   const str = JSON.stringify(frame(s));
@@ -54,7 +55,7 @@ export class Era extends DurableObject {
   public() {
     const s = this.state(), m = this.meta;
     if (!s || !m) return { status: 'none' };
-    return { game: m.game ?? null, age: m.age, seed: m.seed, ageId: m.ageId, engine: m.engine, month: s.month, months: s.months, startYear: s.startYear, status: s.status, pace: m.pace, next: m.next, restUntil: m.restUntil ?? null,
+    return { game: m.game ?? null, age: m.age, seed: m.seed, ageId: m.ageId, engine: m.engine, month: s.month, months: s.months, startYear: s.startYear, status: s.status, pace: m.pace, next: m.next, restUntil: m.restUntil ?? null, quarter: m.quarter ? { opens: m.councilOpens, ends: m.next } : null,
       viewers: this.ctx.getWebSockets().length, endReason: s.endReason, past: (m.ages ?? []).slice(-6), chain: this.chain() };
   }
   chain() { // the registry on Base Sepolia: where it is, and the last year sealed
@@ -66,8 +67,10 @@ export class Era extends DurableObject {
   // ---------- the turn of the month ----------
   begin({ seed = 1 + Math.floor(Math.random() * 99999), ageId = this.meta?.ageId ?? '1200', pace = this.meta?.pace ?? PACE, game = this.meta?.game } = {}) {
     const s = newAge(seed, ageId), age = (this.meta?.age ?? 0) + 1;
-    this.meta = { ...(this.meta ?? {}), age, seed, ageId, pace, game: game ?? null, engine: ENGINE, started: Date.now(), next: Date.now() + pace, restUntil: null, ages: this.meta?.ages ?? [] };
-    if (game) this.put('seats', {});
+    const quarter = !game, every = quarter ? QUARTER_MS : pace;
+    this.meta = { ...(this.meta ?? {}), age, seed, ageId, pace: every, quarter, councilOpens: Date.now(), opened: Date.now(), game: game ?? null, engine: ENGINE, started: Date.now(), next: Date.now() + every, restUntil: null, ages: this.meta?.ages ?? [] };
+    this.put('seats', {}); // a new age: every throne is free again
+    this.put('orders', {});
     this.s = s;
     this.put('state', s);
     this.put('meta', this.meta);
@@ -93,24 +96,48 @@ export class Era extends DurableObject {
       else this.ctx.storage.setAlarm(this.meta.restUntil);
       return;
     }
-    const m = s.month, inputs = this.takeInputs(m);
-    const { state, events } = tick(s, brain, inputs, { inPlace: true });
-    this.s = state;
-    const chk = checksum(state);
-    this.sql.exec('INSERT OR REPLACE INTO months (age, m, inputs, events, chk) VALUES (?, ?, ?, ?, ?)', this.meta.age, m, JSON.stringify(inputs), JSON.stringify(events), chk);
-    if (state.month % 12 === 0) this.sql.exec('INSERT OR REPLACE INTO snaps (age, m, state) VALUES (?, ?, ?)', this.meta.age, state.month, JSON.stringify(state));
-    this.put('state', state);
+    if (this.meta.quarter && Date.now() < this.meta.next - 1000) { // the reflection hour is over: the council opens
+      this.ctx.storage.setAlarm(this.meta.next);
+      if ((this.meta.opened ?? 0) < this.meta.councilOpens) {
+        this.meta.opened = Date.now();
+        this.put('meta', this.meta);
+        this.broadcast({ t: 'council', opens: this.meta.councilOpens, next: this.meta.next });
+        await councilOpen(this).catch((err) => console.error('council reminders failed:', err));
+      }
+      return;
+    }
+    // The turn: a month, or in the living world a whole quarter, with everyone's orders carried out together.
+    if (this.meta.quarter) flushCouncil(this, this.state());
+    const months = this.meta.quarter ? QUARTER - (s.month % QUARTER) : 1, events = [];
+    let m = s.month;
+    for (let i = 0; i < months && this.s.status === 'running'; i++) { m = this.s.month; events.push(...this.turn(m)); }
+    const state = this.s;
     this.meta.next = Date.now() + this.meta.pace;
+    if (this.meta.quarter) this.meta.councilOpens = Date.now() + REFLECT;
     if (state.status !== 'running') {
       this.meta.restUntil = Date.now() + REST;
       this.meta.ages = [...(this.meta.ages ?? []), { age: this.meta.age, seed: this.meta.seed, ended: Date.now(), reason: state.endReason, winner: state.realms[state.winner]?.name ?? null }].slice(-20);
     }
     this.put('meta', this.meta);
-    this.ctx.storage.setAlarm(state.status === 'running' ? this.meta.next : this.meta.restUntil);
-    this.broadcast({ t: 'month', m, inputs, events, chk, next: this.meta.next, status: state.status });
+    this.ctx.storage.setAlarm(state.status !== 'running' ? this.meta.restUntil : this.meta.quarter ? this.meta.councilOpens : this.meta.next);
+    if (this.meta.quarter) {
+      this.broadcast({ t: 'quarter', m: state.month, next: this.meta.next, opens: this.meta.councilOpens });
+      tidySeats(this, state, events);
+    }
     for (const hook of this.hooks) {
       try { await hook(state, events, m); } catch (err) { console.error('after-month hook failed:', err); } // nothing outside the engine may stop the world
     }
+  }
+  turn(m) {
+    const inputs = this.takeInputs(m);
+    const { state, events } = tick(this.s, brain, inputs, { inPlace: true });
+    this.s = state;
+    const chk = checksum(state);
+    this.sql.exec('INSERT OR REPLACE INTO months (age, m, inputs, events, chk) VALUES (?, ?, ?, ?, ?)', this.meta.age, m, JSON.stringify(inputs), JSON.stringify(events), chk);
+    if (state.month % 12 === 0) this.sql.exec('INSERT OR REPLACE INTO snaps (age, m, state) VALUES (?, ?, ?)', this.meta.age, state.month, JSON.stringify(state));
+    this.put('state', state);
+    this.broadcast({ t: 'month', m, inputs, events, chk, next: this.meta.next, status: state.status });
+    return events;
   }
 
   // Inputs for a month: the AI's answers and plans, players' acts. Queued now, applied when that month turns.
@@ -126,6 +153,9 @@ export class Era extends DurableObject {
       else if (kind === 'act') ((inputs.acts ??= {})[k] ??= []).push(val);
       else if (kind === 'persona') ((inputs.personas ??= {})[k] = val);
       else if (kind === 'skies') ((inputs.skies ??= {})[k] = val);
+      else if (kind === 'seize') ((inputs.seize ??= {})[k] = val);
+      else if (kind === 'leave') ((inputs.leave ??= {})[k] = val);
+      else if (kind === 'council') ((inputs.councils ??= {})[k] = val);
     }
     return inputs;
   }
@@ -158,7 +188,7 @@ export class Era extends DurableObject {
     try {
       if (p === '/internal/era/watch') { // the cron's wake-up: a world must always be turning
         if (!this.meta) this.begin();
-        else if (!(await this.ctx.storage.getAlarm())) this.ctx.storage.setAlarm(Math.max(Date.now() + 1000, this.state()?.status === 'running' ? this.meta.next : this.meta.restUntil ?? 0));
+        else if (!(await this.ctx.storage.getAlarm())) this.ctx.storage.setAlarm(Math.max(Date.now() + 1000, this.state()?.status !== 'running' ? this.meta.restUntil ?? 0 : this.meta.quarter && (this.meta.opened ?? 0) < this.meta.councilOpens ? this.meta.councilOpens : this.meta.next));
         return json(200, this.public());
       }
       if (p === '/internal/era/skies') return (await play(this, req, p, url)) ?? json(404, { error: 'not found' });
@@ -167,7 +197,8 @@ export class Era extends DurableObject {
         const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
         if (p === '/internal/era/start') { this.begin({ seed: body.seed, ageId: body.ageId, pace: body.pace, game: body.game }); return json(200, this.public()); }
         if (p === '/internal/era/pace') { this.meta.pace = Math.max(10_000, +body.pace || PACE); this.meta.next = Date.now() + this.meta.pace; this.put('meta', this.meta); this.ctx.storage.setAlarm(this.meta.next); return json(200, this.public()); }
-        if (p === '/internal/era/step') { await this.alarm(); return json(200, this.public()); }
+        if (p === '/internal/era/council-now') { this.meta.councilOpens = Date.now(); this.put('meta', this.meta); return json(200, this.public()); } // end the reflection hour (tests)
+        if (p === '/internal/era/step') { this.meta.next = Date.now(); await this.alarm(); return json(200, this.public()); } // turn now (tests and local play)
         return json(404, { error: 'not found' });
       }
       if (!this.allow(ip)) return json(429, { error: 'slow down' });

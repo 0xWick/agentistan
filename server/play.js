@@ -1,16 +1,20 @@
-// Players and the outside world. In a game (an Era of its own, ?game=<id>), players claim realms, send orders,
-// answer their ruler's decisions and mark themselves ready; an absent player's realm is played by doctrine or, if
-// they ask, by the AI. n8n carries the heralds (great events to Discord), the players' reminders, a daily digest,
-// and the real sky over the great capitals into the game.
+// Players and the outside world. In the living world anyone may seize a free realm: the coup takes effect at the turn
+// of the quarter, and from then on the player rules it from the council, every quarter, with the matters before him,
+// his standing orders and his armies; what he leaves undecided, his vizier decides. (Private games, ?game=<id>, still
+// work month by month, but they are no longer in the menu.) n8n carries the heralds (great events to Discord), the
+// players' reminders, a daily digest, and the real sky over the great capitals into the world.
 import { RULES as R } from '../web/silk/rules.js';
-import { living, provincesOf, steersman, PROV, isGreat, dateText, yearOf, cityOf, AGES } from '../web/silk/engine.js';
+import { living, provincesOf, steersman, PROV, isGreat, dateText, cityOf, AGES } from '../web/silk/engine.js';
+import { rngFor } from '../web/silk/core.js';
+import { brain } from '../web/silk/doctrine.js';
 import { clean } from './agent.js';
 
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'content-type': 'application/json', 'cache-control': 'no-store' };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: HEADERS });
 const PACES = { quick: 3 * 60_000, hour: 60 * 60_000, evening: 4 * 3600_000 };
-const KINDS = ['war', 'peace', 'ally', 'submit', 'independence', 'power', 'hire', 'build', 'claim'];
+const KINDS = ['war', 'peace', 'ally', 'submit', 'independence', 'power', 'hire', 'build', 'claim', 'heir', 'abdicate'];
 const DISCORD = /^https:\/\/(discord|discordapp)\.com\/api\/webhooks\/\d{5,25}\/[\w-]{20,100}$/; // the only address a reminder goes to
+const COUP_EVERY = 6 * 3600_000; // one new throne per visitor in this time
 const newToken = () => [...crypto.getRandomValues(new Uint8Array(18))].map((b) => b.toString(16).padStart(2, '0')).join('');
 async function hash(t) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t)));
@@ -22,14 +26,38 @@ async function seatOf(era, token) {
   const realm = Object.keys(seats).find((r) => seats[r].hash === h);
   return realm ? { realm, seat: seats[realm], seats } : null;
 }
-const publicSeats = (era, s) => Object.entries(era.get('seats') ?? {}).map(([realm, x]) => ({ realm, name: x.name, delegate: x.delegate, ready: x.ready === s.month, since: x.since }));
-// What the player's ruler must decide: their peace offers, matches and verdicts (a general's own choices stay his).
+const publicSeats = (era, s) => Object.entries(era.get('seats') ?? {}).map(([realm, x]) => ({ realm, name: x.name, delegate: x.delegate, ready: x.ready === s.month || !!x.ended, since: x.since }));
+// What the player's ruler must decide: peace offers, matches, verdicts, the realm's matters (a general's own choices stay his).
 const decisionsFor = (s, realm) => s.pending.filter((d) => d.realm === realm && d.char === steersman(s, s.realms[realm])?.id);
+// Where the quarter stands: the reflection hour, then the council.
+const phaseOf = (era) => (Date.now() < (era.meta.councilOpens ?? 0) ? 'reflection' : 'council');
+
+// What the vizier would do, and why.
+const WHY = {
+  peace: { accept: 'Our side is the weaker: peace saves the army', refuse: 'We can still win this war' },
+  match: { accept: 'A marriage makes kin of a neighbour', refuse: 'Their word is poor, or we are at war' },
+  verdict: { accept: 'Defying the arbiter would cost us our word', defy: 'We are strong enough to keep it' },
+  pretender: { pay: 'Gold is cheaper than a civil war', hunt: 'A pretender alive is a war waiting', ignore: 'He has few friends; let him rot in exile' },
+  ambition: { reward: 'A loyal general is worth the gold', dismiss: 'Better no general than a traitor at the head of an army', ignore: 'He talks; he will not act' },
+  unrest: { grant: 'A little relief now saves a revolt later', garrison: 'Soldiers in the streets keep the peace', ignore: 'It will pass' },
+  famine: { relief: 'The people will remember who fed them', ignore: 'The treasury cannot spare it' },
+};
+function advise(s, d) {
+  const choice = brain.decide(s, d, rngFor('advice', d.id));
+  return { choice, why: WHY[d.topic ?? d.kind]?.[choice] ?? '' };
+}
+function validActs(s, realm, list) {
+  return (Array.isArray(list) ? list : []).slice(0, 8).filter((a) => KINDS.includes(a?.kind)).map((a) => ({
+    kind: a.kind, ...(typeof a.target === 'string' && s.realms[a.target] ? { target: a.target } : {}), ...(typeof a.place === 'string' && PROV[a.place] ? { place: a.place } : {}),
+    ...(Object.keys(R.works).includes(a.work) ? { work: a.work } : {}), ...(R.power.includes(a.power) ? { power: a.power } : {}), ...(a.say ? { say: clean(a.say, 24) } : {}),
+    ...(typeof a.char === 'string' && s.chars[a.char]?.realm === realm ? { char: a.char } : {}),
+  }));
+}
 
 export async function play(era, req, p, url) {
   const s = era.state();
   const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-  // ---------- the lobby (kept by the living world) ----------
+  // ---------- the lobby of private games (kept, but off the menu) ----------
   if (p === '/api/games' && req.method === 'GET') return json(200, (era.get('games') ?? []).slice(0, 30));
   if (p === '/api/games' && req.method === 'POST') {
     if (era.meta?.game) return json(400, { error: 'games are made from the living world' });
@@ -41,37 +69,74 @@ export async function play(era, req, p, url) {
     return json(200, { id, name, pace, url: `/?game=${id}` });
   }
   if (!s) return null;
-  // ---------- seats ----------
-  if (p === '/api/era/seats') return json(200, { seats: publicSeats(era, s), game: era.meta.game ?? null, month: s.month, next: era.meta.next });
+  // ---------- thrones ----------
+  if (p === '/api/era/seats') return json(200, { seats: publicSeats(era, s), game: era.meta.game ?? null, month: s.month, next: era.meta.next, quarter: era.meta.quarter ? { opens: era.meta.councilOpens, ends: era.meta.next } : null });
   if (p === '/api/era/claim' && req.method === 'POST') {
-    if (!era.meta.game) return json(400, { error: 'The living world is played by its own people. Start a game to rule a realm.' });
     const seats = era.get('seats') ?? {}, r = s.realms[body.realm];
-    if (!r || r.fallen || !provincesOf(s, r.id).length) return json(400, { error: 'no such realm' });
-    if (seats[r.id]) return json(409, { error: 'that realm already has a ruler' });
-    if (Object.keys(seats).length >= 12) return json(409, { error: 'this game is full' });
-    const name = clean(body.name, 4).slice(0, 24);
+    if (!r || r.fallen || r.rebel || !provincesOf(s, r.id).length) return json(400, { error: 'no such realm' });
+    if (seats[r.id] || s.players?.[r.id]) return json(409, { error: 'another ruler holds that throne' });
+    if (body.token && (await seatOf(era, body.token))) return json(409, { error: 'you already hold a throne: one realm each' });
+    const name = clean(body.name, 5).slice(0, 32);
     if (name.length < 2) return json(400, { error: 'a name, please' });
+    if (era.meta.quarter && era.env.COUP_LIMIT !== 'off') { // one coup at a time from one place
+      const ip = await hash(`${era.env.REALM_SECRET ?? ''}:${req.headers.get('cf-connecting-ip') ?? 'local'}`), recent = era.get('coups') ?? {};
+      if ((recent[ip] ?? 0) > Date.now() - COUP_EVERY) return json(429, { error: 'one coup at a time: try again in a few hours' });
+      for (const k of Object.keys(recent)) if (recent[k] < Date.now() - COUP_EVERY) delete recent[k];
+      recent[ip] = Date.now();
+      era.put('coups', recent);
+    } else if (Object.keys(seats).length >= 12) return json(409, { error: 'this game is full' });
     const webhook = typeof body.webhook === 'string' && DISCORD.test(body.webhook.trim()) ? body.webhook.trim() : null;
     const token = newToken();
-    seats[r.id] = { name, hash: await hash(token), since: s.month, delegate: 'me', webhook, ready: null };
+    seats[r.id] = { name, hash: await hash(token), since: era.meta.quarter ? Date.now() : s.month, delegate: 'me', webhook, ready: null, ended: false, lastSeen: Date.now() };
     era.put('seats', seats);
+    if (era.meta.quarter) era.queue(s.month, 'seize', r.id, { name, female: !!body.female, temper: R.temper.ruler[body.temper] ? body.temper : 'conqueror', line: clean(body.line ?? '', 30).slice(0, 160) });
     era.broadcast({ t: 'seats', seats: publicSeats(era, s) });
-    return json(200, { token, realm: r.id, name });
+    return json(200, { token, realm: r.id, name, coupAt: era.meta.next });
   }
   if (p === '/api/era/me' && req.method === 'POST') {
     const me = await seatOf(era, body.token);
     if (!me) return json(404, { error: 'not seated' });
-    return json(200, { realm: me.realm, name: me.seat.name, delegate: me.seat.delegate, ready: me.seat.ready === s.month, decisions: decisionsFor(s, me.realm), next: era.meta.next });
+    return json(200, { realm: me.realm, name: me.seat.name, delegate: me.seat.delegate, ready: me.seat.ready === s.month || !!me.seat.ended, decisions: decisionsFor(s, me.realm), next: era.meta.next });
   }
+  // ---------- the council ----------
+  if (p === '/api/era/council' && req.method === 'POST') {
+    const me = await seatOf(era, body.token);
+    if (!me) return json(404, { error: 'not seated' });
+    me.seat.lastSeen = Date.now();
+    era.put('seats', me.seats);
+    const P = s.players?.[me.realm];
+    return json(200, { realm: me.realm, name: me.seat.name, phase: phaseOf(era), opens: era.meta.councilOpens, ends: era.meta.next, ended: !!me.seat.ended, seized: !!P, missed: P?.missed ?? 0, grace: R.absence.grace,
+      cards: decisionsFor(s, me.realm).map((d) => ({ ...d, advice: advise(s, d) })), draft: (era.get('orders') ?? {})[me.realm] ?? null, month: s.month });
+  }
+  if (p === '/api/era/orders' && req.method === 'POST') {
+    const me = await seatOf(era, body.token);
+    if (!me) return json(403, { error: 'not seated' });
+    if (phaseOf(era) !== 'council') return json(409, { error: 'the council is not open yet: this hour is for reflection' });
+    const orders = era.get('orders') ?? {}, cards = decisionsFor(s, me.realm);
+    const answers = Object.fromEntries(Object.entries(body.answers ?? {}).filter(([id, c]) => cards.some((d) => d.id === id && d.options.includes(c))));
+    orders[me.realm] = { acts: validActs(s, me.realm, body.acts), answers, tax: ['low', 'normal', 'high'].includes(body.tax) ? body.tax : null, at: Date.now() };
+    era.put('orders', orders);
+    Object.assign(me.seat, { ended: !!body.end, lastSeen: Date.now() });
+    era.put('seats', me.seats);
+    if (body.end) era.broadcast({ t: 'seats', seats: publicSeats(era, s) });
+    return json(200, { saved: true, ended: me.seat.ended, ends: era.meta.next });
+  }
+  if (p === '/api/era/leave' && req.method === 'POST') {
+    const me = await seatOf(era, body.token);
+    if (!me) return json(404, { error: 'not seated' });
+    delete me.seats[me.realm];
+    era.put('seats', me.seats);
+    if (s.players?.[me.realm]) era.queue(s.month, 'leave', me.realm, true);
+    era.broadcast({ t: 'seats', seats: publicSeats(era, s) });
+    return json(200, { left: me.realm });
+  }
+  // ---------- private games: month by month ----------
   if (['/api/era/act', '/api/era/answer', '/api/era/ready', '/api/era/delegate'].includes(p) && req.method === 'POST') {
     const me = await seatOf(era, body.token);
     if (!me) return json(403, { error: 'not seated' });
     const { realm, seat, seats } = me;
     if (p === '/api/era/act') {
-      const acts = (Array.isArray(body.acts) ? body.acts : []).slice(0, 6).filter((a) => KINDS.includes(a?.kind)).map((a) => ({
-        kind: a.kind, ...(typeof a.target === 'string' && s.realms[a.target] ? { target: a.target } : {}), ...(typeof a.place === 'string' && PROV[a.place] ? { place: a.place } : {}),
-        ...(Object.keys(R.works).includes(a.work) ? { work: a.work } : {}), ...(R.power.includes(a.power) ? { power: a.power } : {}), ...(a.say ? { say: clean(a.say, 24) } : {}),
-      }));
+      const acts = validActs(s, realm, body.acts).slice(0, 6);
       for (const a of acts) era.queue(s.month, 'act', realm, a); // the engine checks each one when the month turns
       if (['low', 'normal', 'high'].includes(body.tax)) era.queue(s.month, 'plan', realm, { tax: body.tax, by: 'player' });
       return json(200, { queued: acts.length, month: s.month });
@@ -112,33 +177,78 @@ export async function play(era, req, p, url) {
     return json(200, { queued: n });
   }
   if (p === '/api/era/digest') { // a day of the living world in a few lines, for the n8n daily digest
-    const from = Math.max(0, s.month - 96), rows = era.sql.exec('SELECT events FROM months WHERE age = ? AND m >= ? ORDER BY m', era.meta.age, from).toArray();
+    const from = Math.max(0, s.month - 12), rows = era.sql.exec('SELECT events FROM months WHERE age = ? AND m >= ? ORDER BY m', era.meta.age, from).toArray();
     const great = rows.flatMap((r) => JSON.parse(r.events)).filter((e) => isGreat(e, s)).slice(-8);
     const top = living(s).map((r) => [r, provincesOf(s, r.id).length]).sort((a, b) => b[1] - a[1]).slice(0, 3);
-    return json(200, { title: `A day in Agentistan: ${dateText(from, s)} to ${dateText(s.month, s)}`, text: [...great.map((e) => `• ${e.date}: ${e.text}`), '', `The great powers: ${top.map(([r, n]) => `${r.short} (${n} provinces)`).join(', ')}.`].join('\n').slice(0, 1800), url: era.env.PUBLIC_URL || 'https://agentistan.umarkhatana.com' });
+    const rulers = Object.values(era.get('seats') ?? {}).length;
+    return json(200, { title: `A day in Agentistan: ${dateText(from, s)} to ${dateText(s.month, s)}`, text: [...great.map((e) => `• ${e.date}: ${e.text}`), '', `The great powers: ${top.map(([r, n]) => `${r.short} (${n} provinces)`).join(', ')}.${rulers ? ` ${rulers} realms are ruled by players.` : ''}`].join('\n').slice(0, 1800), url: era.env.PUBLIC_URL || 'https://agentistan.umarkhatana.com' });
   }
   return null;
 }
 
-// After each month: the heralds (the living world) and the reminders (games), both through n8n, both best-effort.
+// ---------- the turn of the quarter: the council's orders become the month's inputs ----------
+export function flushCouncil(era, s) {
+  const orders = era.get('orders') ?? {}, seats = era.get('seats') ?? {};
+  for (const [realm, o] of Object.entries(orders)) {
+    if (!seats[realm]) continue;
+    for (const a of o.acts ?? []) era.queue(s.month, 'act', realm, a);
+    if (o.tax) era.queue(s.month, 'plan', realm, { tax: o.tax, by: 'player' });
+    for (const [id, choice] of Object.entries(o.answers ?? {})) era.queue(s.month, 'answer', id, { choice, by: 'player' });
+    era.queue(s.month, 'council', realm, true);
+  }
+  for (const [realm, x] of Object.entries(seats)) {
+    if (x.ended && !orders[realm]) era.queue(s.month, 'council', realm, true);
+    x.ended = false;
+  }
+  era.put('orders', {});
+  era.put('seats', seats);
+}
+// After the quarter: a throne lost (to a usurper, to conquest) frees its seat.
+export function tidySeats(era, s, events) {
+  const seats = era.get('seats') ?? {};
+  let changed = false;
+  for (const realm of Object.keys(seats)) {
+    const queued = era.sql.exec('SELECT COUNT(*) AS n FROM queue WHERE kind = ? AND k = ?', 'seize', realm).toArray()[0]?.n;
+    if (s.players?.[realm] || queued) continue;
+    const why = events.find((e) => e.usurped === realm) ?? (s.realms[realm]?.fallen ? { text: `${s.realms[realm].name} is no more` } : null);
+    const hook = seats[realm].webhook;
+    delete seats[realm];
+    changed = true;
+    if (hook) n8nPost(era.env, 'reminder', { webhook: hook, title: `Your throne is lost: ${dateText(s.month, s)}`, text: `${why?.text ?? 'Your realm has passed from your hands.'} Seize another throne whenever you like.`, url: site(era.env) });
+  }
+  if (changed) { era.put('seats', seats); era.broadcast({ t: 'seats', seats: publicSeats(era, s) }); }
+}
+// The council opens: each player with a Discord address hears of it, with the matters waiting.
+export async function councilOpen(era) {
+  const s = era.state(), seats = era.get('seats') ?? {}, when = new Date(era.meta.next).toISOString().slice(11, 16);
+  for (const [realm, x] of Object.entries(seats)) {
+    if (!x.webhook) continue;
+    const waiting = decisionsFor(s, realm).length, missed = s.players?.[realm]?.missed ?? 0;
+    await n8nPost(era.env, 'reminder', { webhook: x.webhook, title: `${s.realms[realm]?.short ?? realm}: your council is open`, text: [`${waiting ? `${waiting} matter${waiting > 1 ? 's' : ''} wait for you.` : 'No matters wait; your orders, though, do.'} The quarter turns at ${when} UTC.`, missed > R.absence.grace ? `You have been away ${missed} councils: your vizier grows bold.` : ''].filter(Boolean).join('\n'), url: site(era.env) });
+  }
+}
+
+const site = (env) => env.PUBLIC_URL || 'https://agentistan.umarkhatana.com';
+function n8nPost(env, path, item) {
+  const n8n = (env.N8N_URL || '').replace(/\/$/, '');
+  if (!n8n) return Promise.resolve();
+  return fetch(`${n8n}/webhook/${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-realm-secret': env.REALM_SECRET ?? '' }, body: JSON.stringify(item), signal: AbortSignal.timeout(8000) }).catch((err) => console.error(`n8n ${path}:`, err.message));
+}
+
+// After each turn: the heralds (the living world's great events) and, in private games, the reminders.
 export function makeHeralds(env, era) {
-  const n8n = (env.N8N_URL || '').replace(/\/$/, ''), site = env.PUBLIC_URL || 'https://agentistan.umarkhatana.com';
-  if (!n8n) return null;
-  const post = (path, item) => fetch(`${n8n}/webhook/${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-realm-secret': env.REALM_SECRET ?? '' }, body: JSON.stringify(item), signal: AbortSignal.timeout(8000) }).catch((err) => console.error(`n8n ${path}:`, err.message));
-  return async function heralds(s, events, m) {
+  if (!(env.N8N_URL || '')) return null;
+  return async function heralds(s, events) {
     const game = era.meta.game;
     if (!game) {
-      const great = events.filter((e) => isGreat(e, s)).slice(0, 2);
-      for (const e of great) await post('news', { title: `${e.date}: ${clean(e.text, 14)}`, text: e.text, url: site, color: 0xb3852c });
+      for (const e of events.filter((x) => isGreat(x, s)).slice(0, 3)) await n8nPost(env, 'news', { title: `${e.date}: ${clean(e.text, 14)}`, text: e.text, url: site(env), color: 0xb3852c });
       return;
     }
     const seats = era.get('seats') ?? {}, when = new Date(era.meta.next).toISOString().slice(11, 16);
-    const hooks = Object.entries(seats).filter(([, x]) => x.webhook && x.delegate === 'me');
-    if (!hooks.length) return;
-    for (const [realm, x] of hooks) {
-      const waiting = s.pending.filter((d) => d.realm === realm && d.char === steersman(s, s.realms[realm])?.id).length;
+    for (const [realm, x] of Object.entries(seats).filter(([, y]) => y.webhook && y.delegate === 'me')) {
+      const waiting = decisionsFor(s, realm).length;
       const mine = events.filter((e) => e.realms?.includes(realm) && !e.minor).slice(0, 3).map((e) => `• ${e.text}`);
-      await post('reminder', { webhook: x.webhook, title: `${game.name}: ${dateText(s.month, s)}`, text: [`${s.realms[realm]?.short ?? realm}, your move.${waiting ? ` ${waiting} decision${waiting > 1 ? 's' : ''} wait for you.` : ''} The next month turns at ${when} UTC.`, ...mine].join('\n'), url: `${site}/?game=${game.id}` });
+      await n8nPost(env, 'reminder', { webhook: x.webhook, title: `${game.name}: ${dateText(s.month, s)}`, text: [`${s.realms[realm]?.short ?? realm}, your move.${waiting ? ` ${waiting} decision${waiting > 1 ? 's' : ''} wait for you.` : ''} The next month turns at ${when} UTC.`, ...mine].join('\n'), url: `${site(env)}/?game=${game.id}` });
     }
   };
 }

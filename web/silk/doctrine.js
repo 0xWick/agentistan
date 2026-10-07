@@ -6,6 +6,7 @@ import { PROV, PROVINCES, baseWealth, onRoad, atWar, allied, warOf, truceUntil, 
 import { strength, sideStrength, wealthOf, wallPower, rulingTemper, steersman, canBuild, prosperityOf } from './economy.js';
 import { route } from './war.js';
 import { claimsOf, acceptsPeace } from './acts.js';
+import { decideMatter } from './players.js';
 
 const has = (c, ...t) => t.some((x) => c?.traits?.includes(x));
 
@@ -72,7 +73,7 @@ export function plan(s, id, rng) {
   // War on a weaker neighbour, if the ruler has the stomach for it. A conqueror may even break a truce.
   if (!r.nomad && wars.length < (bold ? 2 : 1) && rng() < 0.14 * (T.war ?? 1) * (s.mods?.war ?? 1)) {
     const prey = next.filter((n) => !atWar(s, id, n) && !friendly(s, id, n) && (!r.overlord || atWar(s, r.overlord, n)) && (truceUntil(s, id, n) <= s.month || (bold && rng() < 0.15)) && !s.realms[n].nomad && (strength(s, n) + (s.realms[n].overlord && s.realms[n].overlord !== id ? strength(s, s.realms[n].overlord) : 0)) * R.diplomacy.warRatio * (cautious ? 1.4 : 1) < me)
-      .map((n) => ({ n, score: provincesOf(s, n).reduce((t, q) => t + baseWealth(s, q.id), 0) / Math.max(1, strength(s, n)) + rng() + (s.kin[[id, n].sort().join('|')] ? -2 : 0) }))
+      .map((n) => ({ n, score: provincesOf(s, n).reduce((t, q) => t + baseWealth(s, q.id), 0) / Math.max(1, strength(s, n)) + rng() + (s.kin[[id, n].sort().join('|')] ? -2 : 0) + ((s.players?.[n]?.missed ?? 0) > R.absence.grace ? 2 : 0) })) // an absent king is easy prey
       .sort((a, b) => b.score - a.score)[0];
     if (prey) p.acts.push({ kind: 'war', target: prey.n }), p.targets.push(prey.n);
   }
@@ -149,6 +150,7 @@ export function decide(s, d, rng) {
     return rng() < ({ diplomat: 0.95, paranoid: 0.5, tyrant: 0.6 }[rulingTemper(s, r)] ?? 0.8) ? 'accept' : 'refuse';
   }
   if (d.kind === 'peace') return acceptsPeace(s, d.realm, d.from) ? 'accept' : 'refuse';
+  if (d.kind === 'matter') return decideMatter(s, d);
   if (d.kind === 'verdict') {
     const t = rulingTemper(s, r), weak = strength(s, d.realm) < strength(s, d.claimant) * 1.2;
     if (['just', 'diplomat'].includes(t)) return 'accept';
