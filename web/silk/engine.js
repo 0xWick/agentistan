@@ -149,7 +149,7 @@ function plans(s, rng, emit, brain, inputs) {
   for (const r of living(s)) {
     if (!r.plan || r.plan.until <= s.month) r.plan = brain.planFor(s, r.id, rng);
     if (inputs.plans?.[r.id]) Object.assign(r.plan, inputs.plans[r.id], { by: inputs.plans[r.id].by ?? 'ai' }); // the AI or a player sets the course
-    if (inputs.plans?.[r.id]?.by === 'player' && s.players?.[r.id]) s.players[r.id].tax = inputs.plans[r.id].tax; // a player's taxes stand until he changes them
+    if (inputs.plans?.[r.id]?.by === 'player' && s.players?.[r.id] && inputs.plans[r.id].tax) s.players[r.id].tax = inputs.plans[r.id].tax; // a player's taxes stand until he changes them
     const p = r.plan;
     if (s.players?.[r.id]?.tax) p.tax = s.players[r.id].tax;
     r.tax = r.charter > s.month && p.tax === 'high' ? 'normal' : p.tax ?? 'normal';

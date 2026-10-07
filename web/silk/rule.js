@@ -16,7 +16,9 @@ export const API = GAME ? `/api/game/${encodeURIComponent(GAME)}/era` : '/api/er
 const KEY = `agentistan:seat:${GAME ?? 'live'}`;
 const store = { get: () => { try { return localStorage.getItem(KEY); } catch { return null; } }, set: (v) => { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch { /* private window */ } } };
 const post = (u, body) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json().catch(() => ({})));
-let me = null, seats = [], council = null, draft = null, saving = 0;
+let me = null, seats = [], council = null, draft = null, saving = 0, seizeTip = null, vzDraft = null, vzMonth = -1;
+// The vizier's button: next to anything he can fill in for you.
+const vz = (key, label = 'Let the vizier fill this in') => `<button type="button" class="vz" data-vz="${key}" title="${label}" aria-label="${label}">${icon('vizier')}</button>`;
 const POWER = { levy: 'Great Levy: every village sends its sons', walls: 'Mighty Walls round the capital', bribe: 'Bribe a neighbouring governor', feast: 'A Royal Feast for the people', silktax: 'A Silk Tax on the caravans' };
 const RULERS = ['conqueror', 'builder', 'diplomat', 'just', 'reformer', 'miser', 'paranoid', 'hedonist', 'tyrant', 'negligent'];
 const CARD = { peace: ['scroll', 'An offer of peace'], match: ['rings', 'A match'], verdict: ['scales', "The arbiter's verdict"], pretender: ['crown', 'A pretender'], ambition: ['swords', 'An ambitious general'], unrest: ['flame', 'A restless province'], famine: ['wheat', 'Famine'] };
@@ -75,16 +77,37 @@ async function render(pre) {
       <li>${icon('scroll')} Matters come to you as cards; give your orders, then end your turn.</li>
       <li>${icon('eye')} What you leave undecided, your vizier decides as you would. Stay away for days, and he takes his share, and then your throne.</li></ul>
     ${seats.length ? `<div class="row">${icon('crown')}<span>Ruled by players</span> ${seats.map((x) => `${chip(x.realm)}`).join(' ')}</div>` : ''}
+    <div class="vz-all">${vz('all', 'Let the vizier fill in everything')}<span>Not sure? Let the vizier fill it in, box by box or all at once.</span></div>
     <form id="claim-form" class="rule-form">
-      <label><span>${icon('banner')} The realm</span><select name="realm">${free.map(([r, n]) => `<option value="${r.id}"${r.id === pre ? ' selected' : ''}>${esc(r.name)} · ${n} provinces</option>`).join('')}</select></label>
-      <label><span>${icon('crown')} Your name</span><input name="name" maxlength="32" required placeholder="As the chronicles shall call you"></label>
+      <label><span>${icon('banner')} The realm ${vz('realm', 'Let the vizier choose a realm')}</span><select name="realm">${free.map(([r, n]) => `<option value="${r.id}"${r.id === pre ? ' selected' : ''}>${esc(r.name)} · ${n} provinces</option>`).join('')}</select></label>
+      <label><span>${icon('crown')} Your name ${vz('name')}</span><input name="name" maxlength="32" required placeholder="As the chronicles shall call you"></label>
       <label class="check"><input type="checkbox" name="female"> I rule as a queen</label>
-      <label><span>${icon('star')} Your temperament</span><select name="temper">${RULERS.map((t) => `<option value="${t}">${esc(TEMPER_TEXT[t][0])}: ${esc(TEMPER_TEXT[t][1])}</option>`).join('')}</select></label>
-      <label><span>${icon('quill')} In a line: who are you?</span><input name="line" maxlength="160" placeholder="A soldier of the frontier who trusts no one"></label>
+      <label><span>${icon('star')} Your temperament ${vz('temper')}</span><select name="temper">${RULERS.map((t) => `<option value="${t}">${esc(TEMPER_TEXT[t][0])}: ${esc(TEMPER_TEXT[t][1])}</option>`).join('')}</select></label>
+      <label><span>${icon('quill')} In a line: who are you? ${vz('line')}</span><input name="line" maxlength="160" placeholder="A soldier of the frontier who trusts no one"></label>
       <label><span>${icon('bell')} Discord webhook <small>(optional: the council calls you)</small></span><input name="webhook" placeholder="https://discord.com/api/webhooks/…"></label>
       <button class="btn main wide">${icon('dagger')} Plot the coup</button>
     </form>
     <p class="fine">The coup takes effect when the quarter turns${q ? `, at ${hhmm(q.ends)}` : ''}. You can give your first orders at once.</p>`;
+  box.querySelectorAll('[data-vz]').forEach((b) => (b.onclick = async (e) => {
+    e.preventDefault();
+    const f = $('#claim-form'), key = b.dataset.vz;
+    if (key === 'realm') { // a realm of middling size: enough to matter, not so much that it falls apart
+      const mid = free.slice(3, 40);
+      f.realm.value = (mid.length ? mid : free)[Math.floor(Math.random() * Math.max(1, (mid.length ? mid : free).length))]?.[0].id ?? f.realm.value;
+      seizeTip = null;
+      return;
+    }
+    if (!seizeTip || seizeTip.realm !== f.realm.value) {
+      b.classList.add('busy');
+      seizeTip = { realm: f.realm.value, ...(await post(`${API}/suggest`, { what: 'seize', realm: f.realm.value })) };
+      b.classList.remove('busy');
+      if (seizeTip.error) return box.insertAdjacentHTML('afterbegin', `<p class="note">${esc(seizeTip.error)}</p>`);
+    }
+    if (key === 'name' || key === 'all') { f.name.value = seizeTip.name; f.female.checked = !!seizeTip.female; }
+    if (key === 'temper' || key === 'all') f.temper.value = seizeTip.temper;
+    if (key === 'line' || key === 'all') f.line.value = seizeTip.line;
+  }));
+  $('#claim-form').onchange = (e) => { if (e.target.name === 'realm') seizeTip = null; };
   $('#claim-form').onsubmit = async (e) => {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.target)), d = await post(`${API}/claim`, { ...f, female: !!f.female });
@@ -106,7 +129,7 @@ export async function openCouncil(quiet = false) {
   if (!me) return;
   council = await post(`${API}/council`, { token: me.token });
   if (council.error) { store.set(null); me = null; S.mine = null; badge(); return; }
-  if (!quiet || !draft) draft = { acts: council.draft?.acts ?? [], answers: { ...(council.draft?.answers ?? {}) }, tax: council.draft?.tax ?? null };
+  if (!quiet || !draft) draft = { acts: council.draft?.acts ?? [], answers: { ...(council.draft?.answers ?? {}) }, tax: council.draft?.tax ?? null, say: council.draft?.say ?? null };
   badge();
   const d = $('#council');
   d.innerHTML = `<div class="panel">${councilHTML()}</div>`;
@@ -154,11 +177,12 @@ function councilHTML() {
       <ul class="armies">${armiesOf(s, r.id).map((a) => `<li>${men(a.size)} at ${esc(cityOf(s, a.at))}${s.chars[a.general] ? ` · ${personChip(s.chars[a.general])}` : ''}${a.battle ? ` · ${icon('swords')} in battle` : a.mode === 'siege' ? ' · besieging' : a.target ? ` · marching on ${esc(cityOf(s, a.target))}` : ''}</li>`).join('') || '<li>none</li>'}</ul>
     </section>
     <section class="c-matters">
-      <h3>${icon('scroll')} ${open ? 'Matters before you' : 'The quarter in review'}</h3>
+      <h3>${icon('scroll')} ${open ? 'Matters before you' : 'The quarter in review'}${open && !c.ended && c.cards.length ? ` ${vz('matters', 'Decide every matter as the vizier advises')}` : ''}</h3>
       ${open ? mattersHTML() : reviewHTML()}
     </section>
     <section class="c-orders">
-      <h3>${icon('quill')} Your orders</h3>
+      <h3>${icon('quill')} Your orders${open && !c.ended ? ` ${vz('orders', 'Let the vizier draft all your orders')}` : ''}</h3>
+      ${open && vzDraft && vzMonth === c.month ? counselHTML() : ''}
       ${open && !c.ended ? ordersHTML() : open ? `<p class="sub">Your orders are sealed. They will be carried out when the quarter turns.</p>${ordersSummary()}` : `<p class="sub">The council opens at ${hhmm(c.opens)}. Until then, study the world: every realm's card, the chronicle and the slider are open to you.</p>`}
     </section>
   </div>
@@ -177,7 +201,7 @@ function mattersHTML() {
       <h4>${icon(ic)} ${esc(title)}</h4>
       <p>${esc(d.question)}</p>
       <div class="picks">${d.options.map((o) => `<button class="pick${mine === o ? ' on' : ''}" data-answer="${d.id}" data-choice="${o}">${esc(SAY[o] ?? o)}</button>`).join('')}</div>
-      <p class="advice">${icon('eye')} The vizier advises: <b>${esc(SAY[d.advice?.choice] ?? d.advice?.choice ?? '')}</b>${d.advice?.why ? `: ${esc(d.advice.why)}` : ''}${mine ? ` <button class="link" data-answer="${d.id}" data-choice="">leave it to him</button>` : ' <i>(he decides if you do not)</i>'}</p>
+      <p class="advice">${icon('vizier')} The vizier advises: <b>${esc(SAY[d.advice?.choice] ?? d.advice?.choice ?? '')}</b>${d.advice?.why ? `: ${esc(d.advice.why)}` : ''}${mine ? ` <button class="link" data-answer="${d.id}" data-choice="">leave it to him</button>` : ' <i>(he decides if you do not)</i>'}</p>
     </article>`;
   }).join('')}</div>`;
 }
@@ -203,17 +227,43 @@ function ordersHTML() {
   const opts = (ids, k) => ids.map((id) => `<option value="${id}"${has(k)?.target === id ? ' selected' : ''}>${esc(s.realms[id].short)}</option>`).join('');
   const tax = draft.tax ?? s.players?.[r.id]?.tax ?? r.tax;
   return `<form id="orders" class="rule-form">
-    <label><span>${icon('coin')} Taxes</span><select name="tax">${[['low', 'low: the people are grateful'], ['normal', 'normal'], ['high', 'high: gold now, anger later']].map(([k, t]) => `<option value="${k}"${tax === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
-    ${peaceful.length ? `<label><span>${icon('swords')} Declare war on</span><select name="war"><option value=""></option>${opts(peaceful, 'war')}</select></label>` : ''}
-    ${wars.length ? `<label><span>${icon('scroll')} Offer peace to</span><select name="peace"><option value=""></option>${opts(wars, 'peace')}</select></label>` : ''}
-    ${friends.length ? `<label><span>${icon('rings')} Seek an alliance with</span><select name="ally"><option value=""></option>${opts(friends, 'ally')}</select></label>` : ''}
+    <label><span>${icon('coin')} Taxes ${vz('tax')}</span><select name="tax">${[['low', 'low: the people are grateful'], ['normal', 'normal'], ['high', 'high: gold now, anger later']].map(([k, t]) => `<option value="${k}"${tax === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+    ${peaceful.length ? `<label><span>${icon('swords')} Declare war on ${vz('war')}</span><select name="war"><option value=""></option>${opts(peaceful, 'war')}</select></label>` : ''}
+    ${wars.length ? `<label><span>${icon('scroll')} Offer peace to ${vz('peace')}</span><select name="peace"><option value=""></option>${opts(wars, 'peace')}</select></label>` : ''}
+    ${friends.length ? `<label><span>${icon('rings')} Seek an alliance with ${vz('ally')}</span><select name="ally"><option value=""></option>${opts(friends, 'ally')}</select></label>` : ''}
     ${work ? `<label class="check"><input type="checkbox" name="build"${has('build') ? ' checked' : ''}> ${icon('hammer')} Build a ${esc(work.work)} at ${esc(cityOf(s, work.place))} (${RULES.works[work.work].cost} gold)</label>` : ''}
-    ${!r.power ? `<label><span>${icon('star')} Your reign's great gamble</span><select name="power"><option value=""></option>${Object.entries(POWER).map(([k, t]) => `<option value="${k}"${has('power')?.power === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>` : ''}
-    ${claims.length ? `<label><span>${icon('scales')} Take a claim to an arbiter</span><select name="claim"><option value=""></option>${claims.map((c) => `<option value="${c.place}"${has('claim')?.place === c.place ? ' selected' : ''}>${esc(cityOf(s, c.place))}</option>`).join('')}</select></label>` : ''}
+    ${!r.power ? `<label><span>${icon('star')} Your reign's great gamble ${vz('power')}</span><select name="power"><option value=""></option>${Object.entries(POWER).map(([k, t]) => `<option value="${k}"${has('power')?.power === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>` : ''}
+    ${claims.length ? `<label><span>${icon('scales')} Take a claim to an arbiter ${vz('claim')}</span><select name="claim"><option value=""></option>${claims.map((c) => `<option value="${c.place}"${has('claim')?.place === c.place ? ' selected' : ''}>${esc(cityOf(s, c.place))}</option>`).join('')}</select></label>` : ''}
     ${kin.length ? `<label><span>${icon('crown')} Your heir</span><select name="heir"><option value="">${s.chars[r.heir] ? `as now: ${esc(s.chars[r.heir].name)}` : 'none named'}</option>${kin.filter((c) => c.id !== r.heir).map((c) => `<option value="${c.id}"${has('heir')?.char === c.id ? ' selected' : ''}>${esc(c.name)} (${esc(c.role)}, ${ageOf(s, c)})</option>`).join('')}</select></label>` : ''}
     ${s.chars[r.heir] ? `<label class="check"><input type="checkbox" name="abdicate"${has('abdicate') ? ' checked' : ''}> ${icon('crown')} Give up the throne to ${esc(s.chars[r.heir].name)} (you play on as the new ruler)</label>` : ''}
-    <label><span>${icon('quill')} Your words to the chronicle</span><input name="say" maxlength="120" placeholder="optional" value="${esc(has('war')?.say ?? '')}"></label>
+    <label><span>${icon('quill')} Your words to the chronicle ${vz('say')}</span><input name="say" maxlength="120" placeholder="optional: what your court proclaims" value="${esc(draft.say ?? has('war')?.say ?? '')}"></label>
   </form>`;
+}
+function counselHTML() {
+  const vizier = S.s.chars[S.s.realms[council.realm]?.vizier];
+  return `<div class="counsel">${icon('vizier')}<div>${vzDraft.counsel ? `<p><b>${esc(vizier?.name ?? 'Your vizier')}</b>: “${esc(vzDraft.counsel)}”</p>` : ''}<ul>${vzDraft.why.map((w) => `<li>${esc(w)}</li>`).join('')}</ul></div></div>`;
+}
+async function vizierFill(key, button) {
+  if (key === 'matters') {
+    for (const d of council.cards) if (d.advice?.choice) draft.answers[d.id] = d.advice.choice;
+    await save();
+    return openCouncil(true);
+  }
+  if (!vzDraft || vzMonth !== council.month) {
+    button?.classList.add('busy');
+    vzDraft = await post(`${API}/suggest`, { what: 'orders', token: me.token });
+    button?.classList.remove('busy');
+    if (vzDraft.error) { const x = vzDraft.error; vzDraft = null; return alert(x); }
+    vzMonth = council.month;
+  }
+  readOrders();
+  const pickAct = (k) => vzDraft.acts.find((a) => a.kind === k), keep = (k) => draft.acts.filter((a) => a.kind !== k);
+  if (key === 'orders') Object.assign(draft, { acts: [...vzDraft.acts, ...draft.acts.filter((a) => ['heir', 'abdicate'].includes(a.kind))], tax: vzDraft.tax, say: vzDraft.say ?? draft.say });
+  else if (key === 'tax') draft.tax = vzDraft.tax;
+  else if (key === 'say') draft.say = vzDraft.say ?? draft.say;
+  else draft.acts = pickAct(key) ? [...keep(key), pickAct(key)] : keep(key);
+  await save();
+  return openCouncil(true);
 }
 function ordersSummary() {
   const s = S.s, list = draft.acts.map((a) => ({ war: `War on ${s.realms[a.target]?.short}`, peace: `Peace offered to ${s.realms[a.target]?.short}`, ally: `An alliance sought with ${s.realms[a.target]?.short}`, build: 'A new work', power: POWER[a.power], claim: `A claim to ${cityOf(s, a.place)}`, heir: `${s.chars[a.char]?.name} named heir`, abdicate: 'The crown passes to your heir' })[a.kind]);
@@ -231,7 +281,7 @@ function readOrders() {
   if (v.claim) acts.push({ kind: 'claim', place: v.claim });
   if (v.heir) acts.push({ kind: 'heir', char: v.heir });
   if (v.abdicate) acts.push({ kind: 'abdicate' });
-  Object.assign(draft, { acts, tax: v.tax || null });
+  Object.assign(draft, { acts, tax: v.tax || null, say: v.say || null });
 }
 async function save(end = false) {
   readOrders();
@@ -250,6 +300,8 @@ function wireCouncil(d) {
       await save();
       return openCouncil(true);
     }
+    const v = e.target.closest('[data-vz]');
+    if (v) { e.preventDefault(); return vizierFill(v.dataset.vz, v); }
     if (e.target.closest('[data-end]')) { const x = await save(true); if (x.saved) openCouncil(true); return; }
     if (e.target.closest('[data-reopen]')) { await post(`${API}/orders`, { token: me.token, ...draft, end: false }); return openCouncil(true); }
     if (e.target.closest('[data-leave]') && confirm('Give up your throne? Your house goes on, ruled by the vizier and the rules.')) {
