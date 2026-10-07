@@ -3,7 +3,7 @@
 // A character's big choices (to betray, to rebel, to accept a match) are asked as decisions and answered next month by
 // whoever speaks for them: a player, the AI, or doctrine.
 import { RULES as R } from './rules.js';
-import { PROV, provincesOf, armiesOf, living, atWar, allied, friendly, key, setOwner, hops, clamp, round1, chance, pick, rngFor, newChar, newArmy, newRealm, colorFor,
+import { PROV, provincesOf, armiesOf, armiesChanged, living, atWar, allied, friendly, key, setOwner, hops, clamp, round1, chance, pick, rngFor, newChar, newArmy, newRealm, colorFor,
   short, ofR, say, vb, poss, his, nameOf, fullName, cityOf, placeOf, ageOf, usedNames, yearOf, menText } from './core.js';
 import { strength, incomeOf } from './economy.js';
 import { declareWar, disband, fall } from './war.js';
@@ -93,10 +93,10 @@ function lives(s, rng, emit) {
   for (const r of living(s)) {
     const ruler = s.chars[r.ruler];
     // Children: to a ruler (or heir) and consort while she can bear them.
-    for (const parent of [ruler, s.chars[r.heir]]) {
+    for (const parent of [ruler]) {
       if (!parent?.alive || !parent.spouse) continue;
       const sp = s.chars[parent.spouse], mother = parent.female ? parent : sp;
-      if (!sp?.alive || ageOf(s, mother) < R.family.adult || ageOf(s, mother) > R.family.fertileUntil || parent.kids.length >= 6 || !chance(rng, R.family.birth)) continue;
+      if (!sp?.alive || ageOf(s, mother) < R.family.adult || ageOf(s, mother) > R.family.fertileUntil || parent.kids.length >= 4 || !chance(rng, R.family.birth)) continue;
       const female = rng() < 0.5;
       const kid = newChar(s, { name: female ? womanName(rng, r.culture, usedNames(s)) : personName(rng, r.culture, usedNames(s)), role: 'child', realm: r.id, born: yearOf(s.month, s), female, family: r.dynasty,
         parent: parent.name, parentId: parent.id, relation: female ? 'daughter' : 'son', temper: null, skill: 1 + Math.floor(rng() * 4), invented: true, culture: r.culture });
@@ -178,7 +178,7 @@ export function marry(s, groomId, brideId, emit, said) {
   s.kin[key(ra, rb)] = s.month;
   if (!allied(s, ra, rb) && !atWar(s, ra, rb)) s.allies[key(ra, rb)] = { since: s.month, marriage: true };
   const tid = `t${s.nextId++}`;
-  s.treaties[tid] = { id: tid, kind: 'marriage', name: `Marriage of ${g.name} and ${b.name}`, parties: [ra, rb], signed: s.month, until: null, ended: null, broken: null, pay: null, text: `alliance by marriage`, sealed: null };
+  s.treaties[tid] = { id: tid, kind: 'marriage', name: `Marriage of ${g.name} and ${b.name}`, parties: [ra, rb], signed: s.month, until: null, ended: null, broken: null, pay: null, text: `alliance by marriage`, sealed: null, spouses: [groomId, brideId] };
   emit('marriage', `${fullName(home)} of ${ofR(s, ra)} weds ${away.name} of ${ofR(s, rb)}: the two houses are allied`, { realms: [ra, rb], chars: [home.id, away.id], treaty: tid, said });
 }
 
@@ -189,6 +189,7 @@ export function die(s, id, cause, emit, rng, how) {
   Object.assign(c, { alive: false, died: s.month, cause });
   if (c.army && s.armies[c.army]) s.armies[c.army].general = null;
   if (c.spouse && s.chars[c.spouse]) s.chars[c.spouse].widowed = s.month;
+  for (const t of Object.values(s.treaties)) if (t.kind === 'marriage' && t.ended === null && t.spouses?.includes(id)) t.ended = s.month;
   earnEpithet(s, c, null);
   const r = s.realms[c.realm];
   const age = ageOf(s, c);
@@ -280,7 +281,8 @@ function succession(s, id, rng, emit) {
 function union(s, r, kin, emit) {
   const king = s.chars[kin.ruler];
   for (const p of [...provincesOf(s, r.id)]) setOwner(s, p.id, kin.id, 'inheritance');
-  for (const a of armiesOf(s, r.id)) a.realm = kin.id;
+  for (const a of [...armiesOf(s, r.id)]) a.realm = kin.id;
+  armiesChanged(s);
   for (const c of Object.values(s.chars)) if (c.alive && c.realm === r.id) c.realm = kin.id;
   kin.gold = round1(kin.gold + r.gold);
   kin.unitedAt = s.month;
@@ -301,6 +303,7 @@ export function split(s, id, gid, rng, emit, why = 'breaks away', said) {
   Object.assign(g, { title: titleFor(culture), temper: R.temper.ruler[g.temper] ? g.temper : 'conqueror', landAtStart: taken.length });
   for (const p of taken) { setOwner(s, p.id, nid, 'secession'); Object.assign(s.provinces[p.id], { loyalty: Math.max(40, s.provinces[p.id].loyalty), siege: null }); }
   a.realm = nid;
+  armiesChanged(s);
   s.realms[nid].gold = round1(r.gold * 0.3);
   r.gold = round1(r.gold * 0.7);
   declareWar(s, nid, id, () => {}, { cause: 'split' });
@@ -385,6 +388,7 @@ function betrayals(s, rng, emit) {
       if (buyer) {
         const a = s.armies[c.army];
         a.realm = buyer.id;
+        armiesChanged(s);
         Object.assign(c, { realm: buyer.id, loyalty: 50 });
         buyer.gold = round1(buyer.gold - 25);
         emit('turncoat', `${c.name}, unpaid, sells ${his(c)} sword and ${menText(a.size)} men to ${ofR(s, buyer.id)}`, { realms: [r.id, buyer.id], at: a.at, chars: [c.id], war: s.wars[key(r.id, buyer.id)]?.conflict });
@@ -464,6 +468,12 @@ export function earnEpithet(s, c, emit) {
 
 // The dead are remembered in lineages and chronicles; after fifteen years they leave the court's records.
 function prune(s) {
+  // Grown children with no office, and widowed consorts, fade from the court's records (they live on, unrecorded).
+  for (const c of Object.values(s.chars)) {
+    if (!c.alive) continue;
+    const idle = (c.role === 'child' && ageOf(s, c) >= 30) || (c.role === 'consort' && c.widowed !== undefined && s.month - c.widowed > 60) || (c.role === 'courtier' && ageOf(s, c) > 70) || (c.role === 'exile' && s.month - (c.since ?? 0) > 240);
+    if (idle && !c.army && !Object.values(s.realms).some((r) => !r.fallen && [r.ruler, r.heir, r.regent, r.vizier].includes(c.id))) Object.assign(c, { alive: false, died: s.month, cause: 'faded' });
+  }
   const keep = new Set();
   for (const r of living(s)) for (const id of [r.ruler, r.heir, r.vizier, r.regent]) if (id) keep.add(id);
   for (const c of Object.values(s.chars)) if (c.alive) { if (c.parentId) keep.add(c.parentId); if (c.spouse) keep.add(c.spouse); }

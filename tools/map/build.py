@@ -122,24 +122,21 @@ def lines(g):
 # ---------- provinces ----------
 R = 210  # px (about 470 km at the Silk Road's latitude): no province reaches further from its city
 
-# Land nobody fights over in this world. (Lon/lat polygons; everything else far from any city is left wild anyway.)
+# Land nobody fights over in this world: the sand sea of the Taklamakan, and two islands with no city. (Lon/lat
+# polygons; everything else far from any city is left wild anyway.)
 MASKS = {
-    'arabia': [(34.9, 29.45), (35.6, 28.0), (38.5, 23.0), (41.5, 16.0), (43.3, 12.4), (52, 11), (61, 12), (61, 22), (60.5, 22.0), (56.6, 24.8), (56.2, 26.2), (54.6, 25.6),
-               (52.5, 26.3), (50.5, 27.9), (48.6, 28.9), (47.7, 29.2), (44.5, 29.1), (41, 31.2), (38.5, 31.5), (37.2, 30.4), (36.2, 29.3)],
-    'tibet': [(76.5, 36.6), (91.0, 36.6), (99.0, 34.5), (99.5, 29.0), (97.5, 27.2), (91.0, 26.8), (88.3, 26.9), (86.0, 27.0), (84.0, 27.3), (82.5, 27.8), (81.0, 28.5),
-              (80.0, 29.0), (79.0, 30.0), (78.0, 30.8), (77.2, 31.6), (76.0, 32.4), (75.8, 33.2), (75.6, 34.4), (76.0, 35.2)],
-    'ncaucasus': [(39.0, 47.6), (39.0, 43.7), (40.6, 43.45), (42.0, 43.25), (43.5, 42.95), (45.0, 42.65), (46.4, 42.25), (47.2, 42.6), (47.6, 43.3), (47.0, 44.5), (46.8, 45.6), (47.2, 47.6)],
     'taklamakan': [(78.2, 38.6), (79.5, 39.6), (81.5, 40.6), (84.0, 41.0), (86.5, 40.8), (88.5, 40.0), (88.8, 38.6), (86.5, 37.9), (84.0, 37.7), (81.5, 37.6), (79.5, 37.9)],
-    'deccan': [(72.6, 8.0), (72.6, 21.3), (74.5, 21.7), (76.5, 22.0), (78.5, 22.5), (80.5, 22.9), (82.5, 23.2), (84.5, 23.1), (86.4, 22.5), (87.2, 21.5), (87.2, 8.0)],
-    'europe': [(-25, 73), (64, 73), (64, 54), (48, 54), (40, 50.5), (30, 50.0), (24, 49.2), (17.0, 48.9), (16.0, 47.2), (13.5, 46.6), (10.5, 46.5), (7.0, 45.9), (6.6, 44.2),
-               (3.5, 43.0), (3.2, 42.4), (0.5, 38.5), (-2.0, 36.6), (-5.6, 35.95), (-6.5, 36.0), (-25, 36.0)],
-    'seasia': [(91.0, 22.5), (98.0, 24.0), (101.5, 22.3), (105.5, 22.8), (108.5, 21.5), (110.0, 18.0), (91.0, 5.0)],
-    'korea': [(124.2, 40.3), (126.5, 41.5), (128.3, 41.9), (130.7, 42.4), (131.0, 33.0), (124.0, 33.0)],
     'taiwan': [(119.6, 21.6), (122.4, 21.6), (122.4, 25.6), (119.6, 25.6)],
     'sardinia': [(7.9, 38.7), (10.0, 38.7), (10.0, 43.2), (7.9, 43.2)],  # with Corsica: no city here, so no bridge across it
 }
 # Crossings by sea that armies can make (straits and short passages), with nothing but water between.
-SEA = [('constantinople', 'nicaea'), ('palermo', 'naples'), ('acre', 'cyprus'), ('cilicia', 'cyprus'), ('palermo', 'tunis')]
+SEA = [('constantinople', 'nicaea'), ('palermo', 'naples'), ('acre', 'cyprus'), ('cilicia', 'cyprus'), ('palermo', 'tunis'),
+       ('london', 'normandy'), ('london', 'flanders'), ('ireland', 'wales'), ('zealand', 'scania'), ('zealand', 'jutland'), ('uppland', 'finland'),
+       ('majorca', 'barcelona'), ('majorca', 'valencia'), ('crimea', 'zichia'), ('aden', 'zeila'), ('lanka', 'madurai'),
+       ('kediri', 'palembang'), ('kedah', 'palembang'), ('dazaifu', 'gyeongju'), ('dazaifu', 'kyoto'),
+       ('mogadishu', 'zeila'), ('mogadishu', 'mombasa'), ('kilwa', 'sofala'), ('kedah', 'lavo')]
+# The caravan roads across the Sahara and the savanna: long, dry, but walked every year.
+CARAVAN = [('sijilmasa', 'koumbi'), ('sijilmasa', 'timbuktu'), ('fezzan', 'njimi'), ('gao', 'kano')]
 
 
 def frontier(p, key):
@@ -230,7 +227,13 @@ def provinces():
         if j not in near[i]:
             near[i].append(j)
             near[j].append(i)
+    for a, b in CARAVAN:
+        i, j = index[a], index[b]
+        if j not in near[i]:
+            near[i].append(j)
+            near[j].append(i)
     sea = {frozenset((index[a], index[b])) for a, b in SEA}
+    caravan = {frozenset((index[a], index[b])) for a, b in CARAVAN}
     ways = [dict() for _ in seeds]
     for i in range(len(seeds)):
         for j in near[i]:
@@ -245,7 +248,8 @@ def provinces():
                 if not hit.is_empty and len(getattr(hit, 'geoms', [hit])) % 2:
                     crossings += 1
             climb = road.intersection(ranges).length if not ranges.is_empty else 0
-            w = {'river': min(2, crossings), 'pass': climb > 25, 'sea': frozenset((i, j)) in sea}
+            far = frozenset((i, j)) in caravan  # a caravan road: the desert is the obstacle, not rivers or ranges
+            w = {'river': 0 if far else min(2, crossings), 'pass': False if far else climb > 25, 'sea': frozenset((i, j)) in sea, 'caravan': far}
             ways[i][seeds[j]['id']] = ways[j][seeds[i]['id']] = w
             line = shapes[i].boundary.intersection(shapes[j].buffer(1.6)).simplify(0.6)
             d = lines(line)

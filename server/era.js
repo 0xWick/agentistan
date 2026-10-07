@@ -91,7 +91,7 @@ export class Era extends DurableObject {
       return;
     }
     const m = s.month, inputs = this.takeInputs(m);
-    const { state, events } = tick(s, brain, inputs);
+    const { state, events } = tick(s, brain, inputs, { inPlace: true });
     this.s = state;
     const chk = checksum(state);
     this.sql.exec('INSERT OR REPLACE INTO months (age, m, inputs, events, chk) VALUES (?, ?, ?, ?, ?)', this.meta.age, m, JSON.stringify(inputs), JSON.stringify(events), chk);

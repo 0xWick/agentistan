@@ -69,7 +69,7 @@ export const RULES = {
   move: { plains: 1, river: 1, steppe: 1, forest: 1, hills: 1, desert: 2, mountains: 2 }, // months to enter a province
   winter: [11, 0, 1], // December to February: the high passes close
   nomadSpeed: 2, // steppe riders cover two provinces a month in open country
-  cross: { river: 1, pass: 2, sea: 2, winter: 4 }, // extra months: a great river, a mountain pass, a strait; passes in winter
+  cross: { river: 1, pass: 2, sea: 2, winter: 4, desert: 3 }, // extra months: a great river, a mountain pass, a strait; passes in winter; a caravan road
 
   // Battles last until one side breaks: one month when the odds are lopsided, up to three when they are even.
   battle: {

@@ -11,7 +11,7 @@ for (let age = 1; age <= ages; age++) {
   let s = newAge(age);
   const historic = Object.keys(s.realms);
   while (s.status === 'running') {
-    s = tick(s, brain).state;
+    s = tick(s, brain, {}, { inPlace: true }).state;
     if (s.month % 60 === 0) {
       const y = yearOf(s.month);
       (by[y] ??= []).push(historic.filter((id) => s.realms[id] && !s.realms[id].fallen).length / historic.length);

@@ -4,11 +4,14 @@
 
 const SKIN = { latin: '#f2d4b4', greek: '#efcfac', georgian: '#eccaa6', armenian: '#e6c19c', magyar: '#f2d4b4', slavic: '#f1d3b2', persian: '#e6bf98', turk: '#e4bf96',
   kurd: '#e2bb92', arab: '#dcb088', berber: '#d6a882', afghan: '#d9ad86', punjabi: '#c99a72', sindhi: '#c4936a', kashmiri: '#dcb48c', rajput: '#bf8b62', hindustani: '#b9845b',
-  bengali: '#b07b52', nubian: '#8a5a3c', chinese: '#eccb98', mongol: '#e2b886', steppe: '#e0b98c' };
+  bengali: '#b07b52', nubian: '#8a5a3c', chinese: '#eccb98', mongol: '#e2b886', steppe: '#e0b98c',
+  frankish: '#f2d4b4', english: '#f4d8ba', celtic: '#f5dcc2', iberian: '#ecc8a2', german: '#f3d6b8', westslav: '#f2d5b6', norse: '#f6dcc4', baltic: '#f4d9bd', rus: '#f2d4b4', alan: '#ecc9a4',
+  deccani: '#b3804f', tamil: '#9e6c45', sinhala: '#a8744b', burmese: '#c99a6a', khmer: '#bd8c5e', viet: '#e3bf8e', malay: '#c08e60', korean: '#eccb9c', japanese: '#efcf9e', tibetan: '#c99868',
+  mande: '#5e3b26', sudanic: '#6a4329', forest: '#5a3824', ethiopian: '#7e5236', swahili: '#7a4e34', shona: '#5c3a25' };
 const HAIR = ['#2a1d14', '#3a2616', '#1d1712', '#4a3220'];
-const EAST = new Set(['chinese', 'mongol', 'steppe']);
-const WEST = new Set(['latin', 'magyar', 'slavic', 'greek', 'georgian', 'armenian', 'nubian']);
-const INDIA = new Set(['rajput', 'hindustani', 'bengali', 'kashmiri', 'punjabi', 'sindhi']);
+const EAST = new Set(['chinese', 'mongol', 'steppe', 'korean', 'japanese', 'viet', 'tibetan']);
+const WEST = new Set(['latin', 'magyar', 'slavic', 'greek', 'georgian', 'armenian', 'nubian', 'frankish', 'english', 'celtic', 'iberian', 'german', 'westslav', 'norse', 'baltic', 'rus', 'alan', 'ethiopian']);
+const INDIA = new Set(['rajput', 'hindustani', 'bengali', 'kashmiri', 'punjabi', 'sindhi', 'deccani', 'tamil', 'sinhala', 'burmese', 'khmer', 'malay']);
 
 function hash(str) {
   let h = 2166136261;

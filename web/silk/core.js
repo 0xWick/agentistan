@@ -83,8 +83,25 @@ export const atWar = (s, a, b) => !!(a && b && a !== b && s.wars[key(a, b)]);
 export const warOf = (s, a, b) => s.wars[key(a, b)];
 export const truceUntil = (s, a, b) => s.truces[key(a, b)] ?? -1;
 export const allied = (s, a, b) => !!(a && b && s.allies[key(a, b)]);
-export const living = (s) => Object.values(s.realms).filter((r) => !r.fallen);
-export const armiesOf = (s, id) => Object.values(s.armies).filter((a) => a.realm === id);
+// The living realms and each realm's armies, kept until something changes them (armiesChanged / realmsChanged).
+// Callers must never reorder these arrays: replays depend on the same order everywhere.
+const LIVING = new WeakMap(), BYREALM = new WeakMap();
+export function living(s) {
+  let l = LIVING.get(s.realms);
+  if (!l) LIVING.set(s.realms, (l = Object.values(s.realms).filter((r) => !r.fallen)));
+  return l;
+}
+export function armiesOf(s, id) {
+  let ix = BYREALM.get(s.armies);
+  if (!ix) {
+    ix = {};
+    for (const a of Object.values(s.armies)) (ix[a.realm] ??= []).push(a);
+    BYREALM.set(s.armies, ix);
+  }
+  return ix[id] ?? [];
+}
+export const armiesChanged = (s) => BYREALM.delete(s.armies);
+export const realmsChanged = (s) => LIVING.delete(s.realms);
 export const menOf = (s, id) => armiesOf(s, id).reduce((t, a) => t + a.size, 0);
 export const enemiesOf = (s, id) => living(s).filter((o) => atWar(s, id, o.id)).map((o) => o.id);
 // Unclaimed land (null) is nobody's friend: it can be crossed only by taking it.
@@ -148,6 +165,7 @@ export function newChar(s, c) {
 export function newArmy(s, realm, general, at, size) {
   const id = `a${s.nextId++}`;
   s.armies[id] = { id, realm, general, at, size: round1(size), path: [], eta: 0, mode: 'idle', target: null, morale: 1, rest: 0, battle: null };
+  armiesChanged(s);
   if (general) s.chars[general].army = id;
   return id;
 }
@@ -163,6 +181,7 @@ export function newRealm(s, rng, { name, short: sh, capital, ruler, origin, colo
     dynasty: ruler ? `House of ${s.chars[ruler].name}` : null, elective, rep: R.reputation.start, known: [], learning: 0, fortune: [], golden: null, reforms: [], regent: null, vizier: null,
   };
   if (ruler) Object.assign(s.chars[ruler], { realm: id, role: 'ruler', since: yearOf(s.month, s), family: s.realms[id].dynasty });
+  realmsChanged(s);
   return id;
 }
 
@@ -171,5 +190,5 @@ export function logWar(s, cid, entry) {
   const c = s.conflicts[cid];
   if (!c) return;
   c.log.push({ m: s.month, ...entry });
-  if (c.log.length > 60) c.log.splice(1, 1); // keep the opening, drop the oldest middle
+  if (c.log.length > 25) c.log.splice(1, 1); // keep the opening, drop the oldest middle
 }

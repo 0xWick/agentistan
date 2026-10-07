@@ -26,12 +26,15 @@ const REGIONS = [
   ['Syria', 'الشام', 34.5, 37.6], ['Egypt', 'مصر', 27.5, 30.5], ['Maghreb', 'المغرب', 33.0, -2.0], ['Ifriqiya', 'إفريقية', 34.6, 9.0],
   ['Hellas', 'Ἑλλάς', 39.3, 22.0], ['Italia', 'Italia', 42.5, 13.0], ['Balkans', 'Балкан', 43.6, 22.5], ['Mongolia', 'مغولستان', 46.3, 103.0],
   ['Manchuria', '東北', 45.0, 125.0], ['China', '中國', 30.5, 112.0], ['Gobi', 'گوبی', 43.0, 106.0], ['Tarim', 'تاریم', 39.6, 84.5],
+  ['Francia', 'Francia', 47.2, 2.4], ['Anglia', 'Anglia', 52.6, -1.6], ['Hispania', 'الأندلس', 39.6, -4.4], ['Germania', 'Teutonia', 50.6, 10.6], ['Scandinavia', 'Norðrlönd', 61.5, 13.0],
+  ['Polonia', 'Polonia', 52.0, 19.0], ['Rus', 'Русь', 55.0, 35.0], ['Arabia', 'جزيرة العرب', 22.0, 46.0], ['Deccan', 'दक्षिण', 18.0, 77.5], ['Tamilakam', 'தமிழகம்', 11.0, 78.5],
+  ['Lanka', 'ලංකා', 7.6, 80.7], ['Burma', 'မြန်မာ', 20.5, 95.5], ['Kambuja', 'កម្ពុជ', 13.0, 104.5], ['Nusantara', 'Nusantara', -3.5, 109.0], ['Korea', '高麗', 36.8, 127.8],
+  ['Japan', '日本', 36.6, 138.2], ['Tibet', 'བོད', 32.5, 88.0], ['Sahel', 'الساحل', 14.5, -2.0], ['Abyssinia', 'ሐበሻ', 11.5, 38.8], ['Zanj', 'زنج', -6.0, 37.0],
 ];
 const SEAS = [['Caspian Sea', 'دریای خزر', 41.6, 50.9], ['Sea of Khwarazm', 'بحر خوارزم', 45.4, 60.6], ['Sea of Fars', 'دریای پارس', 27.0, 51.6], ['Sea of Hind', 'بحر هند', 15.0, 64.0],
-  ['Mare Nostrum', 'بحر الروم', 34.6, 18.5], ['Black Sea', 'Πόντος', 43.2, 34.5], ['Red Sea', 'بحر القلزم', 20.5, 38.6], ['Eastern Sea', '東海', 29.0, 125.0], ['Atlantic', 'Oceanus', 33.0, -16.0]];
-const DISTANT = [['Frankish kingdoms', 47.5, 2.0], ['Iberia', 40.0, -4.0], ['Holy Roman Empire', 50.5, 10.0], ['Rus’ principalities', 54.5, 34.0], ['Volga Bulgaria', 55.0, 50.0],
-  ['Sahara', 23.0, 5.0], ['Lands of the Blacks', 13.0, 0.0], ['Ethiopia', 11.5, 38.5], ['Arabia', 23.0, 45.0], ['Tibet', 32.0, 87.0], ['Siberia', 62.0, 95.0],
-  ['Deccan', 17.0, 77.5], ['Goryeo', 37.5, 127.5], ['Japan', 36.5, 137.5], ['Khmer & Dai Viet', 15.0, 104.0], ['Swahili Coast', -4.0, 39.5]];
+  ['Mare Nostrum', 'بحر الروم', 34.6, 18.5], ['Black Sea', 'Πόντος', 43.2, 34.5], ['Red Sea', 'بحر القلزم', 20.5, 38.6], ['Eastern Sea', '東海', 29.0, 125.0], ['Atlantic', 'Oceanus', 33.0, -16.0],
+  ['Northern Sea', 'Mare Germanicum', 56.0, 3.5], ['Baltic', 'Mare Balticum', 56.5, 18.5], ['Bay of Bengal', 'بحر هركند', 15.0, 88.0], ['South Sea', '南海', 12.0, 114.0], ['Zanj Sea', 'بحر الزنج', -12.0, 50.0]];
+const DISTANT = [['Sahara', 23.0, 5.0], ['Siberia', 62.0, 95.0], ['Iceland', 64.8, -18.5]];
 // Equal Earth, the projection the map is drawn in (mirrors tools/map/build.py).
 let xyOf = () => [0, 0];
 function projector({ lon0, x0, y1, scale }) {
@@ -657,7 +660,7 @@ function setSpeed(v) {
 const view = { x: 0, y: 0, w: W, h: H };
 function fit() {
   const phone = innerWidth < 760;
-  const [x1] = xyOf(37, phone ? 48 : -9), [x2] = xyOf(37, phone ? 82 : 121), [, cy] = xyOf(phone ? 37 : 38, 60);
+  const [x1] = xyOf(37, phone ? 48 : -12), [x2] = xyOf(37, phone ? 82 : 132), [, cy] = xyOf(phone ? 37 : 39, 60);
   const w = x2 - x1, h = w / (innerWidth / innerHeight);
   setView({ x: x1, y: cy - h / 2, w, h });
 }

@@ -11,7 +11,7 @@ function run(age, onEvents) {
   const share = {};
   const t0 = performance.now();
   while (s.status === 'running') {
-    const r = tick(s, brain);
+    const r = tick(s, brain, {}, { inPlace: true });
     s = r.state;
     onEvents?.(r.events, s);
     if (s.month % 120 === 0) {

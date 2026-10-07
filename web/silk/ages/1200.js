@@ -3,7 +3,7 @@
 // Temujin, who may or may not unite the steppe.
 import realms from '../realms.json' with { type: 'json' };
 import { RULES as R } from '../rules.js';
-import { provincesOf, armiesOf, living, friendly, setOwner, newChar, newArmy, round1, chance, pick, short, ofR, say, cityOf, placeOf, atWar, PROV } from '../core.js';
+import { provincesOf, armiesOf, armiesChanged, living, friendly, setOwner, newChar, newArmy, round1, chance, pick, short, ofR, say, cityOf, placeOf, atWar, PROV } from '../core.js';
 import { strength } from '../economy.js';
 import { fall, declareWar } from '../war.js';
 
@@ -49,20 +49,71 @@ const PEOPLE = {
   naiman: { ruler: 'negligent', heir: 'tyrant' },
   merkit: { ruler: 'conqueror' },
   tatar: { ruler: 'tyrant' },
+  // the rest of the Old World
+  france: { ruler: 'conqueror', heir: 'conqueror', consort: { name: 'Agnes of Merania', born: 1172, temper: 'devoted', title: 'Queen' }, generals: { 'Guillaume des Barres': 'loyal' } },
+  angevin: { ruler: 'paranoid', consort: { name: 'Isabella of Angoulême', born: 1188, temper: 'schemer', title: 'Queen' }, generals: { 'William Marshal': 'loyal', 'Hubert de Burgh': 'steady' } },
+  flanders: { ruler: 'conqueror', consort: { name: 'Marie of Champagne', born: 1174, temper: 'devoted', title: 'Countess' } },
+  toulouse: { ruler: 'diplomat' },
+  aragon: { ruler: 'conqueror' },
+  gwynedd: { ruler: 'conqueror' },
+  scotland: { ruler: 'diplomat', consort: { name: 'Ermengarde de Beaumont', born: 1170, temper: 'devoted', title: 'Queen' } },
+  connacht: { ruler: 'just' },
+  castile: { ruler: 'conqueror', consort: { name: 'Eleanor of England', born: 1162, temper: 'regent', title: 'Queen' }, generals: { 'Diego López de Haro': 'steady' } },
+  leon: { ruler: 'reformer', heir: 'conqueror', consort: { name: 'Berengaria of Castile', born: 1179, temper: 'regent', title: 'Queen' } },
+  portugal: { ruler: 'builder', heir: 'cautious' },
+  navarre: { ruler: 'conqueror' },
+  staufen: { ruler: 'diplomat', consort: { name: 'Irene Angelina', born: 1181, temper: 'devoted', title: 'Queen' }, generals: { 'Ludwig of Bavaria': 'loyal' } },
+  welf: { ruler: 'conqueror' },
+  austria: { ruler: 'builder' },
+  bohemia: { ruler: 'diplomat', consort: { name: 'Constance of Hungary', born: 1180, temper: 'devoted', title: 'Queen' } },
+  denmark: { ruler: 'diplomat', heir: 'conqueror' },
+  norway: { ruler: 'conqueror' },
+  sweden: { ruler: 'negligent' },
+  poland: { ruler: 'diplomat', heir: 'tyrant' },
+  silesia: { ruler: 'just', heir: 'builder' },
+  pomerania: { ruler: 'miser' },
+  lithuania: { ruler: 'conqueror' },
+  novgorod: { ruler: 'miser' },
+  vladimir: { ruler: 'builder', heir: 'diplomat', consort: { name: 'Maria Shvarnovna', born: 1158, temper: 'devoted', title: 'Princess' }, generals: { Yuri: 'glory' } },
+  ryazan: { ruler: 'paranoid' },
+  smolensk: { ruler: 'diplomat' },
+  chernigov: { ruler: 'conqueror' },
+  kiev: { ruler: 'tyrant' },
+  galich: { ruler: 'conqueror', consort: { name: 'Anna', born: 1175, temper: 'regent', title: 'Princess' } },
+  hejaz: { ruler: 'conqueror' },
+  yemen: { ruler: 'tyrant' },
+  yadava: { ruler: 'conqueror' },
+  kakatiya: { ruler: 'builder' },
+  hoysala: { ruler: 'conqueror' },
+  chola: { ruler: 'conqueror' },
+  pandya: { ruler: 'conqueror' },
+  lanka: { ruler: 'hedonist' },
+  pagan: { ruler: 'builder', heir: 'just' },
+  khmer: { ruler: 'builder', consort: { name: 'Indradevi', born: 1130, temper: 'devoted', title: 'Queen' } },
+  daiviet: { ruler: 'hedonist' },
+  kediri: { ruler: 'tyrant' },
+  goryeo: { ruler: 'negligent', vizier: { name: 'Choe Chung-heon', born: 1149, temper: 'kingmaker', title: 'Chief minister' }, generals: { 'Choe U': 'glory' } },
+  kamakura: { ruler: 'hedonist', consort: { name: 'Wakasa no Tsubone', born: 1182, temper: 'devoted', title: 'Lady' }, vizier: { name: 'Hōjō Tokimasa', born: 1138, temper: 'kingmaker', title: 'Shikken' }, generals: { 'Hōjō Yoshitoki': 'steady', 'Wada Yoshimori': 'glory' } },
+  ghana: { ruler: 'negligent' },
+  sosso: { ruler: 'tyrant' },
+  mali: { ruler: 'diplomat' },
+  kanem: { ruler: 'just', heir: 'conqueror' },
+  benin: { ruler: 'builder' },
+  zagwe: { ruler: 'builder' },
 };
 
 // Who knew what in 1200: paper across the lands of the caliphs and China; counterweight engines in the West and the
 // Levant; gunpowder, the compass and printing in China; crucible steel in India and Persia; credit among merchants.
 const KNOWN = {
-  paper: ['abbasid', 'khwarazm', 'ghurid', 'karakhanid', 'qarakhitai', 'eldiguzid', 'salghurid', 'zengid', 'ayyubid', 'aleppo', 'rum', 'almohad', 'ghaniya', 'alamut', 'shirvan', 'georgia', 'byzantium', 'sicily', 'venice', 'genoa', 'cilicia', 'outremer', 'antioch', 'jin', 'song', 'xia', 'qocho'],
-  trebuchet: ['byzantium', 'ayyubid', 'aleppo', 'outremer', 'antioch', 'sicily', 'venice', 'genoa', 'lombard', 'papal'],
+  paper: ['yemen', 'hejaz', 'oman', 'uyunid', 'kakatiya', 'chola', 'goryeo', 'kamakura', 'daiviet', 'kilwa', 'mogadishu', 'castile', 'aragon', 'abbasid', 'khwarazm', 'ghurid', 'karakhanid', 'qarakhitai', 'eldiguzid', 'salghurid', 'zengid', 'ayyubid', 'aleppo', 'rum', 'almohad', 'ghaniya', 'alamut', 'shirvan', 'georgia', 'byzantium', 'sicily', 'venice', 'genoa', 'cilicia', 'outremer', 'antioch', 'jin', 'song', 'xia', 'qocho'],
+  trebuchet: ['france', 'angevin', 'castile', 'aragon', 'staufen', 'welf', 'flanders', 'byzantium', 'ayyubid', 'aleppo', 'outremer', 'antioch', 'sicily', 'venice', 'genoa', 'lombard', 'papal'],
   gunpowder: ['song', 'jin'],
-  compass: ['song'],
-  windmill: ['ghurid', 'khwarazm'],
-  rotation: ['hungary', 'lombard'],
-  credit: ['venice', 'genoa', 'lombard', 'ayyubid', 'abbasid', 'song', 'jin'],
-  steel: ['ghurid', 'khwarazm', 'chaulukya', 'paramara', 'chandela', 'ayyubid'],
-  printing: ['song', 'jin'],
+  compass: ['song', 'goryeo'],
+  windmill: ['ghurid', 'khwarazm', 'flanders', 'angevin'],
+  rotation: ['hungary', 'lombard', 'france', 'flanders', 'angevin', 'staufen', 'welf', 'bohemia', 'denmark'],
+  credit: ['flanders', 'france', 'yemen', 'kilwa', 'venice', 'genoa', 'lombard', 'ayyubid', 'abbasid', 'song', 'jin'],
+  steel: ['chola', 'pandya', 'hoysala', 'yadava', 'kakatiya', 'lanka', 'ghurid', 'khwarazm', 'chaulukya', 'paramara', 'chandela', 'ayyubid'],
+  printing: ['song', 'jin', 'goryeo'],
 };
 
 // The Silk Road, Constantinople to Chang'an, and its branches south to Baghdad and India.
@@ -82,8 +133,8 @@ export default {
   months: 672,
   realms,
   people: PEOPLE,
-  wars: [['khwarazm', 'ghurid'], ['georgia', 'eldiguzid'], ['ghurid', 'chandela'], ['byzantium', 'bulgaria'], ['mongol', 'tatar', 'steppe'], ['kereit', 'tatar', 'steppe'], ['almohad', 'ghaniya'], ['ayyubid', 'aleppo']],
-  allies: [['karakhanid', 'qarakhitai'], ['mongol', 'kereit']],
+  wars: [['staufen', 'welf'], ['galich', 'kiev'], ['pandya', 'chola'], ['hoysala', 'yadava'], ['sosso', 'ghana'], ['norway', 'denmark'], ['khwarazm', 'ghurid'], ['georgia', 'eldiguzid'], ['ghurid', 'chandela'], ['byzantium', 'bulgaria'], ['mongol', 'tatar', 'steppe'], ['kereit', 'tatar', 'steppe'], ['almohad', 'ghaniya'], ['ayyubid', 'aleppo']],
+  allies: [['karakhanid', 'qarakhitai'], ['mongol', 'kereit'], ['angevin', 'welf'], ['france', 'staufen'], ['castile', 'aragon'], ['flanders', 'angevin']],
   known: KNOWN,
   inventions: ['paper', 'trebuchet', 'gunpowder', 'compass', 'windmill', 'rotation', 'credit', 'steel', 'printing', 'observatory'],
   roads: ROADS,
@@ -147,7 +198,8 @@ function steppe(s, rng, emit) {
   if (M && !M.fallen && !M.horde && STEPPE.filter((p) => ours(s.provinces[p]?.owner)).length >= STEPPE.length - 1) {
     for (const v of living(s).filter((x) => x.overlord === 'mongol' && x.nomad)) { // the tribes that bowed ride with the khan now
       for (const p of [...provincesOf(s, v.id)]) setOwner(s, p.id, 'mongol', 'inheritance');
-      for (const a of armiesOf(s, v.id)) a.realm = 'mongol';
+      for (const a of [...armiesOf(s, v.id)]) a.realm = 'mongol';
+      armiesChanged(s);
       fall(s, v.id, emit, `The ${v.name} join the Mongol nation`, 'mongol');
     }
     const khan = s.chars[M.ruler];

@@ -27,7 +27,41 @@ export const CULTURE_OF = {
 // Later additions to older cultures.
 CULTURE_OF.arab.push('cairo', 'alexandria', 'qus', 'damascus', 'jerusalem', 'karak', 'homs', 'edessa', 'aleppo', 'tripolitania', 'barqa');
 CULTURE_OF.turk.push('konya', 'kayseri', 'sivas', 'malatya', 'ankara', 'erzurum', 'kastamonu', 'qocho', 'hami');
-CULTURE_OF.steppe.push('cumania');
+CULTURE_OF.steppe.push('cumania', 'crimea', 'yenisei', 'oirat', 'barga', 'wallachia');
+// The rest of the Old World, added with the full map of 1200.
+CULTURE_OF.arab.push('hejaz', 'yanbu', 'sanaa', 'aden', 'zabid', 'hadramawt', 'oman', 'sohar', 'hasa', 'najd');
+CULTURE_OF.berber.push('valencia', 'murcia', 'cordoba', 'seville', 'granada', 'majorca');
+CULTURE_OF.turk.push('bulgar');
+CULTURE_OF.magyar.push('croatia', 'dalmatia', 'transylvania');
+CULTURE_OF.nubian.push('soba', 'nobadia');
+Object.assign(CULTURE_OF, {
+  frankish: ['paris', 'champagne', 'burgundy', 'flanders', 'normandy', 'anjou', 'brittany', 'aquitaine', 'toulouse', 'provence'],
+  english: ['london', 'york', 'ireland'],
+  celtic: ['wales', 'scotland', 'connacht'],
+  iberian: ['toledo', 'burgos', 'leon', 'galicia', 'portugal', 'lisbon', 'navarre', 'aragon', 'barcelona'],
+  german: ['swabia', 'franconia', 'bavaria', 'alsace', 'thuringia', 'brandenburg', 'lorraine', 'tyrol', 'saxony', 'cologne', 'frisia', 'austria', 'styria', 'holstein'],
+  westslav: ['bohemia', 'moravia', 'krakow', 'gniezno', 'masovia', 'silesia', 'pomerania'],
+  norse: ['zealand', 'jutland', 'scania', 'nidaros', 'bergen', 'viken', 'uppland', 'gotaland', 'finland'],
+  baltic: ['prussia', 'lithuania', 'livonia', 'estonia'],
+  rus: ['novgorod', 'pskov', 'vladimir', 'rostov', 'murom', 'ryazan', 'smolensk', 'polotsk', 'chernigov', 'kiev', 'pereyaslavl', 'halych', 'volhynia', 'burtas'],
+  alan: ['alania', 'zichia'],
+  deccani: ['devagiri', 'nasik', 'konkan', 'warangal', 'vengi', 'dwarasamudra', 'kalinga', 'tripuri', 'bastar'],
+  tamil: ['kanchi', 'thanjavur', 'madurai', 'kerala'],
+  sinhala: ['lanka'],
+  burmese: ['pagan', 'pegu', 'arakan'],
+  khmer: ['angkor', 'lavo', 'lanna', 'champa'],
+  viet: ['thanglong', 'nghean'],
+  malay: ['palembang', 'kedah', 'kediri'],
+  korean: ['kaesong', 'gyeongju', 'pyongyang'],
+  japanese: ['kamakura', 'kyoto', 'dazaifu', 'hiraizumi'],
+  tibetan: ['lhasa', 'ngari', 'amdo'],
+  mande: ['koumbi', 'sosso', 'kangaba', 'djenne', 'timbuktu', 'gao', 'takrur'],
+  sudanic: ['kano', 'njimi', 'fezzan'],
+  forest: ['ife', 'benin'],
+  ethiopian: ['roha', 'aksum', 'shewa'],
+  swahili: ['zeila', 'mogadishu', 'mombasa', 'kilwa', 'sofala'],
+  shona: ['mapungubwe', 'zimbabwe'],
+});
 
 const NAMES = {
   persian: ['Mas\'ud', 'Bahram', 'Kayqubad', 'Rustam', 'Shahriyar', 'Ardashir', 'Isfandiyar', 'Mahmud', 'Sa\'d', 'Nusrat al-Din', 'Fakhr al-Din', 'Shams al-Din', 'Izz al-Din', 'Abu Sa\'id', 'Farrukhzad', 'Qubad'],
@@ -52,11 +86,39 @@ const NAMES = {
   slavic: ['Boril', 'Asen', 'Peter', 'Stefan', 'Vukan', 'Radoslav', 'Strez', 'Dragan', 'Vladislav', 'Ivanko'],
   magyar: ['Béla', 'Andrew', 'Ladislaus', 'Stephen', 'Coloman', 'Géza'],
   chinese: ['Zhang Rou', 'Shi Tianze', 'Li Quan', 'Meng Gong', 'Wang Jian', 'Chen Hao', 'Liu Ying', 'Zhao Kui', 'Peng Yiwu', 'Wanyan Heda', 'Wanyan Yi', 'Puxian Wannu', 'Yan Shi', 'Du Gao'],
+  frankish: ['Louis', 'Hugh', 'Robert', 'Guy', 'Thibaut', 'Geoffrey', 'Simon', 'Amaury', 'Enguerrand', 'Gaucher', 'Philip', 'Mathieu', 'Raoul', 'Bertrand'],
+  english: ['Henry', 'Richard', 'Geoffrey', 'William', 'Hubert', 'Ranulf', 'Roger', 'Stephen', 'Walter', 'Gilbert', 'Robert', 'Ralph'],
+  celtic: ['Llywelyn', 'Gruffydd', 'Owain', 'Madog', 'Dafydd', 'Alexander', 'Malcolm', 'Domnall', 'Cathal', 'Áed', 'Ruaidrí', 'Toirdelbach'],
+  iberian: ['Alfonso', 'Sancho', 'Fernando', 'Pedro', 'Rodrigo', 'Diego', 'García', 'Ramón', 'Jaime', 'Álvaro', 'Nuño', 'Gonzalo', 'Afonso', 'Martim'],
+  german: ['Frederick', 'Conrad', 'Otto', 'Ludwig', 'Albert', 'Hermann', 'Leopold', 'Rudolf', 'Berthold', 'Dietrich', 'Heinrich', 'Gerhard', 'Engelbert', 'Bernhard'],
+  westslav: ['Bolesław', 'Mieszko', 'Władysław', 'Kazimierz', 'Leszek', 'Konrad', 'Henryk', 'Přemysl', 'Vladislav', 'Soběslav', 'Bořivoj', 'Václav', 'Ziemomysł', 'Mestwin'],
+  norse: ['Knut', 'Valdemar', 'Haakon', 'Inge', 'Erik', 'Magnus', 'Sigurd', 'Olaf', 'Sverker', 'Birger', 'Harald', 'Skule', 'Ingvar', 'Folke'],
+  baltic: ['Mindaugas', 'Dausprungas', 'Živinbudas', 'Stekšys', 'Traidenis', 'Vykintas', 'Lembitu', 'Kaupo', 'Daugerutis', 'Gedvydas'],
+  rus: ['Vsevolod', 'Yuri', 'Konstantin', 'Yaroslav', 'Mstislav', 'Rurik', 'Roman', 'Igor', 'Sviatoslav', 'Daniil', 'Vasilko', 'Rostislav', 'Gleb', 'Vladimir'],
+  alan: ['Soslan', 'Batraz', 'Khetag', 'Dawit', 'Aslan', 'Uruzmag', 'Kazbek'],
+  deccani: ['Singhana', 'Bhillama', 'Rudra', 'Narasimha', 'Ballala', 'Vishnuvardhana', 'Someshvara', 'Anangabhima', 'Prolaraja', 'Mahadeva', 'Ramachandra', 'Jaitugi'],
+  tamil: ['Kulottunga', 'Rajaraja', 'Rajendra', 'Sundara', 'Vikrama', 'Kulasekhara', 'Maravarman', 'Jatavarman', 'Ravi Varma', 'Kopperunchinga', 'Virarajendra'],
+  sinhala: ['Parakramabahu', 'Vijayabahu', 'Nissanka', 'Gajabahu', 'Vikramabahu', 'Bhuvanekabahu', 'Mahinda'],
+  burmese: ['Htilominlo', 'Kyaswa', 'Uzana', 'Narathu', 'Sithu', 'Kyansittha', 'Naratheinkha', 'Sawlu', 'Nadaungmya'],
+  khmer: ['Indravarman', 'Suryavarman', 'Yasovarman', 'Dharanindravarman', 'Srindravarman', 'Jaya Indravarman', 'Harivarman', 'Rajendravarman'],
+  viet: ['Lý Huệ Tông', 'Trần Thừa', 'Trần Lý', 'Đỗ Kính Tu', 'Tô Hiến Thành', 'Trần Thủ Độ', 'Phạm Bỉnh Di', 'Đoàn Thượng'],
+  malay: ['Ken Arok', 'Anusapati', 'Tohjaya', 'Parameswara', 'Sang Sapurba', 'Trailokyaraja', 'Kertanagara', 'Wisnuwardhana'],
+  korean: ['Choe Hang', 'Wang Yeong', 'Kim Chwi-ryeo', 'Yi Ui-min', 'Kyeong Dae-seung', 'Jeong Jung-bu', 'Kim Bo-dang', 'Pak Seo', 'Yi Gyu-bo'],
+  japanese: ['Minamoto no Sanetomo', 'Taira no Munemori', 'Kajiwara Kagetoki', 'Hatakeyama Shigetada', 'Ōe no Hiromoto', 'Miura Yoshimura', 'Hiki Yoshikazu', 'Adachi Kagemori'],
+  tibetan: ['Dorje', 'Lhundrub', 'Sonam', 'Tenzin', 'Gyaltsen', 'Namgyal', 'Drakpa', 'Tsering'],
+  mande: ['Dankaran Tuman', 'Fakoli', 'Tiramakan', 'Kangoro', 'Abu Bakr', 'Sumanguru', 'Mamadi', 'Kankou'],
+  sudanic: ['Dunama', 'Bello', 'Dabo', 'Kanajeji', 'Yaji', 'Umme', 'Bagauda', 'Gijimasu'],
+  forest: ['Ewuare', 'Oranmiyan', 'Obalufon', 'Ehenmihen', 'Ewedo', 'Oguola', 'Edoni', 'Uwakhuahen'],
+  ethiopian: ["Na'akueto La'ab", 'Yetbarak', 'Harbay', 'Yemrehana', 'Tantawidim', 'Mairari', 'Dil Na’od'],
+  swahili: ['al-Hasan ibn Talut', 'Sulayman', 'Ali ibn al-Hasan', 'Dawud', 'Fakhr al-Din', 'Abu Bakr', 'Talut'],
+  shona: ['Mutota', 'Nyatsimba', 'Chikura', 'Mapunga', 'Nemanwa', 'Chingoo'],
 };
 
-const TITLE = { persian: 'Malik', turk: 'Khan', steppe: 'Khan', mongol: 'Khan', arab: 'Amir', kurd: 'Amir', georgian: 'King', afghan: 'Sultan', punjabi: 'Rai', sindhi: 'Jam', kashmiri: 'King', rajput: 'Raja', hindustani: 'Raja', bengali: 'King',
+const TITLE = { frankish: 'Count', english: 'Earl', celtic: 'King', iberian: 'King', german: 'Duke', westslav: 'Duke', norse: 'Jarl', baltic: 'Duke', rus: 'Prince', alan: 'King', deccani: 'Raja', tamil: 'King', sinhala: 'King', burmese: 'King', khmer: 'King', viet: 'King', malay: 'Maharaja', korean: 'Lord', japanese: 'Lord', tibetan: 'Prince', mande: 'King', sudanic: 'Mai', forest: 'Oba', ethiopian: 'King', swahili: 'Sultan', shona: 'King',
+  persian: 'Malik', turk: 'Khan', steppe: 'Khan', mongol: 'Khan', arab: 'Amir', kurd: 'Amir', georgian: 'King', afghan: 'Sultan', punjabi: 'Rai', sindhi: 'Jam', kashmiri: 'King', rajput: 'Raja', hindustani: 'Raja', bengali: 'King',
   greek: 'Despot', latin: 'Count', armenian: 'Prince', berber: 'Amir', nubian: 'King', slavic: 'Prince', magyar: 'King', chinese: 'King' };
-const KINGDOM = { persian: 'Kingdom of', turk: 'Khanate of', steppe: 'Horde of', mongol: 'Khanate of', arab: 'Emirate of', kurd: 'Emirate of', georgian: 'Kingdom of', afghan: 'Sultanate of', punjabi: 'Kingdom of', sindhi: 'Kingdom of', kashmiri: 'Kingdom of', rajput: 'Kingdom of', hindustani: 'Kingdom of', bengali: 'Kingdom of',
+const KINGDOM = { frankish: 'County of', english: 'Earldom of', german: 'Duchy of', westslav: 'Duchy of', norse: 'Jarldom of', baltic: 'Duchy of', rus: 'Principality of', swahili: 'Sultanate of', malay: 'Kingdom of',
+  persian: 'Kingdom of', turk: 'Khanate of', steppe: 'Horde of', mongol: 'Khanate of', arab: 'Emirate of', kurd: 'Emirate of', georgian: 'Kingdom of', afghan: 'Sultanate of', punjabi: 'Kingdom of', sindhi: 'Kingdom of', kashmiri: 'Kingdom of', rajput: 'Kingdom of', hindustani: 'Kingdom of', bengali: 'Kingdom of',
   greek: 'Despotate of', latin: 'County of', armenian: 'Principality of', berber: 'Emirate of', nubian: 'Kingdom of', slavic: 'Principality of', magyar: 'Kingdom of', chinese: 'Kingdom of' };
 
 export function cultureOf(provinceId) {
@@ -111,6 +173,32 @@ const WOMEN = {
   slavic: ['Anna', 'Elena', 'Desislava', 'Irina', 'Kira', 'Milica'],
   magyar: ['Margaret', 'Gertrude', 'Elizabeth', 'Yolanda', 'Constance'],
   chinese: ['Li Fengniang', 'Yang Meizi', 'Wu Yun', 'Xie Daoqing', 'Zhou Ying', 'Han Yueniang', 'Zhao Jiao', 'Wanyan Ying'],
+  frankish: ['Blanche', 'Alix', 'Isabelle', 'Marguerite', 'Jeanne', 'Agnès', 'Adèle', 'Ermengarde', 'Mahaut'],
+  english: ['Matilda', 'Eleanor', 'Isabel', 'Joan', 'Alice', 'Margery', 'Hawise', 'Nicola'],
+  celtic: ['Gwenllian', 'Nest', 'Angharad', 'Ada', 'Margaret', 'Gormlaith', 'Derbforgaill', 'Isobel'],
+  iberian: ['Urraca', 'Berenguela', 'Sancha', 'Teresa', 'Leonor', 'Mafalda', 'Dulce', 'Constanza', 'Elvira'],
+  german: ['Agnes', 'Beatrix', 'Gertrud', 'Kunigunde', 'Mechthild', 'Adelheid', 'Sophia', 'Irmgard', 'Jutta'],
+  westslav: ['Agnieszka', 'Rycheza', 'Jadwiga', 'Ludmila', 'Dobrava', 'Viola', 'Salomea', 'Grzymisława'],
+  norse: ['Ingrid', 'Kristin', 'Margrete', 'Ragnhild', 'Sigrid', 'Helena', 'Cecilia', 'Dagmar', 'Ingeborg'],
+  baltic: ['Morta', 'Gaudvilė', 'Rimgailė', 'Aldona', 'Birutė'],
+  rus: ['Verkhuslava', 'Agafia', 'Feodosia', 'Anna', 'Yevfrosinia', 'Maria', 'Olga', 'Rogneda'],
+  alan: ['Burdukhan', 'Satana', 'Zarina', 'Agunda'],
+  deccani: ['Rudrama', 'Umadevi', 'Padmaladevi', 'Somaladevi', 'Ganapamba', 'Mailama'],
+  tamil: ['Kundavai', 'Lokamahadevi', 'Arumolinangai', 'Ammangadevi', 'Madhurantaki'],
+  sinhala: ['Lilavati', 'Kalyanavati', 'Sugala', 'Ratnavali', 'Mitta'],
+  burmese: ['Weluwaddy', 'Saw Mya Kan', 'Pwa Saw', 'Saw Hla', 'Shin Saw'],
+  khmer: ['Jayarajadevi', 'Indradevi', 'Rajendradevi', 'Kambujalakshmi'],
+  viet: ['Trần Thị Dung', 'Đàm thị', 'Lý Chiêu Hoàng', 'Thiên Cực'],
+  malay: ['Ken Dedes', 'Ken Umang', 'Dyah Wiyat', 'Puteri Hijau'],
+  korean: ['Wang-ssi', 'Kim-ssi', 'Yu-ssi', 'Choe-ssi'],
+  japanese: ['Hōjō Masako', 'Shizuka', 'Tomoe', 'Wakasa', 'Ōhime'],
+  tibetan: ['Dolma', 'Pema', 'Yangchen', 'Dechen'],
+  mande: ['Sogolon', 'Sassouma', 'Nana Triban', 'Kolonkan', 'Kankou'],
+  sudanic: ['Amina', 'Fatima', 'Zaria', 'Aisha'],
+  forest: ['Moremi', 'Idia', 'Iyalode', 'Emotan'],
+  ethiopian: ['Masqal Kibra', 'Tsion', 'Eleni', 'Seble'],
+  swahili: ['Fatima', 'Mwana', 'Mwanamkuu', 'Zaynab'],
+  shona: ['Nehanda', 'Chipo', 'Tsitsi'],
 };
 export function womanName(rng, culture, used = new Set()) {
   const pool = WOMEN[culture] ?? WOMEN.persian;
@@ -123,10 +211,12 @@ export function womanName(rng, culture, used = new Set()) {
 const WOMEN_SET = new Set(Object.values(WOMEN).flat());
 export const isWomanName = (n) => WOMEN_SET.has(n);
 
-const CONSORT = { turk: 'Khatun', steppe: 'Khatun', mongol: 'Khatun', persian: 'Khatun', kurd: 'Khatun', afghan: 'Malika', arab: 'Sayyida', berber: 'Sayyida', punjabi: 'Rani', sindhi: 'Rani',
+const CONSORT = { frankish: 'Countess', english: 'Countess', celtic: 'Queen', iberian: 'Queen', german: 'Duchess', westslav: 'Duchess', norse: 'Queen', baltic: 'Duchess', rus: 'Princess', alan: 'Queen', deccani: 'Rani', tamil: 'Queen', sinhala: 'Queen', burmese: 'Queen', khmer: 'Queen', viet: 'Empress', malay: 'Queen', korean: 'Queen', japanese: 'Lady', tibetan: 'Lady', mande: 'Queen', sudanic: 'Magira', forest: 'Queen', ethiopian: 'Queen', swahili: 'Sayyida', shona: 'Queen',
+  turk: 'Khatun', steppe: 'Khatun', mongol: 'Khatun', persian: 'Khatun', kurd: 'Khatun', afghan: 'Malika', arab: 'Sayyida', berber: 'Sayyida', punjabi: 'Rani', sindhi: 'Rani',
   rajput: 'Rani', hindustani: 'Rani', bengali: 'Rani', kashmiri: 'Queen', greek: 'Empress', chinese: 'Empress', latin: 'Queen', georgian: 'Queen', armenian: 'Queen', slavic: 'Queen', magyar: 'Queen', nubian: 'Queen' };
 export const consortTitle = (culture, female = true) => (female ? CONSORT[culture] ?? 'Queen' : 'Prince consort');
-const VIZIER = { greek: 'Logothete', slavic: 'Logothete', latin: 'Chancellor', magyar: 'Chancellor', georgian: 'Chancellor', armenian: 'Chancellor', chinese: 'Chancellor', rajput: 'Mantri', hindustani: 'Mantri', bengali: 'Mantri', kashmiri: 'Mantri', nubian: 'Eparch' };
+const VIZIER = { frankish: 'Seneschal', english: 'Justiciar', iberian: 'Chancellor', german: 'Chancellor', westslav: 'Palatine', norse: 'Chancellor', rus: 'Tysyatsky', deccani: 'Mantri', tamil: 'Mantri', japanese: 'Shikken', korean: 'Chief minister', viet: 'Chancellor', khmer: 'Minister', burmese: 'Minister', swahili: 'Vizier',
+  greek: 'Logothete', slavic: 'Logothete', latin: 'Chancellor', magyar: 'Chancellor', georgian: 'Chancellor', armenian: 'Chancellor', chinese: 'Chancellor', rajput: 'Mantri', hindustani: 'Mantri', bengali: 'Mantri', kashmiri: 'Mantri', nubian: 'Eparch' };
 export const vizierTitle = (culture) => VIZIER[culture] ?? 'Vizier';
 
 // What each temperament means, in a word and a line: the card shows it, and the AI plays to it.

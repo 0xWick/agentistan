@@ -1,7 +1,7 @@
 // War: every war is a conflict with a cause, sides and a story. Armies march along the cheapest road the seasons
 // allow; when they meet, a battle runs for one to three months until a side breaks; towns fall to siege or storm.
 import { RULES as R } from './rules.js';
-import { PROV, PROVINCES, provincesOf, armiesOf, living, atWar, warOf, truceUntil, friendly, allied, key, setOwner, weatherOf, isWinter, clamp, round1, between, chance, rngFor,
+import { PROV, PROVINCES, provincesOf, armiesOf, armiesChanged, realmsChanged, living, atWar, warOf, truceUntil, friendly, allied, key, setOwner, weatherOf, isWinter, clamp, round1, between, chance, rngFor,
   short, ofR, say, vb, poss, nameOf, cityOf, placeOf, months, logWar, yearOf, menText } from './core.js';
 import { cavalryOf, wallPower, garrisonOf, strength, incomeOf, knows, pairTreaties } from './economy.js';
 import { carryOff } from './world.js';
@@ -138,7 +138,7 @@ export function moveCost(s, realm, from, pid) {
   if (way.sea && nomad) return Infinity; // riders don't take ship
   let c = R.move[t] ?? 1;
   if (nomad && ['steppe', 'desert', 'plains', 'river'].includes(t)) c = Math.max(0.5, c / R.nomadSpeed);
-  c += (way.river ?? 0) * X.river + (way.pass ? X.pass : 0) + (way.sea ? Math.max(1, X.sea - (knows(r, 'compass') ? 1 : 0)) : 0);
+  c += (way.river ?? 0) * X.river + (way.pass ? X.pass : 0) + (way.sea ? Math.max(1, X.sea - (knows(r, 'compass') ? 1 : 0)) : 0) + (way.caravan ? X.desert : 0);
   if (isWinter(s.month) && (t === 'mountains' || way.pass)) c += X.winter;
   const w = weatherOf(pid, s.month);
   if (w === 'snow' && !nomad) c += R.seasons.snow.move;
@@ -307,6 +307,7 @@ function turncoat(s, bt, army, toSide, emit) {
   (toSide === 'a' ? bt.d : bt.a).splice((toSide === 'a' ? bt.d : bt.a).indexOf(army.id), 1);
   (toSide === 'a' ? bt.a : bt.d).push(army.id);
   army.realm = to;
+  armiesChanged(s);
   Object.assign(g, { realm: to, loyalty: 55 });
   const text = `${g.name} turns ${g.female ? 'her' : 'his'} coat in the battle at ${cityOf(s, bt.at)}: ${menText(army.size)} men of ${ofR(s, from)} now fight for ${ofR(s, to)}`;
   emit('turncoat', text, { realms: [from, to], at: bt.at, chars: [g.id], war: bt.war, battle: bt.id });
@@ -385,6 +386,7 @@ export function disband(s, a, emit, text) {
   if (a.general && s.chars[a.general]) s.chars[a.general].army = null;
   for (const p of Object.values(s.provinces)) if (p.siege?.army === a.id) p.siege = null;
   delete s.armies[a.id];
+  armiesChanged(s);
 }
 
 // A garrison storm: one bloody day against the walls.
@@ -486,8 +488,10 @@ export function fall(s, id, emit, text, by = null) {
   const r = s.realms[id];
   if (!r || r.fallen) return;
   r.fallen = true;
+  realmsChanged(s);
   r.fellAt = s.month;
   r.fellTo = by;
+  for (const k of ['plan', 'lastSupply', 'fortune', 'known', 'reforms', 'spent']) delete r[k]; // a fallen realm keeps its name, colours and lineage
   s.record.fallen++;
   for (const a of armiesOf(s, id)) disband(s, a);
   for (const [k, w] of Object.entries(s.wars)) if (k.split('|').includes(id)) {

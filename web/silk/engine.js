@@ -2,7 +2,7 @@
 // month can be replayed exactly from the same state and the same inputs. Decisions come in three ways, all checked
 // by the same rules: the brain (doctrine.js, or the AI later), and inputs (players, AI answers, AI plans).
 import { RULES as R } from './rules.js';
-import { PROVINCES, PROV, LAND, rngFor, living, provincesOf, armiesOf, setOwner, key, newChar, newArmy, round1, clamp, dateText, yearOf, ofR, vb, cityOf } from './core.js';
+import { PROVINCES, PROV, LAND, rngFor, living, provincesOf, armiesOf, armiesChanged, realmsChanged, setOwner, key, newChar, newArmy, round1, clamp, dateText, yearOf, ofR, vb, cityOf } from './core.js';
 import { economy, prosperity, incomeOf, suppliesOf } from './economy.js';
 import { march, battles, sieges, weatherToll, fall, homeless } from './war.js';
 import { court, settleDecisions, setupCourt } from './court.js';
@@ -13,7 +13,7 @@ import { cultureOf, personName, kingdomName, titleFor, pickTemper, temperFromTra
 import AGE_1200 from './ages/1200.js';
 
 export const AGES = { 1200: AGE_1200 };
-export const ENGINE = 2; // bump when a change to the rules would make old records replay differently
+export const ENGINE = 3; // bump when a change to the rules would make old records replay differently
 export * from './core.js';
 export { wealthOf, yieldOf, suppliesOf, yearlyGrain, rations, cavalryOf, garrisonOf, wallPower, strength, manpower, incomeOf, prosperityOf, steersman, rulingTemper, knows, canBuild, tradeOpen, treatiesOf, pairTreaties } from './economy.js';
 export { moveCost, route, declareWar, makePeace, peaceTerms, capture, conflictOf } from './war.js';
@@ -76,7 +76,7 @@ export function newAge(age = 1, ageId = '1200') {
   }
   setupCourt(s, rng, pack.people ?? {});
   for (const r of living(s)) {
-    const ruler = s.chars[r.ruler], main = armiesOf(s, r.id).sort((a, b) => b.size - a.size)[0];
+    const ruler = s.chars[r.ruler], main = [...armiesOf(s, r.id)].sort((a, b) => b.size - a.size)[0];
     if (main && R.temper.ruler[ruler.temper]?.leads && ruler.born <= 1185) { // a conqueror rides at the head of the main army
       if (main.general && s.chars[main.general]) s.chars[main.general].army = null;
       main.general = ruler.id;
@@ -104,8 +104,9 @@ const usedNames = (s) => new Set(Object.values(s.chars).map((c) => c.name));
 // ---------- one month ----------
 // brain: { planFor(s, id, rng), ordersFor(s, id, rng), decide(s, decision, rng) } (doctrine.js by default).
 // inputs: { answers: { decisionId: choice | { choice, say } }, acts: { realmId: [act] }, plans: { realmId: partial plan } }
-export function tick(s0, brain, inputs = {}) {
-  const s = structuredClone(s0);
+// inPlace: change s0 itself (the server and the page keep no use for the month before; it saves copying a large state).
+export function tick(s0, brain, inputs = {}, { inPlace = false } = {}) {
+  const s = inPlace ? s0 : structuredClone(s0);
   const events = [];
   const emit = (type, text, data = {}) => events.push({ type, month: s.month, date: dateText(s.month, s), text, ...data });
   if (s.status !== 'running') return { state: s, events };
@@ -166,6 +167,7 @@ function settle(s, rng, emit) {
     if (a.general && s.chars[a.general]) s.chars[a.general].army = null;
     for (const p of Object.values(s.provinces)) if (p.siege?.army === a.id) p.siege = null;
     delete s.armies[a.id];
+    armiesChanged(s);
   }
   // Idle armies of one realm in one place join up under the better general.
   const camp = {};
@@ -179,6 +181,7 @@ function settle(s, rng, emit) {
     keep.size = round1(keep.size + go.size);
     if (go.general && s.chars[go.general]) s.chars[go.general].army = null;
     delete s.armies[go.id];
+    armiesChanged(s);
     camp[k] = keep;
   }
 }
