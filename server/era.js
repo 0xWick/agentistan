@@ -3,11 +3,11 @@
 // replays the age so far in the browser with the same engine, then watches it live over a WebSocket.
 // The engine is pure, so the browser's replay and the server's world are the same history.
 import { DurableObject } from 'cloudflare:workers';
-import { newAge, tick, frame, ENGINE, AGES, QUARTER } from '../web/silk/engine.js';
+import { newAge, tick, frame, ENGINE, AGES, QUARTER, ledgerOf } from '../web/silk/engine.js';
 import { brain } from '../web/silk/doctrine.js';
 import { makeCast } from './cast.js';
 import { makeSealer, DEPLOYED, EXPLORER } from './seal.js';
-import { play, makeHeralds, flushCouncil, councilOpen, tidySeats } from './play.js';
+import { play, makeHeralds, flushCouncil, councilOpen, tidySeats, penReplies } from './play.js';
 
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' };
 const json = (status, body, cache = 'no-store') => new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': cache } });
@@ -43,6 +43,7 @@ export class Era extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS months (age INTEGER, m INTEGER, inputs TEXT, events TEXT, chk TEXT, PRIMARY KEY (age, m))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS snaps (age INTEGER, m INTEGER, state TEXT, PRIMARY KEY (age, m))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS queue (id INTEGER PRIMARY KEY AUTOINCREMENT, m INTEGER, kind TEXT, k TEXT, json TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS ledger (age INTEGER, m INTEGER, rows TEXT, PRIMARY KEY (age, m))'); // each year: every realm's land, strength, gold, prosperity
     this.meta = this.get('meta');
     this.s = null;
   }
@@ -75,9 +76,11 @@ export class Era extends DurableObject {
     this.put('state', s);
     this.put('meta', this.meta);
     this.sql.exec('INSERT OR REPLACE INTO snaps (age, m, state) VALUES (?, 0, ?)', age, JSON.stringify(s));
+    this.sql.exec('INSERT OR REPLACE INTO ledger (age, m, rows) VALUES (?, 0, ?)', age, JSON.stringify(ledgerOf(s)));
     for (const old of this.sql.exec('SELECT DISTINCT age FROM snaps WHERE age < ?', age - 4).toArray()) { // keep the last five ages
       this.sql.exec('DELETE FROM snaps WHERE age = ?', old.age);
       this.sql.exec('DELETE FROM months WHERE age = ?', old.age);
+      this.sql.exec('DELETE FROM ledger WHERE age = ?', old.age);
     }
     this.ctx.storage.setAlarm(this.meta.next);
     this.broadcast({ t: 'age', era: this.public() });
@@ -123,6 +126,7 @@ export class Era extends DurableObject {
     if (this.meta.quarter) {
       this.broadcast({ t: 'quarter', m: state.month, next: this.meta.next, opens: this.meta.councilOpens });
       tidySeats(this, state, events);
+      await penReplies(this).catch((err) => console.error('letters failed:', err)); // the AI courts answer their letters
     }
     for (const hook of this.hooks) {
       try { await hook(state, events, m); } catch (err) { console.error('after-month hook failed:', err); } // nothing outside the engine may stop the world
@@ -134,7 +138,10 @@ export class Era extends DurableObject {
     this.s = state;
     const chk = checksum(state);
     this.sql.exec('INSERT OR REPLACE INTO months (age, m, inputs, events, chk) VALUES (?, ?, ?, ?, ?)', this.meta.age, m, JSON.stringify(inputs), JSON.stringify(events), chk);
-    if (state.month % 12 === 0) this.sql.exec('INSERT OR REPLACE INTO snaps (age, m, state) VALUES (?, ?, ?)', this.meta.age, state.month, JSON.stringify(state));
+    if (state.month % 12 === 0) {
+      this.sql.exec('INSERT OR REPLACE INTO snaps (age, m, state) VALUES (?, ?, ?)', this.meta.age, state.month, JSON.stringify(state));
+      this.sql.exec('INSERT OR REPLACE INTO ledger (age, m, rows) VALUES (?, ?, ?)', this.meta.age, state.month, JSON.stringify(ledgerOf(state)));
+    }
     this.put('state', state);
     this.broadcast({ t: 'month', m, inputs, events, chk, next: this.meta.next, status: state.status });
     return events;
@@ -156,6 +163,7 @@ export class Era extends DurableObject {
       else if (kind === 'seize') ((inputs.seize ??= {})[k] = val);
       else if (kind === 'leave') ((inputs.leave ??= {})[k] = val);
       else if (kind === 'council') ((inputs.councils ??= {})[k] = val);
+      else if (kind === 'pact') (inputs.pacts ??= []).push(val);
     }
     return inputs;
   }
@@ -227,6 +235,10 @@ export class Era extends DurableObject {
         return new Response(`[${rows.map((r) => `{"m":${r.m},"inputs":${r.inputs},"events":${r.events},"chk":"${r.chk}"}`).join(',')}]`, { headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': 'no-store' } });
       }
       if (p === '/api/era/state') return json(200, { m: this.state().month, state: this.state(), era: this.public() });
+      if (p === '/api/era/ledger') { // the yearly ledger of an age, for the dashboards' charts
+        const rows = this.sql.exec('SELECT m, rows FROM ledger WHERE age = ? ORDER BY m', age).toArray();
+        return new Response(`[${rows.map((r) => `{"m":${r.m},"rows":${r.rows}}`).join(',')}]`, { headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': 'no-store' } });
+      }
       const played = await play(this, req, p, url);
       if (played) return played;
       return json(404, { error: 'not found' });

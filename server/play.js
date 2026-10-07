@@ -4,7 +4,7 @@
 // work month by month, but they are no longer in the menu.) n8n carries the heralds (great events to Discord), the
 // players' reminders, a daily digest, and the real sky over the great capitals into the world.
 import { RULES as R } from '../web/silk/rules.js';
-import { living, provincesOf, steersman, PROV, isGreat, dateText, cityOf, AGES } from '../web/silk/engine.js';
+import { living, provincesOf, steersman, PROV, isGreat, dateText, cityOf, AGES, acceptsPeace, acceptsAlliance, menOf, prosperityOf } from '../web/silk/engine.js';
 import { rngFor, usedNames, yearOf, atWar, pick } from '../web/silk/core.js';
 import { brain, neighbours, bestWork } from '../web/silk/doctrine.js';
 import { strength } from '../web/silk/economy.js';
@@ -30,6 +30,7 @@ async function seatOf(era, token) {
 }
 const publicSeats = (era, s) => Object.entries(era.get('seats') ?? {}).map(([realm, x]) => ({ realm, name: x.name, delegate: x.delegate, ready: x.ready === s.month || !!x.ended, since: x.since }));
 // What the player's ruler must decide: peace offers, matches, verdicts, the realm's matters (a general's own choices stay his).
+const quarterOf = (s) => Math.floor(s.month / 3);
 const decisionsFor = (s, realm) => s.pending.filter((d) => d.realm === realm && d.char === steersman(s, s.realms[realm])?.id);
 // Where the quarter stands: the reflection hour, then the council.
 const phaseOf = (era) => (Date.now() < (era.meta.councilOpens ?? 0) ? 'reflection' : 'council');
@@ -37,6 +38,7 @@ const phaseOf = (era) => (Date.now() < (era.meta.councilOpens ?? 0) ? 'reflectio
 // What the vizier would do, and why.
 const WHY = {
   peace: { accept: 'Our side is the weaker: peace saves the army', refuse: 'We can still win this war' },
+  alliance: { accept: 'A friend at our side is worth the promise', refuse: 'Their wars would become ours' },
   match: { accept: 'A marriage makes kin of a neighbour', refuse: 'Their word is poor, or we are at war' },
   verdict: { accept: 'Defying the arbiter would cost us our word', defy: 'We are strong enough to keep it' },
   pretender: { pay: 'Gold is cheaper than a civil war', hunt: 'A pretender alive is a war waiting', ignore: 'He has few friends; let him rot in exile' },
@@ -110,7 +112,7 @@ export async function play(era, req, p, url) {
     era.put('seats', me.seats);
     const P = s.players?.[me.realm];
     return json(200, { realm: me.realm, name: me.seat.name, phase: phaseOf(era), opens: era.meta.councilOpens, ends: era.meta.next, ended: !!me.seat.ended, seized: !!P, missed: P?.missed ?? 0, grace: R.absence.grace,
-      cards: decisionsFor(s, me.realm).map((d) => ({ ...d, advice: advise(s, d) })), draft: (era.get('orders') ?? {})[me.realm] ?? null, month: s.month });
+      cards: decisionsFor(s, me.realm).map((d) => ({ ...d, advice: advise(s, d) })), draft: (era.get('orders') ?? {})[me.realm] ?? null, month: s.month, letters: lettersFor(era, me.realm), quota: { letters: LETTERS_PER_QUARTER, talks: TALKS_PER_QUARTER } });
   }
   if (p === '/api/era/orders' && req.method === 'POST') {
     const me = await seatOf(era, body.token);
@@ -125,6 +127,21 @@ export async function play(era, req, p, url) {
     if (body.end) era.broadcast({ t: 'seats', seats: publicSeats(era, s) });
     return json(200, { saved: true, ended: me.seat.ended, ends: era.meta.next });
   }
+  if (['/api/era/letter', '/api/era/reply', '/api/era/talk'].includes(p) && req.method === 'POST') {
+    const me = await seatOf(era, body.token);
+    if (!me) return json(403, { error: 'not seated' });
+    if (p === '/api/era/talk') { const t = await talk(era, s, me, body.question ?? ''); return json(t.error ? 429 : 200, t); }
+    if (p === '/api/era/letter') { const x = await sendLetter(era, s, me, body); return json(x.error ? 400 : 200, x); }
+    const all = era.get('letters') ?? [], l = all.find((x) => x.id === body.id && x.to === me.realm);
+    if (!l || !l.prop || l.answer) return json(400, { error: 'no such proposal, or it has been answered' });
+    l.answer = body.answer === 'accept' ? 'accept' : 'decline';
+    l.answered = true;
+    if (l.answer === 'accept') era.queue(s.month, 'pact', me.realm, pactOf(l)); // carried out when the quarter turns
+    const text = clean(body.text ?? '', 70).slice(0, 400);
+    all.push({ id: newToken().slice(0, 10), from: me.realm, to: l.from, text: text || `${me.seat.name} ${l.answer === 'accept' ? 'accepts' : 'declines'} ${PROPOSALS[l.prop.kind]}.`, prop: null, q: quarterOf(s), m: s.month, at: Date.now(), by: me.seat.name, answer: null, reply: l.id });
+    era.put('letters', all.slice(-400));
+    return json(200, { answer: l.answer });
+  }
   if (p === '/api/era/suggest' && req.method === 'POST') { // "fill it for me"
     const ip = await hash(`${era.env.REALM_SECRET ?? ''}:s:${req.headers.get('cf-connecting-ip') ?? 'local'}`), book = era.get('suggests') ?? {}, now = Date.now();
     const mine = book[ip] && book[ip].t > now - 3600_000 ? book[ip] : { t: now, n: 0 };
@@ -134,6 +151,14 @@ export async function play(era, req, p, url) {
     for (const k of Object.keys(book)) if (book[k].t < now - 3600_000) delete book[k];
     era.put('suggests', book);
     if (body.what === 'seize') return json(200, await suggestSeize(era, s, body.realm));
+    if (body.what === 'letter') {
+      const me = await seatOf(era, body.token), to = s.realms[body.to];
+      if (!me || !to) return json(400, { error: 'not seated, or no such realm' });
+      const r = s.realms[me.realm], ruler = steersman(s, r), prop = PROPOSALS[body.prop] ?? null;
+      const ai = await aiJSON(era, `You are the scribe of ${ruler?.title ?? ''} ${ruler?.name}, ruler of ${r.name}, in the year ${yearOf(s.month, s)}. Write the ruler's letter to the ruler of ${to.name} in at most 50 words: courteous or menacing as the situation suits, in the voice of the age, never modern.${prop ? ` It proposes ${prop}.` : ''} ${NO_RELIGION} Reply with JSON only: {"text":"..."}`,
+        situationOf(era, s, me.realm), 220);
+      return json(200, { text: clean(ai?.text, 55) || (prop ? `To the ruler of ${to.short}: I propose ${prop}. Let our realms profit from it.` : `To the ruler of ${to.short}: greetings from ${r.short}.`), by: ai?.text ? 'ai' : 'rules' });
+    }
     if (body.what === 'orders') {
       const me = await seatOf(era, body.token);
       if (!me) return json(403, { error: 'not seated' });
@@ -265,8 +290,95 @@ async function suggestOrders(era, s, realm, cards) {
   return { acts, tax, answers, why, counsel: clean(ai?.counsel, 50) || null, say: say || null, by: ai ? 'ai' : 'rules' };
 }
 
+// ---------- letters between rulers, with a proposal or without ----------
+const PROPOSALS = { alliance: 'an alliance', peace: 'peace', pay: 'that I pay you tribute', demand: 'that you pay me tribute', bow: 'that I become your client state', client: 'that you become my client state', gift: 'a gift of gold' };
+const LETTERS_PER_QUARTER = 4, TALKS_PER_QUARTER = 6;
+function pactOf(l) { // what a proposal does if it is accepted
+  const { from, to, prop } = l, gold = Math.max(1, Math.min(R.players.maxTribute, Math.round(+prop?.gold || 5)));
+  return { alliance: { kind: 'alliance', from, to }, peace: { kind: 'peace', from, to }, pay: { kind: 'tribute', from, to, gold }, demand: { kind: 'tribute', from: to, to: from, gold },
+    bow: { kind: 'client', from, to }, client: { kind: 'client', from: to, to: from }, gift: { kind: 'gift', from, to, gold: Math.max(1, Math.min(500, Math.round(+prop?.gold || 10))) } }[prop?.kind] ?? null;
+}
+function aiAccepts(s, l) { // a ruler with no player reads a proposal
+  const them = l.to, us = l.from, k = l.prop?.kind, near = neighbours(s, them).realms.includes(us);
+  if (k === 'alliance') return !atWar(s, us, them) && acceptsAlliance(s, them, us);
+  if (k === 'peace') return atWar(s, us, them) && acceptsPeace(s, them, us);
+  if (k === 'pay' || k === 'gift') return !atWar(s, us, them);
+  if (k === 'demand') return near && strength(s, them) < strength(s, us) * 0.5;
+  if (k === 'bow') return !s.realms[us]?.overlord;
+  if (k === 'client') return near && !s.realms[them]?.overlord && strength(s, them) < strength(s, us) * 0.35;
+  return false;
+}
+function lettersFor(era, realm) {
+  const all = era.get('letters') ?? [];
+  return { inbox: all.filter((l) => l.to === realm).slice(-30), outbox: all.filter((l) => l.from === realm).slice(-20) };
+}
+function addLetter(era, l) { era.put('letters', [...(era.get('letters') ?? []), l].slice(-400)); return l; }
+async function sendLetter(era, s, me, body) {
+  const to = s.realms[body.to], prop = PROPOSALS[body.prop?.kind] ? { kind: body.prop.kind, gold: Math.round(+body.prop.gold || 0) || undefined } : null;
+  if (!to || to.fallen || to.id === me.realm || !provincesOf(s, to.id).length) return { error: 'no such realm' };
+  if (prop?.kind === 'peace' && !atWar(s, me.realm, to.id)) return { error: 'you are not at war with them' };
+  if (prop?.kind === 'alliance' && atWar(s, me.realm, to.id)) return { error: 'make peace first' };
+  const text = clean(body.text ?? '', 70).slice(0, 400);
+  if (!text && !prop) return { error: 'a few words, or a proposal' };
+  const all = era.get('letters') ?? [], q = quarterOf(s);
+  if (all.filter((l) => l.from === me.realm && l.q === q && !l.reply).length >= LETTERS_PER_QUARTER) return { error: `${LETTERS_PER_QUARTER} letters a quarter: your scribes are worn out` };
+  return { letter: addLetter(era, { id: newToken().slice(0, 10), from: me.realm, to: to.id, text, prop, q, m: s.month, at: Date.now(), by: me.seat.name, answer: null }) };
+}
+// At the turn of the quarter the courts with no player decide on their letters (the pacts take effect at once);
+// afterwards their replies are written, in character while the AI allowance lasts.
+function answerLetters(era, s) {
+  const all = era.get('letters') ?? [], seats = era.get('seats') ?? {};
+  for (const l of all) {
+    if (l.answered || l.reply || seats[l.to] || !s.realms[l.to] || s.realms[l.to].fallen) continue;
+    l.answered = true;
+    const yes = l.prop ? aiAccepts(s, l) : null;
+    if (l.prop) l.answer = yes ? 'accept' : 'decline';
+    if (yes) era.queue(s.month, 'pact', l.to, pactOf(l));
+    const r = s.realms[l.to], who = steersman(s, r);
+    all.push({ id: newToken().slice(0, 10), from: l.to, to: l.from, text: l.prop ? `${who?.name ?? 'The court'} of ${r.short} ${yes ? 'accepts' : 'declines'} ${PROPOSALS[l.prop.kind]}.` : `The court of ${r.short} has read your letter.`, prop: null, q: quarterOf(s), m: s.month, at: Date.now(), by: who?.name ?? r.short, answer: null, reply: l.id, pen: true });
+  }
+  era.put('letters', all.slice(-400));
+}
+export async function penReplies(era) {
+  const s = era.state(), all = era.get('letters') ?? [];
+  let pens = 8;
+  for (const l of all) {
+    if (!l.pen || pens-- <= 0) continue;
+    l.pen = false;
+    const asked = all.find((x) => x.id === l.reply), r = s.realms[l.from], who = steersman(s, r);
+    if (!asked || !r) continue;
+    const ai = await aiJSON(era, `You are ${who?.title ?? ''} ${who?.name}, ruler of ${r.name} in the year ${yearOf(s.month, s)}, temperament ${TEMPER_TEXT[who?.temper]?.[0] ?? ''}. Reply to a letter from another ruler in at most 40 words, in your own voice, never modern.${asked.prop ? ` You ${asked.answer === 'accept' ? 'ACCEPT' : 'DECLINE'} their proposal of ${PROPOSALS[asked.prop.kind]}; say so plainly.` : ''} ${NO_RELIGION} Reply with JSON only: {"reply":"..."}`,
+      `From ${s.realms[asked.from]?.name} (${asked.by}): "${asked.text || `I propose ${PROPOSALS[asked.prop?.kind]}.`}"`, 160);
+    if (ai?.reply) l.text = clean(ai.reply, 45);
+  }
+  era.put('letters', all.slice(-400));
+}
+// The vizier, asked: what he knows of the realm and its neighbours, and his answer in his own voice.
+function situationOf(era, s, realm) {
+  const r = s.realms[realm], next = neighbours(s, realm).realms;
+  const rel = (id) => (atWar(s, realm, id) ? 'at war' : s.allies?.[[realm, id].sort().join('|')] ? 'ally' : s.realms[id]?.overlord === realm ? 'our client' : r.overlord === id ? 'our overlord' : 'at peace');
+  const recent = era.sql.exec('SELECT events FROM months WHERE age = ? AND m >= ? ORDER BY m', era.meta.age, Math.max(0, s.month - 6)).toArray().flatMap((x) => JSON.parse(x.events)).filter((e) => e.realms?.includes(realm)).slice(-6).map((e) => e.text);
+  return [`${r.name}: ${provincesOf(s, realm).length} provinces, ${Math.round(menOf(s, realm))}k soldiers (strength ${Math.round(strength(s, realm))}), ${Math.round(r.gold)} gold, prosperity ${Math.round(prosperityOf(s, realm))}/100, taxes ${r.tax}.`,
+    `Neighbours: ${next.map((id) => `${s.realms[id].short} (${rel(id)}, strength ${Math.round(strength(s, id))})`).join('; ') || 'none'}.`,
+    recent.length ? `Lately: ${recent.join(' / ')}` : ''].join('\n');
+}
+async function talk(era, s, me, question) {
+  const book = era.get('talks') ?? {}, q = quarterOf(s), mine = book[me.realm]?.q === q ? book[me.realm] : { q, n: 0 };
+  if (mine.n >= TALKS_PER_QUARTER) return { error: `Your vizier has spoken enough this quarter (${TALKS_PER_QUARTER} questions).` };
+  mine.n++;
+  book[me.realm] = mine;
+  era.put('talks', book);
+  const r = s.realms[me.realm], ruler = steersman(s, r), v = s.chars[r.vizier];
+  const ai = await aiJSON(era, `You are ${v?.alive ? v.name : 'the vizier'}, vizier to ${ruler?.title ?? ''} ${ruler?.name} of ${r.name}, in the year ${yearOf(s.month, s)}. Answer your ruler's question in at most 80 words, frankly and in character, using only what you know of the realm below; give a clear recommendation. Never modern. ${NO_RELIGION} Reply with JSON only: {"answer":"..."}`,
+    `${situationOf(era, s, me.realm)}\n\nThe ruler asks: "${clean(question, 60)}"`, 320);
+  if (ai?.answer) return { answer: clean(ai.answer, 90), by: 'ai', left: TALKS_PER_QUARTER - mine.n, vizier: v?.alive ? v.name : 'Your vizier' };
+  const draft = await suggestOrders({ ...era, env: { ...era.env, CAST: 'off' } }, s, me.realm, []); // no AI left: the rules speak
+  return { answer: `My lord, as I see it: ${draft.why.join('; ')}.`, by: 'rules', left: TALKS_PER_QUARTER - mine.n, vizier: v?.alive ? v.name : 'Your vizier' };
+}
+
 // ---------- the turn of the quarter: the council's orders become the month's inputs ----------
 export function flushCouncil(era, s) {
+  answerLetters(era, s);
   const orders = era.get('orders') ?? {}, seats = era.get('seats') ?? {};
   for (const [realm, o] of Object.entries(orders)) {
     if (!seats[realm]) continue;

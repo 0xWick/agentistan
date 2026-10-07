@@ -5,7 +5,7 @@ import { RULES as R } from './rules.js';
 import { PROV, PROVINCES, baseWealth, hops, onRoad, atWar, allied, warOf, truceUntil, friendly, living, provincesOf, armiesOf, isWinter, weatherOf, ageOf } from './core.js';
 import { strength, sideStrength, wealthOf, wallPower, rulingTemper, steersman, canBuild, prosperityOf } from './economy.js';
 import { route } from './war.js';
-import { claimsOf, acceptsPeace } from './acts.js';
+import { claimsOf, acceptsPeace, acceptsAlliance } from './acts.js';
 import { decideMatter } from './players.js';
 
 const has = (c, ...t) => t.some((x) => c?.traits?.includes(x));
@@ -151,6 +151,7 @@ export function decide(s, d, rng) {
   }
   if (d.kind === 'peace') return acceptsPeace(s, d.realm, d.from) ? 'accept' : 'refuse';
   if (d.kind === 'matter') return decideMatter(s, d);
+  if (d.kind === 'alliance') return acceptsAlliance(s, d.realm, d.from) ? 'accept' : 'refuse';
   if (d.kind === 'verdict') {
     const t = rulingTemper(s, r), weak = strength(s, d.realm) < strength(s, d.claimant) * 1.2;
     if (['just', 'diplomat'].includes(t)) return 'accept';

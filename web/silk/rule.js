@@ -19,12 +19,13 @@ export const API = GAME ? `/api/game/${encodeURIComponent(GAME)}/era` : '/api/er
 const KEY = `agentistan:seat:${GAME ?? 'live'}`;
 const store = { get: () => { try { return localStorage.getItem(KEY); } catch { return null; } }, set: (v) => { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch { /* private window */ } } };
 const post = (u, body) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json().catch(() => ({})));
-let me = null, seats = [], council = null, draft = null, saving = 0, seizeTip = null, vzDraft = null, vzMonth = -1;
+let me = null, seats = [], council = null, draft = null, saving = 0, seizeTip = null, vzDraft = null, vzMonth = -1, talkLog = [], letterNote = '';
 // The vizier's button: next to anything he can fill in for you.
 const vz = (key, label = 'Let the vizier fill this in') => `<button type="button" class="vz" data-vz="${key}" title="${label}" aria-label="${label}">${icon('vizier')}</button>`;
 const POWER = { levy: 'Great Levy: every village sends its sons', walls: 'Mighty Walls round the capital', bribe: 'Bribe a neighbouring governor', feast: 'A Royal Feast for the people', silktax: 'A Silk Tax on the caravans' };
 const RULERS = ['conqueror', 'builder', 'diplomat', 'just', 'reformer', 'miser', 'paranoid', 'hedonist', 'tyrant', 'negligent'];
-const CARD = { peace: ['scroll', 'An offer of peace'], match: ['rings', 'A match'], verdict: ['scales', "The arbiter's verdict"], pretender: ['crown', 'A pretender'], ambition: ['swords', 'An ambitious general'], unrest: ['flame', 'A restless province'], famine: ['wheat', 'Famine'] };
+const CARD = { alliance: ['rings', 'An offer of alliance'], peace: ['scroll', 'An offer of peace'], match: ['rings', 'A match'], verdict: ['scales', "The arbiter's verdict"], pretender: ['crown', 'A pretender'], ambition: ['swords', 'An ambitious general'], unrest: ['flame', 'A restless province'], famine: ['wheat', 'Famine'] };
+const PROPOSE = { alliance: 'An alliance', peace: 'Peace', pay: 'I pay you tribute', demand: 'You pay me tribute', bow: 'I become your client state', client: 'You become my client state', gift: 'A gift of gold' };
 const SAY = { accept: 'Accept', refuse: 'Refuse', defy: 'Defy', pay: 'Pay him off', hunt: 'Hunt him down', ignore: 'Ignore it', reward: 'Reward him', dismiss: 'Dismiss him', grant: 'Ease the taxes', garrison: 'Send soldiers', relief: 'Send relief' };
 const left = (t) => { const m = Math.max(0, Math.round((t - Date.now()) / 60000)); return m >= 90 ? `${Math.round(m / 60)} h` : m >= 60 ? `1 h${m > 60 ? ` ${m - 60} min` : ""}` : `${m} min`; };
 const hhmm = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -62,7 +63,7 @@ export async function refreshRule() {
 function badge() {
   const b = $('#rule-btn');
   if (!b) return;
-  const n = council && council.phase === 'council' && !council.ended ? council.cards.length : 0;
+  const n = council && council.phase === 'council' && !council.ended ? council.cards.length + (council.letters?.inbox ?? []).filter((l) => l.prop && !l.answer).length : 0;
   b.querySelector('span').textContent = GAME ? 'Play' : me ? 'Council' : 'Seize a throne';
   b.dataset.badge = n ? String(n) : '';
 }
@@ -190,6 +191,10 @@ function councilHTML() {
       ${open && !c.ended ? ordersHTML() : open ? `<p class="sub">Your orders are sealed. They will be carried out when the quarter turns.</p>${ordersSummary()}` : `<p class="sub">The council opens at ${hhmm(c.opens)}. Until then, study the world: every realm's card, the chronicle and the slider are open to you.</p>`}
     </section>
   </div>
+  ${open || c.letters ? `<div class="c-low">
+    <section class="c-letters"><h3>${icon('scroll')} Letters</h3>${lettersHTML(s, r)}</section>
+    <section class="c-talk"><h3>${icon('vizier')} Talk with your vizier</h3>${talkHTML(s, r)}</section>
+  </div>` : ''}
   <footer class="c-foot">
     ${open ? (c.ended ? `<button class="btn" data-reopen>${icon('quill')} Reopen my orders</button>` : `<span class="saved" id="saved"></span><button class="btn main" data-end>${icon('seal')} End my turn</button>`) : ''}
     <button class="link" data-leave>Give up the throne</button>
@@ -248,6 +253,32 @@ function battlesHTML(s, r, editable) {
     </article>`;
   }).join('')}</div>`;
 }
+function lettersHTML(s, r) {
+  const L = council.letters ?? { inbox: [], outbox: [] }, name = (id) => esc(s.realms[id]?.short ?? id);
+  const waiting = L.inbox.filter((l) => l.prop && !l.answer);
+  const line = (l, dir) => `<li><small>${dir === 'in' ? `from ${chip(l.from)} ${esc(l.by)}` : `to ${chip(l.to)}`}</small> ${l.text ? `“${esc(l.text)}”` : ''}${l.prop ? ` <b>${esc(PROPOSE[l.prop.kind])}${l.prop.gold ? ` (${l.prop.gold} gold)` : ''}</b>${l.answer ? ` · ${l.answer === 'accept' ? 'accepted' : 'declined'}` : dir === 'out' ? ' · awaiting an answer' : ''}` : ''}</li>`;
+  const realms = living(s).filter((o) => o.id !== r.id && provincesOf(s, o.id).length && !o.rebel).sort((a, b) => (neighbours(s, r.id).realms.includes(b.id) - neighbours(s, r.id).realms.includes(a.id)) || a.short.localeCompare(b.short));
+  return `${letterNote ? `<p class="note">${esc(letterNote)}</p>` : ''}
+    ${waiting.map((l) => `<article class="mcard letter"><h4>${icon('scroll')} A letter from ${name(l.from)} <small>${esc(l.by)}</small></h4>${l.text ? `<p>“${esc(l.text)}”</p>` : ''}
+      <p><b>They propose: ${esc(PROPOSE[l.prop.kind])}${l.prop.gold ? ` (${l.prop.gold} gold${['pay', 'demand'].includes(l.prop.kind) ? ' a month, for five years' : ''})` : ''}</b></p>
+      <div class="picks"><button class="pick" data-reply="${l.id}" data-answer="accept">Accept</button><button class="pick" data-reply="${l.id}" data-answer="decline">Decline</button></div></article>`).join('')}
+    ${L.inbox.filter((l) => !(l.prop && !l.answer)).length ? `<h5>Received</h5><ul class="review">${L.inbox.filter((l) => !(l.prop && !l.answer)).slice(-6).reverse().map((l) => line(l, 'in')).join('')}</ul>` : ''}
+    ${L.outbox.length ? `<h5>Sent</h5><ul class="review">${L.outbox.slice(-5).reverse().map((l) => line(l, 'out')).join('')}</ul>` : ''}
+    <form id="letter" class="rule-form">
+      <label><span>${icon('banner')} To</span><select name="to">${realms.map((o) => `<option value="${o.id}">${esc(o.short)}${s.players?.[o.id] ? ` (ruled by ${esc(s.players[o.id].name)})` : ''}${atWar(s, r.id, o.id) ? ' · at war' : allied(s, r.id, o.id) ? ' · ally' : ''}</option>`).join('')}</select></label>
+      <label><span>${icon('scales')} A proposal</span><select name="prop"><option value="">none: just a letter</option>${Object.entries(PROPOSE).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>
+      <label><span>${icon('coin')} Gold (for tribute, a month; for a gift, once)</span><input name="gold" type="number" min="1" max="500" value="5"></label>
+      <label><span>${icon('quill')} Your letter ${vz('letter', 'Let the vizier write the letter')}</span><textarea name="text" rows="3" maxlength="400" placeholder="What you would say to them"></textarea></label>
+      <button class="btn" type="button" data-send>${icon('scroll')} Send the letter</button>
+      <p class="fine">${council.quota?.letters ?? 4} letters a quarter. Proposals bind nobody until accepted; they are carried out when the quarter turns.</p>
+    </form>`;
+}
+function talkHTML(s, r) {
+  const v = s.chars[r.vizier];
+  return `<ul class="talk">${talkLog.map((t) => `<li class="q">${esc(t.q)}</li><li class="a">${icon('vizier')}<span><b>${esc(t.who)}</b>: ${esc(t.a)}</span></li>`).join('') || `<li class="a">${icon('vizier')}<span><b>${esc(v?.alive ? v.name : 'Your vizier')}</b>: Ask me anything about the realm, my lord: our enemies, our treasury, whom to fight and whom to court.</span></li>`}</ul>
+    <form id="talk" class="talk-form"><input name="q" maxlength="200" placeholder="Should we attack our neighbour this spring?"><button class="btn" data-ask>Ask</button></form>
+    <p class="fine">${council.quota?.talks ?? 6} questions a quarter.</p>`;
+}
 function mattersHTML() {
   const cards = council.cards;
   if (!cards.length) return `<p class="sub">No matters wait for you this quarter. Your realm is quiet: give your orders.</p>`;
@@ -300,6 +331,14 @@ function counselHTML() {
   return `<div class="counsel">${icon('vizier')}<div>${vzDraft.counsel ? `<p><b>${esc(vizier?.name ?? 'Your vizier')}</b>: “${esc(vzDraft.counsel)}”</p>` : ''}<ul>${vzDraft.why.map((w) => `<li>${esc(w)}</li>`).join('')}</ul></div></div>`;
 }
 async function vizierFill(key, button) {
+  if (key === 'letter') {
+    const f = $('#letter');
+    button?.classList.add('busy');
+    const x = await post(`${API}/suggest`, { what: 'letter', token: me.token, to: f.to.value, prop: f.prop.value || null });
+    button?.classList.remove('busy');
+    if (x.text) f.text.value = x.text;
+    return;
+  }
   if (key === 'armies') {
     readOrders();
     const s = S.s, keep = draft.acts.filter((x) => x.kind !== 'army' && x.kind !== 'tactic');
@@ -370,6 +409,28 @@ function wireCouncil(d) {
       await save();
       return openCouncil(true);
     }
+    const rp = e.target.closest('[data-reply]');
+    if (rp) {
+      const x = await post(`${API}/reply`, { token: me.token, id: rp.dataset.reply, answer: rp.dataset.answer });
+      letterNote = x.error ?? (x.answer === 'accept' ? 'Accepted: it is carried out when the quarter turns.' : 'Declined.');
+      return openCouncil(true);
+    }
+    if (e.target.closest('[data-send]')) {
+      const f = Object.fromEntries(new FormData($('#letter')));
+      const x = await post(`${API}/letter`, { token: me.token, to: f.to, text: f.text, prop: f.prop ? { kind: f.prop, gold: +f.gold || 5 } : null });
+      letterNote = x.error ?? `Your letter is on its way to ${S.s.realms[f.to]?.short}.`;
+      return openCouncil(true);
+    }
+    if (e.target.closest('[data-ask]')) {
+      e.preventDefault();
+      const q = $('#talk [name=q]').value.trim();
+      if (!q) return;
+      const b = e.target.closest('[data-ask]');
+      b.disabled = true;
+      const x = await post(`${API}/talk`, { token: me.token, question: q });
+      talkLog.push({ q, a: x.answer ?? x.error ?? 'He does not answer.', who: x.vizier ?? 'Your vizier' });
+      return openCouncil(true);
+    }
     const tb = e.target.closest('[data-tactic]');
     if (tb) {
       readOrders();
@@ -392,6 +453,7 @@ function wireCouncil(d) {
   };
   const f = $('#orders');
   if (f) f.onchange = () => { clearTimeout(saving); saving = setTimeout(() => save(), 400); };
+  $('#talk')?.addEventListener('submit', (e) => { e.preventDefault(); d.querySelector('[data-ask]')?.click(); });
   d.querySelectorAll('.army-orders select').forEach((x) => (x.onchange = async () => { await save(); if (x.name.startsWith('order-')) openCouncil(true); }));
 }
 

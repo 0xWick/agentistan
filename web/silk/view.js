@@ -7,6 +7,7 @@ import { S, $, esc, icon, symbols, kindOf, worth, colorOf, ink, men } from './ui
 import { card, openCard, closeCard, backCard, refreshCard, eventCard, isGreat, ART } from './cards.js';
 import { PAINTED } from './portrait.js';
 import { API, GAME, openRule, closeRule, refreshRule, onSeats, loadSeats, seatsByRealm } from './rule.js';
+import './ledger.js'; // the dashboards
 
 const NS = 'http://www.w3.org/2000/svg';
 function el(tag, attrs = {}, text) {

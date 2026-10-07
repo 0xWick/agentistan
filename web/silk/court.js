@@ -6,7 +6,7 @@ import { RULES as R } from './rules.js';
 import { PROV, baseWealth, word, provincesOf, armiesOf, armiesChanged, living, atWar, allied, friendly, key, setOwner, hops, clamp, round1, chance, pick, rngFor, newChar, newArmy, newRealm, colorFor,
   short, ofR, say, vb, poss, his, him, nameOf, fullName, cityOf, placeOf, ageOf, usedNames, yearOf, menText } from './core.js';
 import { strength, incomeOf } from './economy.js';
-import { waitsForCouncil, resolveMatter } from './players.js';
+import { waitsForCouncil, resolveMatter, pact } from './players.js';
 import { declareWar, disband, fall } from './war.js';
 import { cultureOf, personName, womanName, titleFor, kingdomName, consortTitle, vizierTitle, pickTemper } from './names.js';
 
@@ -44,6 +44,9 @@ function answer(s, d, choice, rng, emit) {
     if (!from || from.fallen || !bride?.alive || !groom?.alive || bride.spouse || groom.spouse) return;
     if (choice !== 'accept') return emit('match.refused', `${fullName(c)} of ${ofR(s, c.realm)} turns down a match with ${ofR(s, d.from)}`, { realms: [c.realm, d.from], chars: [c.id] });
     marry(s, groom.id, bride.id, emit, d.said);
+  } else if (d.kind === 'alliance') {
+    if (choice === 'accept') pact(s, { kind: 'alliance', from: d.from, to: d.realm }, emit);
+    else emit('alliance.refused', `${short(s, d.realm)} ${vb(s, d.realm, 'turns')} down an alliance with ${ofR(s, d.from)}`, { realms: [d.realm, d.from], minor: true });
   } else if (d.kind === 'matter') {
     resolveMatter(s, d, choice, rng, emit);
   } else if (d.kind === 'peace' || d.kind === 'verdict') {

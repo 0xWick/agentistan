@@ -33,7 +33,14 @@ export function act(s, id, a, rng, emit) {
       return true;
     }
     case 'ally': {
-      if (!t || t.fallen || allied(s, id, t.id) || atWar(s, id, t.id) || !acceptsAlliance(s, t.id, id)) return false;
+      if (!t || t.fallen || allied(s, id, t.id) || atWar(s, id, t.id)) return false;
+      if (s.players?.[t.id]) { // a player's ruler answers at his council
+        const them = steersman(s, t);
+        if (!them) return false;
+        ask(s, { kind: 'alliance', char: them.id, realm: t.id, from: id, options: ['accept', 'refuse'], question: `${ofR(s, id).replace(/^./, (c) => c.toUpperCase())} ${vb(s, id, 'proposes')} an alliance: each would come to the other's aid if attacked. Accept?` });
+        return true;
+      }
+      if (!acceptsAlliance(s, t.id, id)) return false;
       s.allies[key(id, t.id)] = { since: s.month };
       const tid = treaty(s, 'alliance', [id, t.id], { name: `Alliance of ${cityOf(s, r.capital)}` });
       emit('alliance', `${short(s, id)} and ${short(s, t.id)} swear an alliance`, { realms: [id, t.id], treaty: tid });

@@ -3,7 +3,7 @@
 // by the same rules: the brain (doctrine.js, or the AI later), and inputs (players, AI answers, AI plans).
 import { RULES as R } from './rules.js';
 import { PROVINCES, PROV, LAND, placeOf, yearLabel, rngFor, living, provincesOf, armiesOf, armiesChanged, realmsChanged, setOwner, key, newChar, newArmy, round1, clamp, dateText, yearOf, ofR, vb, cityOf, word, baseWealth } from './core.js';
-import { economy, prosperity, incomeOf, suppliesOf } from './economy.js';
+import { economy, prosperity, incomeOf, suppliesOf, strength, prosperityOf } from './economy.js';
 import { march, battles, sieges, weatherToll, fall, homeless } from './war.js';
 import { court, settleDecisions, setupCourt } from './court.js';
 import { people } from './people.js';
@@ -25,6 +25,8 @@ export { moveCost, route, declareWar, makePeace, peaceTerms, capture, conflictOf
 export { die, hire, ask } from './court.js';
 export { act, ACTS, claimsOf, acceptsPeace, acceptsAlliance, powerMove } from './acts.js';
 export { INVENTIONS, fortuneOf } from './world.js';
+// A year's line in the ledger: every realm's land, strength, gold and prosperity.
+export const ledgerOf = (s) => Object.fromEntries(living(s).map((r) => [r.id, [provincesOf(s, r.id).length, Math.round(strength(s, r.id)), Math.round(r.gold), Math.round(prosperityOf(s, r.id))]]));
 export const REALM_DATA = Object.fromEntries(AGE_1200.realms.map((r) => [r.id, r]));
 
 // ---------- the world at the start of an age ----------

@@ -168,7 +168,7 @@ persona decide.
 Build:
 - [x] 1. Quarters, the council, seizing a throne, dynasties, absence
 - [x] 2. Army orders, battle plans and tactics, resources
-- [ ] 3. Letters, the viziers' counsel, dashboards
+- [x] 3. Letters, the viziers' counsel, dashboards
 - [ ] 4. Wallet and NFTs, kingdom art
 - [ ] 5. Hegemony ends the era, battle animation, Discord
 

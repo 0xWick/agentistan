@@ -3,7 +3,9 @@
 // their temperament; a long absence costs the treasury, the provinces and the generals, and in the end the throne.
 // Everything here arrives as inputs (inputs.seize, inputs.leave, inputs.councils), so a record replays exactly.
 import { RULES as R } from './rules.js';
-import { provincesOf, living, newChar, clamp, round1, chance, pick, ofR, short, say, vb, cityOf, placeOf, yearOf, ageOf, realmsChanged } from './core.js';
+import { provincesOf, living, newChar, clamp, round1, chance, pick, ofR, short, say, vb, cityOf, placeOf, yearOf, ageOf, realmsChanged, allied, atWar, key } from './core.js';
+import { treaty } from './acts.js';
+import { makePeace } from './war.js';
 import { incomeOf, steersman, rulingTemper } from './economy.js';
 import { ask, crown, titled, endReign } from './court.js';
 import { titleFor } from './names.js';
@@ -16,6 +18,7 @@ export const waitsForCouncil = (s, d) => isPlayer(s, d.realm) && d.char === stee
 
 // ---------- taking a throne, and letting it go ----------
 export function thrones(s, inputs, rng, emit) {
+  pacts(s, inputs, emit);
   for (const [id, p] of Object.entries(inputs.leave ?? {})) if (s.players?.[id] && p) {
     delete s.players[id];
     emit('player', `The ${s.realms[id]?.dynasty ?? 'ruling house'} of ${ofR(s, id)} goes on without its master: the vizier and the rules govern now`, { realms: [id], minor: true });
@@ -162,6 +165,49 @@ export function resolveMatter(s, d, choice, rng, emit) {
     if (choice === 'relief' && pay(d.cost)) { q.loyalty = clamp(q.loyalty + M.reliefLoyalty, 0, 100); q.famine = Math.max(0, q.famine - 2); return emit('matter', `${ruler?.name} opens the granaries for ${placeOf(s, d.place)}`, { realms: [r.id], at: d.place, minor: true }); }
     q.loyalty = clamp(q.loyalty - M.famineAnger, 0, 100);
   }
+}
+
+// ---------- pacts agreed in letters (both rulers consented; the server checks that) ----------
+export function pacts(s, inputs, emit) {
+  for (const p of inputs.pacts ?? []) pact(s, p, emit);
+}
+export function pact(s, p, emit) {
+  const a = s.realms[p.from], b = s.realms[p.to];
+  if (!a || !b || a.fallen || b.fallen || a.id === b.id) return false;
+  const name = (t) => `${t} of ${cityOf(s, a.capital)}`;
+  if (p.kind === 'alliance') {
+    if (allied(s, a.id, b.id) || atWar(s, a.id, b.id)) return false;
+    s.allies[key(a.id, b.id)] = { since: s.month };
+    const tid = treaty(s, 'alliance', [a.id, b.id], { name: name('Alliance') });
+    emit('alliance', `${short(s, a.id)} and ${short(s, b.id)} swear an alliance`, { realms: [a.id, b.id], treaty: tid });
+    return true;
+  }
+  if (p.kind === 'peace') {
+    if (!atWar(s, a.id, b.id)) return false;
+    makePeace(s, a.id, b.id, emit, { winner: null, loser: null, tribute: 0, lead: 0 });
+    return true;
+  }
+  if (p.kind === 'tribute' || p.kind === 'gift') {
+    const gold = round1(Math.max(1, Math.min(+p.gold || 1, p.kind === 'gift' ? Math.max(0, a.gold) : R.players.maxTribute)));
+    if (p.kind === 'gift') {
+      if (a.gold < gold) return false;
+      a.gold = round1(a.gold - gold); b.gold = round1(b.gold + gold);
+      emit('treaty', `${say(s, a.id, 'sends')} ${ofR(s, b.id)} a gift of ${Math.round(gold)} gold`, { realms: [a.id, b.id], minor: true });
+      return true;
+    }
+    const tid = treaty(s, 'tribute', [a.id, b.id], { name: name('Tribute'), until: s.month + R.diplomacy.tribute.months, pay: { from: a.id, to: b.id, gold }, text: 'tribute agreed in letters' });
+    emit('treaty', `${say(s, a.id, 'agrees')} to pay ${ofR(s, b.id)} ${gold} gold a month for five years`, { realms: [a.id, b.id], treaty: tid });
+    return true;
+  }
+  if (p.kind === 'client') { // p.from bows to p.to
+    if (a.overlord) return false;
+    if (atWar(s, a.id, b.id)) makePeace(s, a.id, b.id, () => {}, { winner: b.id, loser: a.id, tribute: 0, lead: 9 });
+    a.overlord = b.id;
+    const tid = treaty(s, 'vassal', [a.id, b.id], { name: `Submission of ${cityOf(s, a.capital)}` });
+    emit('vassal', `${say(s, a.id, 'bows')} to ${ofR(s, b.id)} as a client state`, { realms: [a.id, b.id], treaty: tid });
+    return true;
+  }
+  return false;
 }
 
 // ---------- the dynasty: an heir named at any time, a crown given up at any time ----------
