@@ -2,7 +2,7 @@
 // on it; the AI cast and players replace its plans and answers, and the armies still march by its rules.
 // Temperament drives it: a conqueror wants war, a builder canals, a negligent king nothing at all.
 import { RULES as R } from './rules.js';
-import { PROV, PROVINCES, atWar, warOf, truceUntil, friendly, living, provincesOf, armiesOf, isWinter, weatherOf, ageOf } from './core.js';
+import { PROV, PROVINCES, onRoad, atWar, warOf, truceUntil, friendly, living, provincesOf, armiesOf, isWinter, weatherOf, ageOf } from './core.js';
 import { strength, wealthOf, wallPower, rulingTemper, steersman, canBuild, prosperityOf } from './economy.js';
 import { route } from './war.js';
 import { claimsOf, acceptsPeace } from './acts.js';
@@ -93,7 +93,7 @@ export function plan(s, id, rng) {
   // One power move per reign, at a moment that suits it.
   if (!r.power && s.month >= 18 && rng() < 0.35 && temper !== 'negligent') { // a reign's one great gamble is not made in its first months
     const enemy = Math.max(0, ...wars.map((w) => strength(s, w)));
-    const kind = wars.length && me < enemy ? 'levy' : avgLoyalty < 42 ? 'feast' : r.gold < 25 && mine.filter((q) => q.silk).length >= 2 ? 'silktax'
+    const kind = wars.length && me < enemy ? 'levy' : avgLoyalty < 42 ? 'feast' : r.gold < 25 && mine.filter((q) => onRoad(s, q.id)).length >= 2 ? 'silktax'
       : wars.length && ['builder', 'diplomat', 'just'].includes(temper) ? 'walls' : r.gold > 70 && rng() < 0.5 ? 'bribe' : null;
     if (kind) p.acts.push({ kind: 'power', power: kind });
   }
@@ -188,7 +188,7 @@ export function orders(s, id, rng) {
       .map((p) => {
         const owner = s.provinces[p.id].owner, cap = owner && s.realms[owner]?.capital === p.id;
         const d = Math.abs(p.xy[0] - PROV[a.at].xy[0]) + Math.abs(p.xy[1] - PROV[a.at].xy[1]);
-        return { p, guess: wealthOf(s, p.id) * 2 + (cap ? 3 : 0) + (p.silk ? 1 : 0) - (wallPower(s, p.id) / Math.max(1, a.size)) * 4 - d / 90 };
+        return { p, guess: wealthOf(s, p.id) * 2 + (cap ? 3 : 0) + (onRoad(s, p.id) ? 1 : 0) - (wallPower(s, p.id) / Math.max(1, a.size)) * 4 - d / 90 };
       })
       .sort((x, y) => y.guess - x.guess).slice(0, 5);
     let best = null;

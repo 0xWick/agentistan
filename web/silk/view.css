@@ -484,3 +484,16 @@ dialog.event::backdrop { background: rgba(43, 33, 22, 0.42); }
 .powers .player svg { width: 12px; height: 12px; }
 @media (max-width: 760px) { .rule { left: 10px; right: 10px; top: 64px; width: auto; } }
 .rule-form label > span { display: inline-flex; align-items: center; gap: 5px; }
+.l-regions.foreign .region, .l-regions.foreign .region-fa { display: none; }
+
+dialog.ages { border: 0; padding: 0; background: none; width: min(520px, calc(100vw - 24px)); }
+dialog.ages::backdrop { background: rgba(43, 33, 22, 0.45); }
+.ages .panel { position: relative; padding: 18px 20px 16px; text-align: center; }
+.ages h2 { margin: 0; font: 700 30px var(--display); color: var(--lapis); }
+.ages .sub { margin: 2px 0 12px; color: var(--ink-soft); }
+.ages .x { position: absolute; right: 10px; top: 6px; border: 0; background: none; font-size: 24px; color: var(--ink-soft); }
+.age-picks { display: grid; gap: 10px; }
+.age-pick { display: grid; gap: 2px; text-align: left; padding: 10px 14px; border: 1px solid var(--sepia); border-radius: 6px; background: rgba(255, 250, 235, 0.6); }
+.age-pick:hover { background: #f8eed2; }
+.age-pick b { font: 700 19px var(--display); color: var(--ink); }
+.age-pick span { font-size: 15px; color: var(--ink-soft); }

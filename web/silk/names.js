@@ -112,16 +112,49 @@ const NAMES = {
   ethiopian: ["Na'akueto La'ab", 'Yetbarak', 'Harbay', 'Yemrehana', 'Tantawidim', 'Mairari', 'Dil Na’od'],
   swahili: ['al-Hasan ibn Talut', 'Sulayman', 'Ali ibn al-Hasan', 'Dawud', 'Fakhr al-Din', 'Abu Bakr', 'Talut'],
   shona: ['Mutota', 'Nyatsimba', 'Chikura', 'Mapunga', 'Nemanwa', 'Chingoo'],
+  // the ancient world (200 BC)
+  roman: ['Publius Sulpicius', 'Gaius Aurelius', 'Lucius Cornelius', 'Marcus Claudius', 'Quintus Fabius', 'Titus Quinctius', 'Gnaeus Domitius', 'Aulus Postumius', 'Servius Sulpicius', 'Tiberius Sempronius', 'Manius Acilius', 'Lucius Aemilius', 'Marcus Fulvius', 'Gaius Laelius'],
+  punic: ['Hasdrubal', 'Hamilcar', 'Mago', 'Hanno', 'Bomilcar', 'Himilco', 'Gisco', 'Adherbal', 'Bostar', 'Carthalo', 'Maharbal'],
+  hellenic: ['Antigonus', 'Demetrius', 'Seleucus', 'Ptolemy', 'Lysimachus', 'Philocles', 'Heraclides', 'Aratus', 'Cleomenes', 'Machanidas', 'Eumenes', 'Attalus', 'Nicanor', 'Zeuxis', 'Theodotus', 'Agathocles'],
+  gaulish: ['Brennus', 'Ambiorix', 'Litaviccus', 'Orgetorix', 'Celtillus', 'Dumnorix', 'Bituitus', 'Viridomarus', 'Ducarius', 'Comontorius', 'Cavarus', 'Boduognatus'],
+  celtiberian: ['Indibilis', 'Mandonius', 'Viriathus', 'Istolatius', 'Allucius', 'Thurrus', 'Caro', 'Olonicus', 'Retogenes', 'Ambon'],
+  germanic: ['Boiorix', 'Teutobod', 'Segimer', 'Lugius', 'Gaesorix', 'Claodicus', 'Caesorix', 'Hrodulf'],
+  thracian: ['Seuthes', 'Cotys', 'Teres', 'Sitalces', 'Rhescuporis', 'Amadocus', 'Abrupolis', 'Diegylis', 'Oroles', 'Rubobostes', 'Dromichaetes'],
+  illyrian: ['Genthius', 'Scerdilaidas', 'Agron', 'Bato', 'Longarus', 'Monunius', 'Plator', 'Caravantius'],
+  scythian: ['Skilurus', 'Palacus', 'Ateas', 'Saitapharnes', 'Gatalus', 'Spartocus', 'Paerisades', 'Leucon', 'Argotas', 'Medosaccus'],
+  iranian: ['Artabazanes', 'Bagadates', 'Vahbarz', 'Ariobarzanes', 'Mithridates', 'Tiridates', 'Phraates', 'Artabanus', 'Vologases', 'Autophradates', 'Darius', 'Ardakhshir'],
+  mauryan: ['Shatadhanvan', 'Brihadratha', 'Agnimitra', 'Vasumitra', 'Samprati', 'Dasharatha', 'Shalishuka', 'Bhagabhadra', 'Vasujyeshtha', 'Devabhuti'],
+  andhra: ['Simuka', 'Kanha', 'Satakarni', 'Vedisri', 'Lambodara', 'Apilaka', 'Kuntala', 'Hala'],
+  sangam: ['Karikala', 'Nedunjeliyan', 'Senguttuvan', 'Imayavaramban', 'Ilanchetchenni', 'Killivalavan', 'Mudukudumi', 'Athan'],
+  lankan: ['Dutugamunu', 'Kavan Tissa', 'Saddha Tissa', 'Uttiya', 'Mahasiva', 'Suratissa', 'Sena', 'Guttika'],
+  han: ['Zhou Bo', 'Fan Kuai', 'Cao Can', 'Chen Ping', 'Guan Ying', 'Xiahou Ying', 'Peng Yue', 'Ying Bu', 'Lü Chan', 'Lü Lu', 'Wang Ling', 'Shusun Tong', 'Lu Jia', 'Zhang Liang'],
+  xiongnu: ['Jiyu', 'Junchen', 'Yizhixie', 'Huyan', 'Xulübu', 'Rizhu', 'Luli', 'Wuwei', 'Huhanxie', 'Zhizhi'],
+  sabaean: ["Karib'il Watar", "Yada'il Dharih", "Sumhu'ali", "Yitha'amar", "Dhamar'ali", "Ilsharah", "Nasha'karib"],
+  nabataean: ['Aretas', 'Obodas', 'Malichus', 'Rabbel', 'Syllaeus', 'Zaidu', 'Taimu'],
+  kushite: ['Arkamani', 'Adikhalamani', 'Tabirqo', 'Tanyidamani', 'Naqyrinsan', 'Arnekhamani', 'Akinidad'],
+  numidian: ['Micipsa', 'Mastanabal', 'Gulussa', 'Gauda', 'Hiempsal', 'Adherbal', 'Bocchus', 'Gaia', 'Oezalces', 'Capussa'],
+  egyptian: ['Ankhwennefer', 'Hugronaphor', 'Harsiese', 'Petosiris', 'Nectanebo', 'Pa-di-Iset', 'Horemheb', 'Djedhor'],
+  orontid: ['Orontes', 'Artaxias', 'Zariadres', 'Xerxes', 'Tigranes', 'Artavasdes', 'Arsames', 'Abdissares'],
+  kartvel: ['Saurmag', 'Pharnavaz', 'Mirian', 'Farnajom', 'Arshak', 'Artag', 'Bartom', 'Kuji'],
+  briton: ['Cassivellaunus', 'Tasciovanus', 'Commius', 'Dubnovellaunus', 'Addedomarus', 'Bodvoc', 'Cunobelin', 'Esup'],
+  gojoseon: ['Wiman', 'Ugeo', 'Seong-gi', 'Jang-hang', 'Hwan', 'Ilchun', 'No-in'],
+  aulac: ['Cao Lỗ', 'Trọng Thủy', 'Thục Phán', 'Lý Ông Trọng', 'Nồi Hầu', 'Đinh Tiên'],
+  yue: ['Zou Yao', 'Zou Ying', 'Lü Jia', 'Zhao Mo', 'Zhao Yingqi', 'Zou Chou', 'Zhao Guang'],
+  pyu: ['Duttabaung', 'Sri Prabhu', 'Vikrama', 'Harivikrama', 'Suryavikrama'],
+  saka: ['Skunkha', 'Saurmag', 'Spalirises', 'Azes', 'Maues', 'Vonones', 'Arsakes', 'Amyrgius'],
 };
 
-const TITLE = { frankish: 'Count', english: 'Earl', celtic: 'King', iberian: 'King', german: 'Duke', westslav: 'Duke', norse: 'Jarl', baltic: 'Duke', rus: 'Prince', alan: 'King', deccani: 'Raja', tamil: 'King', sinhala: 'King', burmese: 'King', khmer: 'King', viet: 'King', malay: 'Maharaja', korean: 'Lord', japanese: 'Lord', tibetan: 'Prince', mande: 'King', sudanic: 'Mai', forest: 'Oba', ethiopian: 'King', swahili: 'Sultan', shona: 'King',
+const TITLE = { roman: 'Consul', punic: 'Suffete', hellenic: 'King', gaulish: 'Chieftain', celtiberian: 'Chieftain', germanic: 'Chieftain', thracian: 'King', illyrian: 'King', scythian: 'King', iranian: 'King', mauryan: 'Raja', andhra: 'King', sangam: 'King', lankan: 'King', han: 'King', xiongnu: 'Chanyu', sabaean: 'King', nabataean: 'King', kushite: 'Qore', numidian: 'King', egyptian: 'Pharaoh', orontid: 'King', kartvel: 'King', briton: 'Chieftain', gojoseon: 'King', aulac: 'King', yue: 'King', pyu: 'King', saka: 'King',
+  frankish: 'Count', english: 'Earl', celtic: 'King', iberian: 'King', german: 'Duke', westslav: 'Duke', norse: 'Jarl', baltic: 'Duke', rus: 'Prince', alan: 'King', deccani: 'Raja', tamil: 'King', sinhala: 'King', burmese: 'King', khmer: 'King', viet: 'King', malay: 'Maharaja', korean: 'Lord', japanese: 'Lord', tibetan: 'Prince', mande: 'King', sudanic: 'Mai', forest: 'Oba', ethiopian: 'King', swahili: 'Sultan', shona: 'King',
   persian: 'Malik', turk: 'Khan', steppe: 'Khan', mongol: 'Khan', arab: 'Amir', kurd: 'Amir', georgian: 'King', afghan: 'Sultan', punjabi: 'Rai', sindhi: 'Jam', kashmiri: 'King', rajput: 'Raja', hindustani: 'Raja', bengali: 'King',
   greek: 'Despot', latin: 'Count', armenian: 'Prince', berber: 'Amir', nubian: 'King', slavic: 'Prince', magyar: 'King', chinese: 'King' };
-const KINGDOM = { frankish: 'County of', english: 'Earldom of', german: 'Duchy of', westslav: 'Duchy of', norse: 'Jarldom of', baltic: 'Duchy of', rus: 'Principality of', swahili: 'Sultanate of', malay: 'Kingdom of',
+const KINGDOM = { roman: 'Republic of', punic: 'Republic of', gaulish: 'Tribe of', celtiberian: 'Tribe of', germanic: 'Tribe of', briton: 'Tribe of', xiongnu: 'Horde of', saka: 'Horde of',
+  frankish: 'County of', english: 'Earldom of', german: 'Duchy of', westslav: 'Duchy of', norse: 'Jarldom of', baltic: 'Duchy of', rus: 'Principality of', swahili: 'Sultanate of', malay: 'Kingdom of',
   persian: 'Kingdom of', turk: 'Khanate of', steppe: 'Horde of', mongol: 'Khanate of', arab: 'Emirate of', kurd: 'Emirate of', georgian: 'Kingdom of', afghan: 'Sultanate of', punjabi: 'Kingdom of', sindhi: 'Kingdom of', kashmiri: 'Kingdom of', rajput: 'Kingdom of', hindustani: 'Kingdom of', bengali: 'Kingdom of',
   greek: 'Despotate of', latin: 'County of', armenian: 'Principality of', berber: 'Emirate of', nubian: 'Kingdom of', slavic: 'Principality of', magyar: 'Kingdom of', chinese: 'Kingdom of' };
 
-export function cultureOf(provinceId) {
+export function cultureOf(provinceId, s) {
+  if (s?.cultures?.[provinceId]) return s.cultures[provinceId];
   for (const [c, ids] of Object.entries(CULTURE_OF)) if (ids.includes(provinceId)) return c;
   return 'persian';
 }
@@ -199,6 +232,35 @@ const WOMEN = {
   ethiopian: ['Masqal Kibra', 'Tsion', 'Eleni', 'Seble'],
   swahili: ['Fatima', 'Mwana', 'Mwanamkuu', 'Zaynab'],
   shona: ['Nehanda', 'Chipo', 'Tsitsi'],
+  roman: ['Cornelia', 'Aemilia', 'Claudia', 'Sempronia', 'Livia', 'Fabia', 'Julia', 'Tertia'],
+  punic: ['Sophonisba', 'Elissa', 'Imilce', 'Batbaal', 'Arishat'],
+  hellenic: ['Laodice', 'Apama', 'Stratonice', 'Apollonis', 'Phila', 'Arsinoe', 'Berenice', 'Cleopatra', 'Polycratia'],
+  gaulish: ['Onomaris', 'Chiomara', 'Camma', 'Epona', 'Rosmerta'],
+  celtiberian: ['Ilutia', 'Sacaroa', 'Ataecina', 'Ilduna'],
+  germanic: ['Thusnelda', 'Veleda', 'Ganna', 'Gisla'],
+  thracian: ['Bendis', 'Meda', 'Polemokratia', 'Kotyto'],
+  illyrian: ['Teuta', 'Triteuta', 'Etuta', 'Bardyllis'],
+  scythian: ['Amage', 'Tomyris', 'Zarinaea', 'Kamasarye', 'Opoia'],
+  iranian: ['Rhodogune', 'Apama', 'Parysatis', 'Atossa', 'Musa', 'Rodogune'],
+  mauryan: ['Kaurvaki', 'Asandhimitra', 'Tishyarakshita', 'Padmavati', 'Devi'],
+  andhra: ['Naganika', 'Balasri', 'Gautami', 'Vasishthi'],
+  sangam: ['Avvaiyar', 'Nachchellai', 'Kannagi', 'Madhavi'],
+  lankan: ['Viharamahadevi', 'Anula', 'Somadevi', 'Sanghamitta'],
+  han: ['Lü Zhi', 'Bo Ji', 'Qi Ji', 'Dou Yifang', 'Zhang Yan', 'Wang Zhi'],
+  xiongnu: ['Yanzhi', 'Huanuo', 'Zhuanqu', 'Wang Zhaojun'],
+  sabaean: ['Bilqis', "Yada'at", 'Shamsiya', 'Haram'],
+  nabataean: ['Huldu', 'Shaqilath', 'Gamilath', 'Hagiru'],
+  kushite: ['Shanakdakhete', 'Amanirenas', 'Amanishakheto', 'Nawidemak'],
+  numidian: ['Sophonisba', 'Tanit', 'Thanit', 'Aggar'],
+  egyptian: ['Nefertari', 'Taimhotep', 'Tasheret', 'Nitocris'],
+  orontid: ['Satenik', 'Zabel', 'Anahit', 'Tsovinar'],
+  kartvel: ['Tinatin', 'Nana', 'Abeshura', 'Sidonia'],
+  briton: ['Cartimandua', 'Boudica', 'Sena', 'Verica'],
+  gojoseon: ['Yuhwa', 'Soseono', 'Ye-ssi'],
+  aulac: ['Mỵ Châu', 'Trưng Nhị', 'Bà Triệu'],
+  yue: ['Jiu-shi', 'Zou Lan', 'Zhao Yan'],
+  pyu: ['Panhtwa', 'Beikthano', 'Thiri'],
+  saka: ['Tomyris', 'Zarina', 'Sparethra'],
 };
 export function womanName(rng, culture, used = new Set()) {
   const pool = WOMEN[culture] ?? WOMEN.persian;
@@ -211,11 +273,13 @@ export function womanName(rng, culture, used = new Set()) {
 const WOMEN_SET = new Set(Object.values(WOMEN).flat());
 export const isWomanName = (n) => WOMEN_SET.has(n);
 
-const CONSORT = { frankish: 'Countess', english: 'Countess', celtic: 'Queen', iberian: 'Queen', german: 'Duchess', westslav: 'Duchess', norse: 'Queen', baltic: 'Duchess', rus: 'Princess', alan: 'Queen', deccani: 'Rani', tamil: 'Queen', sinhala: 'Queen', burmese: 'Queen', khmer: 'Queen', viet: 'Empress', malay: 'Queen', korean: 'Queen', japanese: 'Lady', tibetan: 'Lady', mande: 'Queen', sudanic: 'Magira', forest: 'Queen', ethiopian: 'Queen', swahili: 'Sayyida', shona: 'Queen',
+const CONSORT = { hellenic: 'Queen', roman: 'Matron', han: 'Empress', xiongnu: 'Yanzhi', egyptian: 'Queen', kushite: 'Kandake',
+  frankish: 'Countess', english: 'Countess', celtic: 'Queen', iberian: 'Queen', german: 'Duchess', westslav: 'Duchess', norse: 'Queen', baltic: 'Duchess', rus: 'Princess', alan: 'Queen', deccani: 'Rani', tamil: 'Queen', sinhala: 'Queen', burmese: 'Queen', khmer: 'Queen', viet: 'Empress', malay: 'Queen', korean: 'Queen', japanese: 'Lady', tibetan: 'Lady', mande: 'Queen', sudanic: 'Magira', forest: 'Queen', ethiopian: 'Queen', swahili: 'Sayyida', shona: 'Queen',
   turk: 'Khatun', steppe: 'Khatun', mongol: 'Khatun', persian: 'Khatun', kurd: 'Khatun', afghan: 'Malika', arab: 'Sayyida', berber: 'Sayyida', punjabi: 'Rani', sindhi: 'Rani',
   rajput: 'Rani', hindustani: 'Rani', bengali: 'Rani', kashmiri: 'Queen', greek: 'Empress', chinese: 'Empress', latin: 'Queen', georgian: 'Queen', armenian: 'Queen', slavic: 'Queen', magyar: 'Queen', nubian: 'Queen' };
 export const consortTitle = (culture, female = true) => (female ? CONSORT[culture] ?? 'Queen' : 'Prince consort');
-const VIZIER = { frankish: 'Seneschal', english: 'Justiciar', iberian: 'Chancellor', german: 'Chancellor', westslav: 'Palatine', norse: 'Chancellor', rus: 'Tysyatsky', deccani: 'Mantri', tamil: 'Mantri', japanese: 'Shikken', korean: 'Chief minister', viet: 'Chancellor', khmer: 'Minister', burmese: 'Minister', swahili: 'Vizier',
+const VIZIER = { roman: 'Praetor', hellenic: 'Epistates', han: 'Chancellor', mauryan: 'Mantri', iranian: 'Hazarapat', punic: 'Rab',
+  frankish: 'Seneschal', english: 'Justiciar', iberian: 'Chancellor', german: 'Chancellor', westslav: 'Palatine', norse: 'Chancellor', rus: 'Tysyatsky', deccani: 'Mantri', tamil: 'Mantri', japanese: 'Shikken', korean: 'Chief minister', viet: 'Chancellor', khmer: 'Minister', burmese: 'Minister', swahili: 'Vizier',
   greek: 'Logothete', slavic: 'Logothete', latin: 'Chancellor', magyar: 'Chancellor', georgian: 'Chancellor', armenian: 'Chancellor', chinese: 'Chancellor', rajput: 'Mantri', hindustani: 'Mantri', bengali: 'Mantri', kashmiri: 'Mantri', nubian: 'Eparch' };
 export const vizierTitle = (culture) => VIZIER[culture] ?? 'Vizier';
 

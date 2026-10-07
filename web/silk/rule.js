@@ -106,6 +106,7 @@ async function lobby(box) {
   box.innerHTML = `<p class="sub">The living world is played by its own people. To rule a realm yourself, start a game and send the link to friends: each takes a realm; the rules, or the AI, play the rest.</p>
     <form id="new-game" class="rule-form">
       <label><span>Name</span><input name="name" maxlength="40" placeholder="A game of kings"></label>
+      <label><span>Age</span><select name="age"><option value="1200">The Old World, 1200</option><option value="ancient">The ancient world, 200 BC</option></select></label>
       <label><span>Pace</span><select name="pace">${Object.entries(PACE).map(([k, t]) => `<option value="${k}"${k === 'hour' ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
       <button class="btn main wide">Start a game</button>
     </form>

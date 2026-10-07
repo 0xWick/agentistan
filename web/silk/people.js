@@ -46,7 +46,7 @@ function revolt(s, pid, rng, emit) {
   const cause = PROV[pid].neighbors.map((n) => s.realms[s.provinces[n].owner]).find((r) => r && r.rebel && r.cause === old && !r.fallen);
   let id = cause?.id;
   if (!id) {
-    const culture = cultureOf(pid);
+    const culture = cultureOf(pid, s);
     const leader = newChar(s, { name: personName(rng, culture, usedNames(s)), title: 'Rebel leader', role: 'rebel', realm: null, born: yearOf(s.month, s) - 22 - Math.floor(rng() * 25), temper: pickTemper(rng, R.temper.ruler), skill: 2 + Math.floor(rng() * 3), invented: true, culture });
     id = newRealm(s, rng, { name: `Rising of ${placeOf(s, pid)}`, short: `${placeOf(s, pid)} rebels`, capital: pid, ruler: leader, origin: 'rebel', rebel: true, cause: old });
     s.chars[leader].title = 'Rebel leader';
@@ -83,7 +83,7 @@ function unrest(s, r, rng, emit, dist) {
   // The capital itself rises: the ruler is cast down, and a lord of the city takes the throne.
   const cap = s.provinces[r.capital];
   if (cap.owner === r.id && cap.loyalty < 25 && !cap.siege && chance(rng, U.uprising)) {
-    const culture = cultureOf(r.capital);
+    const culture = cultureOf(r.capital, s);
     const lord = newChar(s, { name: personName(rng, culture, usedNames(s)), role: 'ruler', realm: r.id, born: yearOf(s.month, s) - 30 - Math.floor(rng() * 20), temper: pickTemper(rng, R.temper.ruler), skill: 2 + Math.floor(rng() * 3), invented: true, culture });
     Object.assign(ruler, { alive: false, died: s.month, cause: 'overthrown' });
     r.lineage = [...(r.lineage ?? []), { name: ruler.name, epithet: ruler.epithet, title: ruler.title, since: ruler.since, until: yearOf(s.month, s), cause: 'overthrown', id: ruler.id }].slice(-30);
@@ -102,7 +102,7 @@ function unrest(s, r, rng, emit, dist) {
 }
 
 function separatist(s, r, pid, rng, emit, dist) {
-  const culture = cultureOf(pid);
+  const culture = cultureOf(pid, s);
   const gov = newChar(s, { name: personName(rng, culture, usedNames(s)), role: 'ruler', realm: null, born: yearOf(s.month, s) - 30 - Math.floor(rng() * 20), temper: pickTemper(rng, R.temper.ruler), skill: 2 + Math.floor(rng() * 3), invented: true, culture });
   const nid = newRealm(s, rng, { name: kingdomName(culture, placeOf(s, pid)), short: placeOf(s, pid), capital: pid, ruler: gov, origin: 'separatist' });
   s.chars[gov].title = titleFor(culture);
@@ -115,7 +115,7 @@ function separatist(s, r, pid, rng, emit, dist) {
 }
 
 function commune(s, r, pid, rng, emit) {
-  const culture = cultureOf(pid);
+  const culture = cultureOf(pid, s);
   const consul = newChar(s, { name: personName(rng, culture, usedNames(s)), role: 'ruler', realm: null, born: yearOf(s.month, s) - 40 - Math.floor(rng() * 15), temper: pick(rng, ['diplomat', 'builder', 'miser']), skill: 3, invented: true, culture });
   const nid = newRealm(s, rng, { name: `Commune of ${cityOf(s, pid)}`, short: cityOf(s, pid), capital: pid, ruler: consul, origin: 'commune', elective: true });
   Object.assign(s.chars[consul], { title: culture === 'latin' ? 'Podestà' : 'Consul' });

@@ -217,7 +217,7 @@ export function beginSiege(s, a, emit) {
   if (owner === a.realm || friendly(s, a.realm, owner) || (owner !== null && !atWar(s, a.realm, owner))) return false;
   if (Object.values(s.armies).some((b) => b.at === pid && atWar(s, a.realm, b.realm) && b.mode !== 'garrison')) return false;
   if (!p.siege || !s.armies[p.siege.army]) {
-    const r = s.realms[a.realm], craft = (knows(r, 'trebuchet') ? 1 : 0) + (knows(r, 'gunpowder') ? 1 : 0);
+    const r = s.realms[a.realm], craft = (knows(r, 'trebuchet') || knows(r, 'torsion') ? 1 : 0) + (knows(r, 'gunpowder') ? 1 : 0);
     p.siege = { realm: a.realm, army: a.id, left: Math.max(1, R.walls.baseMonths + p.walls * R.walls.siegeMonths - ((s.chars[a.general]?.skill ?? 2) >= 4 ? 1 : 0) - craft), since: s.month };
     const cid = warOf(s, a.realm, owner)?.conflict;
     emit('siege', `${say(s, a.realm, 'lays')} siege to ${cityOf(s, pid)}`, { realms: [a.realm, owner].filter(Boolean), at: pid, chars: [a.general].filter(Boolean), war: cid });
@@ -263,7 +263,9 @@ export function battles(s, rng, emit) {
     const skill = (x) => 1 + B.skill * ((s.chars[x.general]?.skill ?? 2) - 3);
     const horse = (x) => 1 + R.supply.cavalry * cavalryOf(s, x.realm) * (['mountains', 'forest'].includes(P.terrain) ? 0.4 : 1); // riders count most in the open
     const ground = (x) => (owner === x.realm || friendly(s, x.realm, owner) ? (B.terrain[P.terrain] ?? 1) * B.home : 1);
-    const power = (side) => side.reduce((t, x) => t + x.size * skill(x) * x.morale * horse(x) * ground(x), 0) * (1 + between(rng, [-B.luck, B.luck]));
+    const open = ['plains', 'river', 'desert', 'steppe'].includes(P.terrain);
+    const drill = (x) => { const r = s.realms[x.realm]; return (knows(r, 'legion') ? 1.08 : 1) * (knows(r, 'crossbow') ? 1.06 : 1) * (open && knows(r, 'elephants') ? 1.08 : 1); };
+    const power = (side) => side.reduce((t, x) => t + x.size * skill(x) * x.morale * horse(x) * ground(x) * drill(x), 0) * (1 + between(rng, [-B.luck, B.luck]));
     const pa = power(A), pd = power(D);
     bt.rounds++;
     // A month of fighting: each side bleeds by the other's weight.

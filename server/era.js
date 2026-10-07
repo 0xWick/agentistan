@@ -3,7 +3,7 @@
 // replays the age so far in the browser with the same engine, then watches it live over a WebSocket.
 // The engine is pure, so the browser's replay and the server's world are the same history.
 import { DurableObject } from 'cloudflare:workers';
-import { newAge, tick, frame, ENGINE } from '../web/silk/engine.js';
+import { newAge, tick, frame, ENGINE, AGES } from '../web/silk/engine.js';
 import { brain } from '../web/silk/doctrine.js';
 import { makeCast } from './cast.js';
 import { makeSealer, DEPLOYED, EXPLORER } from './seal.js';
@@ -86,7 +86,10 @@ export class Era extends DurableObject {
     if (this.meta.engine !== ENGINE && !this.meta.game) return this.begin(); // new rules: an old record would replay differently, so a new age begins
     if (s.status !== 'running') { // the age is over: rest a while, then history starts again
       if (this.meta.game) return; // a game ends when its age ends
-      if (Date.now() >= (this.meta.restUntil ?? 0)) this.begin();
+      if (Date.now() >= (this.meta.restUntil ?? 0)) { // the living world takes the ages in turn
+        const order = Object.keys(AGES), next = order[(order.indexOf(this.meta.ageId) + 1) % order.length];
+        this.begin({ ageId: next });
+      }
       else this.ctx.storage.setAlarm(this.meta.restUntil);
       return;
     }

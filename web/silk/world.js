@@ -2,7 +2,7 @@
 // inventions that spread across borders and by conquest; and each realm's fortune, read every January: golden ages,
 // decline and poverty.
 import { RULES as R } from './rules.js';
-import { PROVINCES, PROV, provincesOf, living, atWar, weatherOf, clamp, round1, chance, pick, short, ofR, say, vb, poss, fullName, cityOf, placeOf, yearOf } from './core.js';
+import { PROVINCES, PROV, onRoad, provincesOf, living, atWar, weatherOf, clamp, round1, chance, pick, short, ofR, say, vb, poss, fullName, cityOf, placeOf, yearOf } from './core.js';
 import { prosperityOf, steersman } from './economy.js';
 
 // The inventions an age can know. Effects live where they act (knows(realm, id) in economy.js and war.js).
@@ -17,6 +17,10 @@ export const INVENTIONS = {
   steel: { name: 'Crucible steel', icon: 'anvil', text: 'Fine blades from less iron', cost: 90 },
   printing: { name: 'Movable type', icon: 'scroll', text: 'Books for the many: learning flows faster', cost: 170, learn: 1.4 },
   observatory: { name: 'Observatory', icon: 'eye', text: 'Astronomers and true calendars: learning and renown', cost: 120, learn: 1.2 },
+  torsion: { name: 'Torsion catapults', icon: 'tower', text: 'Engines of twisted sinew that cut a month off every siege', cost: 80 },
+  elephants: { name: 'War elephants', icon: 'castle', text: 'Elephants that break lines in open country', cost: 90 },
+  legion: { name: 'The legion', icon: 'banner', text: 'Drilled maniples that win more battles', cost: 120 },
+  crossbow: { name: 'Crossbows', icon: 'bow', text: 'Bolts that pierce armour: stronger infantry', cost: 90 },
 };
 
 export function world(s, rng, emit) {
@@ -58,7 +62,7 @@ export function realSkies(s, readings, emit) {
 function disasters(s, rng, emit) {
   const D = R.disasters;
   if (chance(rng, D.plague)) {
-    const p = pick(rng, PROVINCES.filter((x) => x.silk && s.provinces[x.id].owner));
+    const p = pick(rng, PROVINCES.filter((x) => onRoad(s, x.id) && s.provinces[x.id].owner));
     if (p && !s.provinces[p.id].plague) {
       s.provinces[p.id].plague = D.plagueMonths;
       emit('plague', `Plague breaks out in ${cityOf(s, p.id)}`, { at: p.id, realms: [s.provinces[p.id].owner].filter(Boolean) });
@@ -66,7 +70,7 @@ function disasters(s, rng, emit) {
   }
   for (const P of PROVINCES) { // plague travels with the caravans
     if (s.provinces[P.id].plague === D.plagueMonths - 2) {
-      for (const n of P.neighbors) if (!s.provinces[n].plague && chance(rng, PROV[n].silk ? D.spread.silk : D.spread.other)) {
+      for (const n of P.neighbors) if (!s.provinces[n].plague && chance(rng, onRoad(s, n) ? D.spread.silk : D.spread.other)) {
         s.provinces[n].plague = D.plagueMonths;
         emit('plague', `The plague spreads to ${cityOf(s, n)}`, { at: n, realms: [s.provinces[n].owner].filter(Boolean), minor: true });
       }

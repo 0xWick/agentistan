@@ -1,7 +1,7 @@
 // The acts a ruler can take. Doctrine, the AI and players all ask through act(); each act checks the rules before it
 // changes anything, so no voice, human or machine, can do what the world does not allow.
 import { RULES as R } from './rules.js';
-import { PROV, PROVINCES, provincesOf, armiesOf, living, atWar, allied, friendly, truceUntil, key, setOwner, clamp, round1, chance, pick,
+import { PROV, PROVINCES, onRoad, provincesOf, armiesOf, living, atWar, allied, friendly, truceUntil, key, setOwner, clamp, round1, chance, pick,
   short, ofR, say, vb, poss, nameOf, fullName, cityOf, yearOf } from './core.js';
 import { strength, incomeOf, startWork, canBuild, steersman, rulingTemper, pairTreaties } from './economy.js';
 import { declareWar, makePeace, peaceTerms, fall, breakTreaty } from './war.js';
@@ -181,7 +181,7 @@ export function powerMove(s, id, kind, rng, emit) {
     for (const p of mine) s.provinces[p.id].loyalty = Math.min(100, s.provinces[p.id].loyalty + 20);
     emit('power', `${who} of ${ofR(s, id)} holds a Royal Feast: the people cheer their ruler`, { realms: [id], chars: [r.ruler], power: kind });
   } else if (kind === 'silktax') {
-    const silk = mine.filter((p) => p.silk);
+    const silk = mine.filter((p) => onRoad(s, p.id));
     if (!silk.length) return false;
     r.gold = round1(r.gold + 20 * silk.length);
     for (const p of silk) s.provinces[p.id].loyalty = Math.max(0, s.provinces[p.id].loyalty - 12);

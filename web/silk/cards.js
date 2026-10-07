@@ -2,7 +2,7 @@
 // a war. Each card links to the others (a king's portrait opens the king, a war chip opens the war), with a back
 // button to retrace the steps. And the great-event card, which stops the story to show what just happened.
 import { PROV, PROVINCES, LAND, provincesOf, armiesOf, living, atWar, friendly, yieldOf, cavalryOf, rations, isWinter, dateText, yearOf, weatherOf, seasonName, ageOf, menOf,
-  prosperityOf, steersman, rulingTemper, treatiesOf, INVENTIONS, fortuneOf, cityOf, placeOf } from './engine.js';
+  prosperityOf, steersman, rulingTemper, treatiesOf, INVENTIONS, fortuneOf, cityOf, placeOf, onRoad, yearLabel } from './engine.js';
 import { TEMPER_TEXT } from './names.js';
 import { isGreat } from './engine.js';
 export { isGreat };
@@ -69,7 +69,7 @@ const sealLink = (m) => {
 };
 const CLIMATE = { cold: 'Cold lands', monsoon: 'Monsoon lands', arid: 'Dry lands', temperate: 'Temperate lands' };
 const WEATHER = { snow: ['snow', 'Snow: slow marches, frostbite abroad, thin herds'], rains: ['rain', 'The rains: rivers flood, no campaigns'], heat: ['sun', 'Summer heat: armies in the desert wilt'] };
-const HOW = { start: 'held in 1200', conquest: 'by conquest', revolt: 'by revolt', secession: 'broke away', bribe: 'by a bribe', inheritance: 'by inheritance', verdict: 'by verdict', commune: 'self-rule', treaty: 'by treaty' };
+const HOW = { start: 'held at the start', conquest: 'by conquest', revolt: 'by revolt', secession: 'broke away', bribe: 'by a bribe', inheritance: 'by inheritance', verdict: 'by verdict', commune: 'self-rule', treaty: 'by treaty' };
 function province(id) {
   const st = s(), p = PROV[id], q = st.provinces[id], r = st.realms[q.owner];
   const loyal = Math.round(q.loyalty), pros = Math.round(q.prosperity ?? 50);
@@ -87,12 +87,12 @@ function province(id) {
       <span title="Loyalty of the people">${icon('people')}${meter(loyal, loyalColor(loyal))}<small>loyalty</small></span>
       <span title="Prosperity: peace, trade and works raise it; war, plague and famine ruin it">${icon('sun')}${meter(pros, pros < 30 ? '#8c6b3f' : pros > 65 ? '#b3852c' : '#6f8f4a')}<small>${pros < 30 ? 'poor' : pros > 65 ? 'thriving' : 'prosperity'}</small></span>
     </div>
-    <div class="gives">${[['wheat', y.grain, 'grain this month'], ['horse', y.horses, 'horses a month'], ['anvil', y.iron, 'iron a month']].filter(([, v]) => v > 0).map(([i, v, t]) => `<span title="${t}">${icon(i)}${Math.round(v * 10) / 10}</span>`).join('')}<small>this month</small>${p.silk ? `<span class="trade" title="Share of the Silk Road open to the caravans">${icon('palace')}${Math.round((st.trade?.[id] ?? 0) * 100)}% road</span>` : ''}</div>
+    <div class="gives">${[['wheat', y.grain, 'grain this month'], ['horse', y.horses, 'horses a month'], ['anvil', y.iron, 'iron a month']].filter(([, v]) => v > 0).map(([i, v, t]) => `<span title="${t}">${icon(i)}${Math.round(v * 10) / 10}</span>`).join('')}<small>this month</small>${onRoad(st, id) ? `<span class="trade" title="Share of the Silk Road open to the caravans">${icon('palace')}${Math.round((st.trade?.[id] ?? 0) * 100)}% road</span>` : ''}</div>
     <div class="row season">${icon(WEATHER[w]?.[0] ?? (p.climate === 'cold' ? 'snow' : p.climate === 'monsoon' ? 'rain' : 'sun'))}<span>${esc(CLIMATE[p.climate])}</span> ${esc(WEATHER[w]?.[1] ?? `${seasonName(st.month)[0].toUpperCase()}${seasonName(st.month).slice(1)}: mild`)}</div>
     ${works.length || q.building ? `<div class="row works">${works.map((k) => `<span class="work" title="${WORKS[k][1]}">${icon(WORKS[k][0])}</span>`).join('')}${q.building ? `<span class="building">${icon('hammer')} a ${esc(q.building.kind)} rising · ${months(q.building.left)}</span>` : ''}</div>` : ''}
     ${q.siege ? `<div class="row alarm">${icon('tower')} Besieged by ${chip(q.siege.realm)} · ${months(q.siege.left)}</div>` : ''}
     ${here.length ? `<div class="row">${icon('banner')} ${here.map((a) => `<span class="chip" data-army="${a.id}"><i class="shield" style="--c:${colorOf(a.realm)}"></i>${men(a.size)}</span>`).join(' ')}</div>` : ''}
-    ${deeds.length ? `<details class="deeds-reg"><summary>${icon('seal')} The registry of deeds</summary><ol>${deeds.map((d) => `<li><b>${yearOf(d.m, st)}</b> ${st.realms[d.realm] ? chip(d.realm) : esc(d.realm)} <small>${esc(HOW[d.how] ?? d.how)}</small>${sealLink(d.m)}</li>`).join('')}</ol>${S.chain ? `<p class="chain-note">Sealed each year on Base Sepolia: <a href="${S.chain.explorer}/address/${S.chain.address}" target="_blank" rel="noopener">the Chronicle contract</a></p>` : ''}</details>` : ''}
+    ${deeds.length ? `<details class="deeds-reg"><summary>${icon('seal')} The registry of deeds</summary><ol>${deeds.map((d) => `<li><b>${yearLabel(yearOf(d.m, st))}</b> ${st.realms[d.realm] ? chip(d.realm) : esc(d.realm)} <small>${esc(HOW[d.how] ?? d.how)}</small>${sealLink(d.m)}</li>`).join('')}</ol>${S.chain ? `<p class="chain-note">Sealed each year on Base Sepolia: <a href="${S.chain.explorer}/address/${S.chain.address}" target="_blank" rel="noopener">the Chronicle contract</a></p>` : ''}</details>` : ''}
     <p class="fact">${esc(p.fact)}</p>`;
 }
 
@@ -121,10 +121,10 @@ function realm(id) {
   const said = p.said ? `<p class="voice">“${esc(p.said)}”</p>` : '';
   const past = (r.lineage ?? []).slice().reverse();
   const word = r.rep ?? 60;
-  return `<div class="who"><i class="shield big" style="--c:${r.color}"></i>${r.rebel ? 'A rebellion' : r.origin === 'historic' ? 'A power of 1200' : r.origin === 'commune' ? 'A free city' : `Founded ${yearOf(r.founded, st)}`}${r.golden > st.month ? `<span class="badge gold">${icon('sun')} Golden age</span>` : pros < 30 ? `<span class="badge poor">${icon('wheat')} Poverty</span>` : ''}</div>
+  return `<div class="who"><i class="shield big" style="--c:${r.color}"></i>${r.rebel ? 'A rebellion' : r.origin === 'historic' ? `A power of ${yearLabel(st.startYear ?? 1200)}` : r.origin === 'commune' ? 'A free city' : `Founded ${yearLabel(yearOf(r.founded, st))}`}${r.golden > st.month ? `<span class="badge gold">${icon('sun')} Golden age</span>` : pros < 30 ? `<span class="badge poor">${icon('wheat')} Poverty</span>` : ''}</div>
     <h3>${esc(r.name)}</h3>${r.fa ? `<p class="fa">${esc(r.fa)}</p>` : ''}
     ${ruler ? `<div class="king" data-char="${ruler.id}">${face(ruler, 58)}<span><b>${esc(`${ruler.title ?? ''} ${ruler.name}${ruler.epithet ? ` ${ruler.epithet}` : ''}`.trim())}</b>
-      <small>${temperLine(ruler)} aged ${ageText(ruler)}${ruler.since ? ` · since ${ruler.since}` : ''}${leads ? ` · leads ${men(leads.size)} at ${esc(cityOf(st, leads.at))}` : ''}</small></span></div>` : '<div class="king"><b>No ruler</b></div>'}
+      <small>${temperLine(ruler)} aged ${ageText(ruler)}${ruler.since ? ` · since ${yearLabel(ruler.since)}` : ''}${leads ? ` · leads ${men(leads.size)} at ${esc(cityOf(st, leads.at))}` : ''}</small></span></div>` : '<div class="king"><b>No ruler</b></div>'}
     ${regent ? `<div class="row">${icon('crown')}<span>Regent</span> ${personChip(regent)} ${temperLine({ temper: regent.ruleAs ?? regent.temper })}</div>` : ''}
     <div class="family">
       ${consort?.alive ? `<span>${icon('rings')}${personChip(consort)} <small>${esc(consort.title ?? 'consort')}${consort.temper === 'schemer' ? ' · a schemer' : ''}</small></span>` : ''}
@@ -153,7 +153,7 @@ function realm(id) {
     ${tr.length ? `<div class="row">${icon('coin')}<span>Tribute</span> ${tr.map((t) => `${t.pay.from === id ? 'pays' : 'receives'} ${t.pay.gold} a month ${t.pay.from === id ? 'to' : 'from'} ${chip(t.pay.from === id ? t.pay.to : t.pay.from)}`).join('; ')}</div>` : ''}
     ${generals.length ? `<div class="row gens">${icon('helmet')}<span>Generals</span> ${generals.slice(0, 5).map((g) => personChip(g)).join('')}</div>` : ''}
     ${thoughts.length || said ? `<div class="mind"><b>${icon('eye')} In the ruler's mind</b>${thoughts.join('. ')}.${said}</div>` : ''}
-    ${past.length ? `<details class="lineage"><summary>${icon('scroll')} The ${esc(r.dynasty ?? 'line')}: ${past.length} before</summary><ol>${past.map((l) => `<li><span>${esc(l.name)}${l.epithet ? ` <i>${esc(l.epithet)}</i>` : ''}</span><small>${l.since}–${l.until}</small>${l.cause && END[l.cause] ? `<i title="${esc(l.cause)}">${icon(END[l.cause])}</i>` : ''}</li>`).join('')}</ol></details>` : ''}`;
+    ${past.length ? `<details class="lineage"><summary>${icon('scroll')} The ${esc(r.dynasty ?? 'line')}: ${past.length} before</summary><ol>${past.map((l) => `<li><span>${esc(l.name)}${l.epithet ? ` <i>${esc(l.epithet)}</i>` : ''}</span><small>${yearLabel(l.since)}–${yearLabel(l.until)}</small>${l.cause && END[l.cause] ? `<i title="${esc(l.cause)}">${icon(END[l.cause])}</i>` : ''}</li>`).join('')}</ol></details>` : ''}`;
 }
 
 // ---------- an army ----------
@@ -196,8 +196,8 @@ function person(id) {
   const deeds = recent((e) => e.chars?.includes(id), 6);
   const army = st.armies[c.army];
   const ruling = r?.regent === id ? `Regent of ${esc(r.short)}` : null;
-  return `<div class="who">${r ? chip(r.id) : ''}<span>${esc(c.alive ? ROLE[c.role] ?? c.role : `Died ${yearOf(c.died, st)}${c.cause ? ` · ${c.cause === 'age' ? 'of age' : c.cause}` : ''}`)}</span>${c.invented ? '<span class="badge" title="Not in the chronicles: invented by this age">new to history</span>' : ''}</div>
-    <div class="person-head">${face(c, 96)}<div><h3>${esc(c.name)}</h3>${c.epithet ? `<p class="epithet">${esc(c.epithet)}</p>` : ''}<p class="sub">${esc(c.title ?? '')}${c.title ? ' · ' : ''}${c.alive ? `aged ${ageText(c)}` : `${c.born}–${yearOf(c.died, st)}`}</p></div></div>
+  return `<div class="who">${r ? chip(r.id) : ''}<span>${esc(c.alive ? ROLE[c.role] ?? c.role : `Died ${yearLabel(yearOf(c.died, st))}${c.cause ? ` · ${c.cause === 'age' ? 'of age' : c.cause}` : ''}`)}</span>${c.invented ? '<span class="badge" title="Not in the chronicles: invented by this age">new to history</span>' : ''}</div>
+    <div class="person-head">${face(c, 96)}<div><h3>${esc(c.name)}</h3>${c.epithet ? `<p class="epithet">${esc(c.epithet)}</p>` : ''}<p class="sub">${esc(c.title ?? '')}${c.title ? ' · ' : ''}${c.alive ? `aged ${ageText(c)}` : `${yearLabel(c.born)}–${yearLabel(yearOf(c.died, st))}`}</p></div></div>
     ${t ? `<div class="mind"><b>${icon('eye')} ${esc(t[0])}</b>${esc(t[1][0].toUpperCase() + t[1].slice(1))}.${c.persona?.ambition ? ` ${esc(c.persona.ambition)}` : ''}</div>` : ''}
     ${c.persona?.voice ? `<p class="voice">“${esc(c.persona.voice)}”</p>` : ''}
     <div class="stats">${['general', 'ruler', 'heir'].includes(c.role) ? `<span class="stat" title="Skill">${icon('swords')}${pips(c.skill, 5)}</span>` : ''}${c.role !== 'ruler' && c.alive ? `<span class="stat" title="Loyalty to the crown">${icon('people')}${meter(c.loyalty, loyalColor(c.loyalty))}</span>` : ''}${(c.traits ?? []).map((x) => `<span class="trait">${esc(x)}</span>`).join('')}</div>
@@ -231,7 +231,7 @@ function war(cid) {
   const gains = Object.entries(w.gains ?? {}).filter(([, list]) => list.length);
   const treaty = st.treaties[w.treaty];
   const after = w.ended !== null ? allEvents((e) => e.month > w.ended && e.month <= w.ended + 24 && e.realms?.some((x) => x === w.by || x === w.vs) && ['crowned', 'fallen', 'revolt', 'coup', 'split', 'capital', 'golden', 'decline', 'uprising', 'separatist', 'war'].includes(e.type)).slice(0, 5) : [];
-  return `<div class="who">${icon('swords')}<span>${w.ended !== null ? `${yearOf(w.since, st)}–${yearOf(w.ended, st)} · ${esc(w.outcome ?? 'ended')}` : `Raging since ${dateText(w.since, st)}`}</span></div>
+  return `<div class="who">${icon('swords')}<span>${w.ended !== null ? `${yearLabel(yearOf(w.since, st))}–${yearLabel(yearOf(w.ended, st))} · ${esc(w.outcome ?? 'ended')}` : `Raging since ${dateText(w.since, st)}`}</span></div>
     <h3>${esc(w.name)}</h3>
     ${w.why ? `<p class="why">${esc(w.why)}</p>` : ''}
     <div class="sides"><div>${sides.a.map(chip).join('')}</div><b>against</b><div>${sides.b.map(chip).join('')}</div></div>

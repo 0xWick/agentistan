@@ -1,6 +1,6 @@
 // The living map: the world simulated month by month right here in the browser, drawn like an old map. The cards,
 // the chronicle and the great-event pictures all read the moment on the timeline (S.s).
-import { newAge, tick, PROVINCES, PROV, LAND, living, provincesOf, armiesOf, menOf, dateText, yearOf, atWar, weatherOf, seasonName, cityOf, prosperityOf, steersman, rulingTemper } from './engine.js';
+import { newAge, tick, yearLabel, AGES, PROVINCES, PROV, LAND, living, provincesOf, armiesOf, menOf, dateText, yearOf, atWar, weatherOf, seasonName, cityOf, prosperityOf, steersman, rulingTemper } from './engine.js';
 import { brain } from './doctrine.js';
 import { TEMPER_TEXT } from './names.js';
 import { S, $, esc, icon, symbols, kindOf, worth, colorOf, ink, men } from './ui.js';
@@ -136,6 +136,9 @@ function resetStory(first) {
   layer.road.innerHTML = '';
   for (const road of s.roads ?? []) layer.road.append(el('path', { class: 'silkroad', d: `M${road.map((id) => PROV[id].xy.join(' ')).join('L')}` }));
   ticks();
+  // The age's own names on the map: Byzantion, not Constantinople, in 200 BC.
+  layer.cities.querySelectorAll('.city').forEach((g) => { g.querySelector('text').textContent = cityOf(s, g.dataset.id); });
+  layer.regions.classList.toggle('foreign', s.ageId !== '1200'); // the region names are those of 1200
 }
 const record = (row) => { story.events[row.m] = row.events; story.inputs[row.m] = row.inputs ?? {}; };
 async function joinLive() {
@@ -218,14 +221,14 @@ function recentEvents(m) {
 }
 
 // ---------- one month on the map ----------
-function newWorld(seed) {
+function newWorld(seed, ageId = '1200') {
   mode = 'own';
   ws?.close();
   ws = null;
   age = seed ?? 1 + Math.floor(Math.random() * 99999);
-  resetStory(newAge(age));
+  resetStory(newAge(age, AGES[ageId] ? ageId : '1200'));
   liveChip();
-  render([{ type: 'age.started', text: `The year ${yearOf(0, s)}. The realms of the Old World stand as history left them.`, date: dateText(0, s) }]);
+  render([{ type: 'age.started', text: `The year ${yearLabel(yearOf(0, s))}. The realms of the Old World stand as history left them.`, date: dateText(0, s) }]);
 }
 
 // One month forward. In your own age, the edge of what has been lived is simulated (and remembered). In the living
@@ -302,7 +305,7 @@ function render(events, { quiet = false } = {}) {
   powers();
   $('#date').textContent = dateText(s.month, s);
   $('#ask-date').textContent = dateText(s.month, s);
-  $('#yr').textContent = yearOf(s.month, s);
+  $('#yr').textContent = yearLabel(yearOf(s.month, s));
   seasonBadge();
   const at = (m) => `${(Math.min(m, total()) / total()) * 100}%`;
   $('#done').style.width = at(story.frontier);
@@ -774,7 +777,15 @@ function wire() {
     track.addEventListener('pointerup', () => track.removeEventListener('pointermove', move), { once: true });
   });
   document.querySelectorAll('.speed button').forEach((b) => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
-  $('#new').addEventListener('click', () => { playPause(false); newWorld(); playPause(true); });
+  $('#new').addEventListener('click', () => { playPause(false); $('#ages').showModal(); });
+  $('#ages').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-age]');
+    if (e.target === $('#ages') || e.target.closest('.x')) return $('#ages').close();
+    if (!b) return;
+    $('#ages').close();
+    newWorld(undefined, b.dataset.age);
+    playPause(true);
+  });
   // The live chip: to the present, back to the start, back to the living world.
   $('#live').addEventListener('click', async (e) => {
     const go = e.target.closest('[data-go]')?.dataset.go;

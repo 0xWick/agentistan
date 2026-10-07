@@ -4,7 +4,7 @@
 // whoever speaks for them: a player, the AI, or doctrine.
 import { RULES as R } from './rules.js';
 import { PROV, provincesOf, armiesOf, armiesChanged, living, atWar, allied, friendly, key, setOwner, hops, clamp, round1, chance, pick, rngFor, newChar, newArmy, newRealm, colorFor,
-  short, ofR, say, vb, poss, his, nameOf, fullName, cityOf, placeOf, ageOf, usedNames, yearOf, menText } from './core.js';
+  short, ofR, say, vb, poss, his, him, nameOf, fullName, cityOf, placeOf, ageOf, usedNames, yearOf, menText } from './core.js';
 import { strength, incomeOf } from './economy.js';
 import { declareWar, disband, fall } from './war.js';
 import { cultureOf, personName, womanName, titleFor, kingdomName, consortTitle, vizierTitle, pickTemper } from './names.js';
@@ -297,7 +297,7 @@ export function split(s, id, gid, rng, emit, why = 'breaks away', said) {
   const mine = provincesOf(s, id), want = Math.max(1, Math.round(mine.length * R.succession.splitShare * (0.6 + rng() * 0.6)));
   const d = hops(a.at), taken = mine.filter((p) => p.id !== r.capital).sort((x, y) => d[x.id] - d[y.id]).slice(0, want);
   if (!taken.length) return;
-  const seat = taken[0].id, culture = cultureOf(seat);
+  const seat = taken[0].id, culture = cultureOf(seat, s);
   if (a.battle) return;
   const nid = newRealm(s, rng, { name: kingdomName(culture, placeOf(s, seat)), short: placeOf(s, seat), capital: seat, ruler: gid, origin: 'split', color: colorFor(rng) });
   Object.assign(g, { title: titleFor(culture), temper: R.temper.ruler[g.temper] ? g.temper : 'conqueror', landAtStart: taken.length });
@@ -309,7 +309,7 @@ export function split(s, id, gid, rng, emit, why = 'breaks away', said) {
   declareWar(s, nid, id, () => {}, { cause: 'split' });
   s.record.splits++;
   s.record.founded++;
-  emit('split', `${g.name} ${why} and founds the ${s.realms[nid].name}: ${taken.length} provinces of ${ofR(s, id)} go with ${his(g)}`, { realms: [nid, id], at: seat, chars: [gid], war: s.wars[key(nid, id)]?.conflict, said });
+  emit('split', `${g.name} ${why} and founds the ${s.realms[nid].name}: ${taken.length} provinces of ${ofR(s, id)} go with ${him(g)}`, { realms: [nid, id], at: seat, chars: [gid], war: s.wars[key(nid, id)]?.conflict, said });
 }
 
 function coup(s, r, c, emit, said) {

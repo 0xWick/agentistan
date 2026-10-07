@@ -7,11 +7,15 @@ const SKIN = { latin: '#f2d4b4', greek: '#efcfac', georgian: '#eccaa6', armenian
   bengali: '#b07b52', nubian: '#8a5a3c', chinese: '#eccb98', mongol: '#e2b886', steppe: '#e0b98c',
   frankish: '#f2d4b4', english: '#f4d8ba', celtic: '#f5dcc2', iberian: '#ecc8a2', german: '#f3d6b8', westslav: '#f2d5b6', norse: '#f6dcc4', baltic: '#f4d9bd', rus: '#f2d4b4', alan: '#ecc9a4',
   deccani: '#b3804f', tamil: '#9e6c45', sinhala: '#a8744b', burmese: '#c99a6a', khmer: '#bd8c5e', viet: '#e3bf8e', malay: '#c08e60', korean: '#eccb9c', japanese: '#efcf9e', tibetan: '#c99868',
-  mande: '#5e3b26', sudanic: '#6a4329', forest: '#5a3824', ethiopian: '#7e5236', swahili: '#7a4e34', shona: '#5c3a25' };
+  mande: '#5e3b26', sudanic: '#6a4329', forest: '#5a3824', ethiopian: '#7e5236', swahili: '#7a4e34', shona: '#5c3a25',
+  roman: '#ecc9a2', punic: '#dcb48a', hellenic: '#e9c7a0', gaulish: '#f2d6b8', celtiberian: '#e8c39c', germanic: '#f5dcc4', thracian: '#eccaa4', illyrian: '#ecc8a2', scythian: '#e8c49c',
+  iranian: '#dfb890', mauryan: '#b3804f', andhra: '#a8744b', sangam: '#9e6c45', lankan: '#a8744b', han: '#eccb98', xiongnu: '#e0b386', sabaean: '#c9986a', nabataean: '#d4a77c', kushite: '#6e4630',
+  numidian: '#c99a6e', egyptian: '#c4936a', orontid: '#e2bd96', kartvel: '#eccaa6', briton: '#f5dcc2', gojoseon: '#eccb9c', aulac: '#e0b98a', yue: '#e3bf8e', pyu: '#c99a6a', saka: '#e2b886' };
 const HAIR = ['#2a1d14', '#3a2616', '#1d1712', '#4a3220'];
-const EAST = new Set(['chinese', 'mongol', 'steppe', 'korean', 'japanese', 'viet', 'tibetan']);
-const WEST = new Set(['latin', 'magyar', 'slavic', 'greek', 'georgian', 'armenian', 'nubian', 'frankish', 'english', 'celtic', 'iberian', 'german', 'westslav', 'norse', 'baltic', 'rus', 'alan', 'ethiopian']);
-const INDIA = new Set(['rajput', 'hindustani', 'bengali', 'kashmiri', 'punjabi', 'sindhi', 'deccani', 'tamil', 'sinhala', 'burmese', 'khmer', 'malay']);
+const EAST = new Set(['chinese', 'mongol', 'steppe', 'korean', 'japanese', 'viet', 'tibetan', 'han', 'xiongnu', 'gojoseon', 'aulac', 'yue', 'saka']);
+const WEST = new Set(['latin', 'magyar', 'slavic', 'greek', 'georgian', 'armenian', 'nubian', 'frankish', 'english', 'celtic', 'iberian', 'german', 'westslav', 'norse', 'baltic', 'rus', 'alan', 'ethiopian', 'roman', 'punic', 'hellenic', 'gaulish', 'celtiberian', 'germanic', 'thracian', 'illyrian', 'scythian', 'orontid', 'kartvel', 'briton']);
+const NOMADS = new Set(['mongol', 'steppe', 'xiongnu', 'saka', 'scythian']);
+const INDIA = new Set(['rajput', 'hindustani', 'bengali', 'kashmiri', 'punjabi', 'sindhi', 'deccani', 'tamil', 'sinhala', 'burmese', 'khmer', 'malay', 'mauryan', 'andhra', 'sangam', 'lankan', 'pyu']);
 
 function hash(str) {
   let h = 2166136261;
@@ -45,7 +49,7 @@ export function portrait(c, { color = '#6a5032', age = 40, size = 64, uid = '' }
   body.push(`<path d="M27 40h10v8c-3 2-7 2-10 0z" fill="${shade(skin, 0.9)}"/>`);
   const fy = 30, fh = 13 + r(5) * 1.5;
   // hair behind the head
-  const veiled = female && !child && !['mongol', 'steppe', 'chinese'].includes(culture);
+  const veiled = female && !child && !NOMADS.has(culture) && culture !== 'chinese';
   const veilColor = WEST.has(culture) ? '#f3ecdc' : shade(color, 1.15);
   if (veiled) body.push(`<path d="M${32 - fw - 4} ${fy + 2}c-1-14 ${fw + 4} -19 ${fw + 4} -19s${fw + 5} 5 ${fw + 4} 19l4 34h${-2 * fw - 16}z" fill="${veilColor}"/>`); // the veil falls behind the face
   else if (female) body.push(`<path d="M${32 - fw - 3} ${fy}c0-12 6-17 ${fw + 3} -17s${fw + 3} 5 ${fw + 3} 17v14c-3 3-6 3-8 0h${-2 * fw + 4}c-2 3-5 3-8 0z" fill="${hair}"/>`);
@@ -83,7 +87,7 @@ function headgear({ culture, role, female, child, fw, fy, hair, gold, color, r, 
     <path d="M${L} ${top + 1}q${W / 2} -5 ${W} 0M${L + 1} ${top - 3}q${W / 2 - 1} -4 ${W - 2} 1" fill="none" stroke="${shade(cloth, 0.8)}" stroke-width="0.9"/>${plume ? `${jewel(32, top - 1)}<path d="M32 ${top - 2}q3 -7 6 -9" fill="none" stroke="${plume}" stroke-width="2" stroke-linecap="round"/>` : ''}`;
   if (child) return `<path d="M${L + 1} ${top + 6}c1-9 ${W / 2 - 1} -10 ${W / 2 - 1} -10s${W / 2 - 2} 1 ${W / 2 - 1} 10c-4 -3 -${W - 4} -3 -${W - 2} 0z" fill="${hair}"/>`;
   if (female) {
-    if (culture === 'mongol' || culture === 'steppe') return `<path d="M${L + 2} ${top + 5}c0-5 ${W / 2 - 2} -6 ${W / 2 - 2} -6s${W / 2 - 2} 1 ${W / 2 - 2} 6z" fill="${shade(color, 0.6)}"/><path d="M28 ${top}l2-22h4l2 22z" fill="${shade(color, 0.5)}"/><path d="M27 ${top - 22}h10" stroke="${gold}" stroke-width="2"/>${jewel(32, top - 4)}<path d="M${L + 1} ${top + 6}v12M${L + W - 1} ${top + 6}v12" stroke="${gold}" stroke-width="1" stroke-dasharray="1.4 1.2"/>`; // the boqta
+    if (NOMADS.has(culture)) return `<path d="M${L + 2} ${top + 5}c0-5 ${W / 2 - 2} -6 ${W / 2 - 2} -6s${W / 2 - 2} 1 ${W / 2 - 2} 6z" fill="${shade(color, 0.6)}"/><path d="M28 ${top}l2-22h4l2 22z" fill="${shade(color, 0.5)}"/><path d="M27 ${top - 22}h10" stroke="${gold}" stroke-width="2"/>${jewel(32, top - 4)}<path d="M${L + 1} ${top + 6}v12M${L + W - 1} ${top + 6}v12" stroke="${gold}" stroke-width="1" stroke-dasharray="1.4 1.2"/>`; // the boqta
     if (culture === 'chinese') return `<path d="M${L + 1} ${top + 5}c0-8 ${W / 2 - 1} -9 ${W / 2 - 1} -9s${W / 2 - 1} 1 ${W / 2 - 1} 9z" fill="${hair}"/><path d="M${L - 3} ${top - 1}q${W / 2 + 3} -9 ${W + 6} 0" fill="none" stroke="${gold}" stroke-width="2.4"/>${jewel(32, top - 4, '#2b7d7a')}${jewel(L, top + 1, '#2b7d7a')}${jewel(L + W, top + 1, '#2b7d7a')}`;
     const veil = `<path d="M${L} ${top + 7}c0-9 ${W / 2} -11 ${W / 2} -11s${W / 2} 2 ${W / 2} 11c-4-4 -${W - 4} -4 -${W} 0z" fill="${veilColor}"/><path d="M${L + 1} ${top + 6}q${W / 2 - 1} -6 ${W - 2} 0" fill="none" stroke="${shade(veilColor, 0.82)}" stroke-width="0.8"/>`; // its edge across the brow
     const crown = role === 'ruler' || role === 'consort' ? (WEST.has(culture) ? `<path d="M${L + 2} ${top + 1}l2-6 3 4 3-6 3 6 3-6 3 6 3-4 2 6z" fill="${gold}"/>${jewel(32, top - 1)}` : `<path d="M${L + 2} ${top + 1}q${W / 2 - 2} -4 ${W - 4} 0" fill="none" stroke="${gold}" stroke-width="2.2"/>${jewel(32, top - 1)}`) : '';
@@ -96,7 +100,7 @@ function headgear({ culture, role, female, child, fw, fy, hair, gold, color, r, 
   }
   if (role === 'vizier') return EAST.has(culture) || culture === 'chinese' ? `<path d="M${L + 1} ${top + 5}h${W - 2}v-7h${-W + 2}z" fill="#1d1712"/><path d="M${L - 5} ${top + 1}h${W + 10}" stroke="#1d1712" stroke-width="1.6"/>` : WEST.has(culture) ? `<path d="M${L + 1} ${top + 5}c0-6 ${W / 2 - 1} -8 ${W / 2 - 1} -8s${W / 2 - 1} 2 ${W / 2 - 1} 8z" fill="${shade(color, 0.5)}"/>` : turban('#f3ecdc', 12);
   const royal = role === 'ruler', heir = role === 'heir';
-  if (culture === 'mongol' || culture === 'steppe') return `<path d="M${L - 1} ${top + 6}c0-9 ${W / 2 + 1} -14 ${W / 2 + 1} -14s${W / 2 + 1} 5 ${W / 2 + 1} 14z" fill="${shade(color, 0.7)}"/><path d="M${L - 3} ${top + 6}q${W / 2 + 3} -4 ${W + 6} 0v3q-${W / 2 + 3} -3 -${W + 6} 0z" fill="#6a4a2a"/>${royal ? jewel(32, top - 4, '#b3852c') : ''}`; // fur-brimmed hat
+  if (NOMADS.has(culture)) return `<path d="M${L - 1} ${top + 6}c0-9 ${W / 2 + 1} -14 ${W / 2 + 1} -14s${W / 2 + 1} 5 ${W / 2 + 1} 14z" fill="${shade(color, 0.7)}"/><path d="M${L - 3} ${top + 6}q${W / 2 + 3} -4 ${W + 6} 0v3q-${W / 2 + 3} -3 -${W + 6} 0z" fill="#6a4a2a"/>${royal ? jewel(32, top - 4, '#b3852c') : ''}`; // fur-brimmed hat
   if (culture === 'chinese') return royal ? `<path d="M${L - 4} ${top - 3}h${W + 8}v-3h${-W - 8}z" fill="#1d1712"/><path d="M${L + 2} ${top + 5}h${W - 4}v-8h${-W + 4}z" fill="#1d1712"/>${[0, 1, 2, 3, 4].map((i) => `<path d="M${L - 3 + i * ((W + 6) / 4)} ${top - 3}v6" stroke="${gold}" stroke-width="0.9" stroke-dasharray="1 1"/>`).join('')}` : `<path d="M${L + 2} ${top + 5}c0-6 ${W / 2 - 2} -9 ${W / 2 - 2} -9s${W / 2 - 2} 3 ${W / 2 - 2} 9z" fill="#1d1712"/><path d="M${L - 4} ${top + 2}l4-1M${L + W + 4} ${top + 2}l-4-1" stroke="#1d1712" stroke-width="1.6"/>`;
   if (culture === 'greek') return royal ? `<path d="M${L + 1} ${top + 4}c0-8 ${W / 2 - 1} -11 ${W / 2 - 1} -11s${W / 2 - 1} 3 ${W / 2 - 1} 11z" fill="${gold}"/>${jewel(32, top - 2, '#27466e')}${jewel(L + 4, top + 1)}${jewel(L + W - 4, top + 1)}<path d="M${L + 1} ${top + 4}v9M${L + W - 1} ${top + 4}v9" stroke="${gold}" stroke-width="1.2" stroke-dasharray="1.5 1"/>` : `<path d="M${L + 1} ${top + 5}c0-7 ${W / 2 - 1} -9 ${W / 2 - 1} -9s${W / 2 - 1} 2 ${W / 2 - 1} 9z" fill="${hair}"/>${heir ? `<path d="M${L + 2} ${top + 2}q${W / 2 - 2} -4 ${W - 4} 0" fill="none" stroke="${gold}" stroke-width="1.6"/>` : ''}`;
   if (WEST.has(culture)) {

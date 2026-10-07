@@ -2,7 +2,7 @@
 // month can be replayed exactly from the same state and the same inputs. Decisions come in three ways, all checked
 // by the same rules: the brain (doctrine.js, or the AI later), and inputs (players, AI answers, AI plans).
 import { RULES as R } from './rules.js';
-import { PROVINCES, PROV, LAND, rngFor, living, provincesOf, armiesOf, armiesChanged, realmsChanged, setOwner, key, newChar, newArmy, round1, clamp, dateText, yearOf, ofR, vb, cityOf } from './core.js';
+import { PROVINCES, PROV, LAND, placeOf, yearLabel, rngFor, living, provincesOf, armiesOf, armiesChanged, realmsChanged, setOwner, key, newChar, newArmy, round1, clamp, dateText, yearOf, ofR, vb, cityOf } from './core.js';
 import { economy, prosperity, incomeOf, suppliesOf } from './economy.js';
 import { march, battles, sieges, weatherToll, fall, homeless } from './war.js';
 import { court, settleDecisions, setupCourt } from './court.js';
@@ -11,8 +11,9 @@ import { world, realSkies } from './world.js';
 import { act, applyAnswers, treaty } from './acts.js';
 import { cultureOf, personName, kingdomName, titleFor, pickTemper, temperFromTraits, isWomanName } from './names.js';
 import AGE_1200 from './ages/1200.js';
+import AGE_ANCIENT from './ages/ancient.js';
 
-export const AGES = { 1200: AGE_1200 };
+export const AGES = { 1200: AGE_1200, ancient: AGE_ANCIENT };
 export const ENGINE = 3; // bump when a change to the rules would make old records replay differently
 export * from './core.js';
 export { wealthOf, yieldOf, suppliesOf, yearlyGrain, rations, cavalryOf, garrisonOf, wallPower, strength, manpower, incomeOf, prosperityOf, steersman, rulingTemper, knows, canBuild, tradeOpen, treatiesOf, pairTreaties } from './economy.js';
@@ -29,13 +30,13 @@ export function newAge(age = 1, ageId = '1200') {
   const s = {
     v: 2, age, ageId, startYear: pack.start, months: pack.months, month: 0, nextId: 1, status: 'running', winner: null, endReason: null,
     provinces: {}, realms: {}, chars: {}, armies: {}, groups: {}, wars: {}, allies: {}, truces: {}, conflicts: {}, battles: {}, treaties: {}, deeds: {}, kin: {},
-    pending: [], answers: [], roads: pack.roads, inventions: pack.inventions, names: pack.names ?? null, trade: {},
+    pending: [], answers: [], roads: pack.roads, inventions: pack.inventions, names: pack.names ?? null, cultures: pack.cultures ?? null, trade: {},
     record: { genghis: null, founded: 0, fallen: 0, assassinations: 0, battles: 0, captures: 0, revolts: 0, splits: 0, unions: 0 },
   };
   const female = new Set(pack.female ?? []);
   for (const p of PROVINCES) {
     const o = pack.provinces?.[p.id] ?? {};
-    const owner = o.owner !== undefined ? o.owner : p.owner ?? null;
+    const owner = o.owner !== undefined ? o.owner : pack.provinces ? null : p.owner ?? null; // an age that names its owners leaves the rest free
     s.provinces[p.id] = { owner, loyalty: p.loyalty ?? (owner ? 62 : 55), walls: o.walls ?? p.walls, conquered: 0, ravaged: 0, plague: 0, famine: 0, siege: null, prosperity: R.prosperity.start + (p.wealth - 3) * 3, works: {}, building: null };
     s.deeds[p.id] = owner ? [{ realm: owner, m: 0, how: 'start' }] : [];
   }
@@ -43,7 +44,7 @@ export function newAge(age = 1, ageId = '1200') {
     const P = pack.people?.[r.id] ?? {};
     s.realms[r.id] = {
       id: r.id, name: r.name, short: r.short, plural: !!r.plural, color: r.color, capital: r.capital, ai: !!r.ai, nomad: !!r.nomad, agents: !!r.agents, overlord: r.overlord ?? null,
-      gold: 0, tax: 'normal', ruler: null, heir: null, power: null, origin: 'historic', founded: 0, fallen: false, plan: null, culture: cultureOf(r.capital), fa: r.fa, elective: !!r.elective,
+      gold: 0, tax: 'normal', ruler: null, heir: null, power: null, origin: 'historic', founded: 0, fallen: false, plan: null, culture: cultureOf(r.capital, s), fa: r.fa, elective: !!r.elective,
       rep: R.reputation.start, known: Object.entries(pack.known ?? {}).filter(([, who]) => who.includes(r.id)).map(([k]) => k), learning: 0, fortune: [], golden: null, reforms: [], regent: null, vizier: null,
     };
     const realm = s.realms[r.id];
@@ -60,7 +61,7 @@ export function newAge(age = 1, ageId = '1200') {
     for (const g0 of generals) {
       const g = named(g0);
       const heirGeneral = g.heir && realm.heir && s.chars[realm.heir].name === g.name;
-      const gid = heirGeneral ? realm.heir : newChar(s, { name: g.name, title: g.title, role: 'general', realm: r.id, born: 1150 + Math.floor(rng() * 30), traits: g.traits, skill: g.skill, invented: g.invented, temper: P.generals?.[g.name] ?? pickTemper(rng, R.temper.general), culture: realm.culture, famous: !g.invented });
+      const gid = heirGeneral ? realm.heir : newChar(s, { name: g.name, title: g.title, role: 'general', realm: r.id, born: g.born ?? pack.start - 50 + Math.floor(rng() * 30), traits: g.traits, skill: g.skill, invented: g.invented, temper: P.generals?.[g.name] ?? pickTemper(rng, R.temper.general), culture: realm.culture, famous: !g.invented });
       if (heirGeneral) s.chars[gid].skill = g.skill;
       const at = s.provinces[g.at]?.owner === r.id ? g.at : r.capital;
       newArmy(s, r.id, gid, at, Math.max(R.armies.minSize, round1((R.armies.startPerWealth * wealth) / generals.length)));
@@ -114,7 +115,7 @@ export function tick(s0, brain, inputs = {}, { inPlace = false } = {}) {
 
   for (const [id, p] of Object.entries(inputs.personas ?? {})) if (s.chars[id]) s.chars[id].persona = p; // written by the AI cast
   if (inputs.skies) realSkies(s, inputs.skies, emit);
-  if (s.month === 0) emit('age.started', `The year ${yearOf(0, s)}. ${living(s).length} realms share the Old World.`);
+  if (s.month === 0) emit('age.started', `The year ${yearLabel(yearOf(0, s))}. ${living(s).length} realms share the Old World.`);
   settleDecisions(s, inputs, brain, rng('decide'), emit);
   applyAnswers(s, rng('answers'), emit);
   plans(s, rng('plan'), emit, brain, inputs);
@@ -156,8 +157,8 @@ function settle(s, rng, emit) {
     if (!n && homeless(s, r.id)) continue; // a horde without a city still rides
     if (!n) { fall(s, r.id, emit, r.rebel ? `The ${r.name} is crushed` : `${r.name} ${vb(s, r.id, 'is')} no more`); continue; }
     if (r.rebel && s.month - r.founded >= R.rebels.foundAfter && (n >= R.rebels.minProvinces || s.month - r.founded >= R.rebels.foundAfter * 2)) {
-      const culture = cultureOf(r.capital), leader = s.chars[r.ruler];
-      Object.assign(r, { rebel: false, plural: false, name: kingdomName(culture, PROV[r.capital].name), short: PROV[r.capital].name, origin: 'founded', founded: s.month });
+      const culture = cultureOf(r.capital, s), leader = s.chars[r.ruler];
+      Object.assign(r, { rebel: false, plural: false, name: kingdomName(culture, placeOf(s, r.capital)), short: placeOf(s, r.capital), origin: 'founded', founded: s.month });
       if (leader) Object.assign(leader, { title: titleFor(culture), landAtStart: n });
       s.record.founded++;
       emit('founded', `${leader?.name ?? 'The rebels'} proclaims the ${r.name}`, { realms: [r.id], at: r.capital, chars: [r.ruler] });
@@ -195,7 +196,7 @@ function ageEnd(s, emit) {
   const [top, n, withVassals] = counts[0] ?? [null, 0, 0];
   const months = s.months ?? R.months;
   if (n >= PROVINCES.length * R.unite.alone || withVassals >= PROVINCES.length * R.unite.withVassals) return end(s, top, `${s.realms[top].name} unites the Old World`, emit);
-  if (s.month >= months) return end(s, top, `The age ends in ${yearOf(s.month, s)}; ${s.realms[top].plural ? 'the ' : ''}${s.realms[top].name} ${vb(s, top, 'stands')} tallest, with ${n} provinces`, emit);
+  if (s.month >= months) return end(s, top, `The age ends in ${yearLabel(yearOf(s.month, s))}; ${ofR(s, top)} ${vb(s, top, 'stands')} tallest, with ${n} provinces`, emit);
 }
 
 function end(s, winner, reason, emit) {

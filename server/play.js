@@ -3,7 +3,7 @@
 // they ask, by the AI. n8n carries the heralds (great events to Discord), the players' reminders, a daily digest,
 // and the real sky over the great capitals into the game.
 import { RULES as R } from '../web/silk/rules.js';
-import { living, provincesOf, steersman, PROV, isGreat, dateText, yearOf, cityOf } from '../web/silk/engine.js';
+import { living, provincesOf, steersman, PROV, isGreat, dateText, yearOf, cityOf, AGES } from '../web/silk/engine.js';
 import { clean } from './agent.js';
 
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'content-type': 'application/json', 'cache-control': 'no-store' };
@@ -35,7 +35,7 @@ export async function play(era, req, p, url) {
     if (era.meta?.game) return json(400, { error: 'games are made from the living world' });
     const pace = PACES[body.pace] ?? PACES.hour, name = clean(body.name, 8).slice(0, 40) || 'A game of kings';
     const id = newToken().slice(0, 10);
-    const res = await era.env.ERA.get(era.env.ERA.idFromName(`game:${id}`)).fetch('https://era/internal/era/start', { method: 'POST', headers: { 'x-realm-secret': era.env.REALM_SECRET ?? '', 'content-type': 'application/json' }, body: JSON.stringify({ pace, game: { id, name }, ageId: '1200' }) });
+    const res = await era.env.ERA.get(era.env.ERA.idFromName(`game:${id}`)).fetch('https://era/internal/era/start', { method: 'POST', headers: { 'x-realm-secret': era.env.REALM_SECRET ?? '', 'content-type': 'application/json' }, body: JSON.stringify({ pace, game: { id, name }, ageId: AGES[body.age] ? body.age : '1200' }) });
     if (!res.ok) return json(503, { error: 'the game could not be started' });
     era.put('games', [{ id, name, pace, created: Date.now() }, ...(era.get('games') ?? [])].slice(0, 50));
     return json(200, { id, name, pace, url: `/?game=${id}` });

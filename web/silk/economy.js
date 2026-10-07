@@ -1,7 +1,7 @@
 // What a realm lives on: gold, grain, horses and iron; how prosperous each province is; the caravans of the Silk
 // Road, which pay only along its open stretches; and the works rulers build.
 import { RULES as R } from './rules.js';
-import { PROV, PROVINCES, provincesOf, armiesOf, menOf, living, atWar, harvestOf, weatherOf, clamp, round1, rngFor, newChar, newArmy, say, poss, nameOf, cityOf, usedNames, yearOf, key, menText } from './core.js';
+import { PROV, PROVINCES, onRoad, provincesOf, armiesOf, menOf, living, atWar, harvestOf, weatherOf, clamp, round1, rngFor, newChar, newArmy, say, poss, nameOf, cityOf, usedNames, yearOf, key, menText } from './core.js';
 import { personName, pickTemper } from './names.js';
 
 const T = (s, c, role, k) => R.temper[role]?.[s.chars[c]?.temper]?.[k];
@@ -89,7 +89,7 @@ export function incomeOf(s, id) {
   for (const p of provincesOf(s, id)) {
     const q = s.provinces[p.id];
     g += wealthOf(s, p.id) * R.economy.perWealth * (q.loyalty / 100) * tax * (q.works?.market ? 1 + R.works.market.gold : 1)
-      + (p.silk ? R.economy.trade * (s.trade?.[p.id] ?? 0) + (q.works?.caravanserai ? R.works.caravanserai.trade : 0) : 0)
+      + (onRoad(s, p.id) ? R.economy.trade * (s.trade?.[p.id] ?? 0) + (q.works?.caravanserai ? R.works.caravanserai.trade : 0) : 0)
       + (r.nomad && ['steppe', 'desert', 'mountains', 'forest'].includes(p.terrain) ? R.economy.nomad.herds : 0);
   }
   const vizier = s.chars[r.vizier];
@@ -196,7 +196,7 @@ export function prosperity(s) {
     if (!r) { q.prosperity = round1((q.prosperity ?? P.start) + (P.start - 10 - (q.prosperity ?? P.start)) * P.drift); continue; }
     const atWarNow = Object.keys(s.wars).some((k) => k.split('|').includes(r.id));
     let target = P.start + (atWarNow ? P.war : P.peace) + (r.capital === pr.id ? P.capital : 0) + P.perWork * Object.keys(q.works ?? {}).length + (P.tax[r.tax] ?? 0)
-      + (pr.silk ? P.trade * (s.trade?.[pr.id] ?? 0) : 0) + (q.conquered < -5 ? P.conquered : 0) + (r.golden && r.golden > s.month ? P.golden : 0);
+      + (onRoad(s, pr.id) ? P.trade * (s.trade?.[pr.id] ?? 0) : 0) + (q.conquered < -5 ? P.conquered : 0) + (r.golden && r.golden > s.month ? P.golden : 0);
     if (q.siege) target += P.siege;
     if ((armiesAt[pr.id] ?? []).some((a) => atWar(s, a.realm, q.owner))) target += P.enemyArmy;
     if (q.ravaged > 0) target += P.ravaged;
@@ -215,7 +215,7 @@ export function canBuild(s, id, pid, kind) {
   const W = R.works[kind], q = s.provinces[pid], P = PROV[pid], r = s.realms[id];
   if (!W || q.owner !== id || q.works?.[kind] || q.building || q.siege || r.gold < W.cost + 10) return false;
   if (W.terrain && !W.terrain.includes(P.terrain)) return false;
-  if (W.silk && !P.silk) return false;
+  if (W.silk && !onRoad(s, pid)) return false;
   if (W.wealth && P.wealth < W.wealth) return false;
   return true;
 }

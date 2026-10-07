@@ -49,7 +49,8 @@ export { pick };
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const startYear = (s) => s?.startYear ?? R.start.year;
 export const yearOf = (m, s) => startYear(s) + Math.floor(m / 12);
-const yearText = (y) => (y < 0 ? `${-y} BC` : `${y}`);
+export const yearLabel = (y) => (y < 0 ? `${-y} BC` : `${y}`);
+const yearText = yearLabel;
 export const dateText = (m, s) => `${MONTHS[m % 12]} ${yearText(yearOf(m, s))}`;
 export const isWinter = (m) => R.winter.includes(m % 12);
 export const seasonName = (m) => ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter'][m % 12];
@@ -130,6 +131,15 @@ export function hops(from) {
   return (HOPS[from] = d);
 }
 
+// The roads of the age (the Silk Road in 1200, the Royal Road in 200 BC...): which provinces stand on them.
+const ROADSET = new WeakMap();
+export function onRoad(s, pid) {
+  let set = ROADSET.get(s.roads ?? EMPTY);
+  if (!set) ROADSET.set(s.roads ?? EMPTY, (set = new Set((s.roads ?? []).flat())));
+  return set.has(pid);
+}
+const EMPTY = [];
+
 // ---------- words ----------
 export const cityOf = (s, pid) => s.names?.[pid]?.city ?? PROV[pid].city;
 export const placeOf = (s, pid) => s.names?.[pid]?.name ?? PROV[pid].name;
@@ -142,6 +152,7 @@ export const vb = (s, id, verb) => (s.realms[id]?.plural || id === null ? verb.r
 export const poss = (name) => (name.endsWith('s') ? `${name}'` : `${name}'s`);
 export const say = (s, id, verb) => `${short(s, id)} ${vb(s, id, verb)}`;
 export const his = (c) => (c?.female ? 'her' : 'his');
+export const him = (c) => (c?.female ? 'her' : 'him');
 export const he = (c) => (c?.female ? 'she' : 'he');
 export const fullName = (c) => (c ? `${c.title ? `${c.title} ` : ''}${c.name}${c.epithet ? ` ${c.epithet}` : ''}` : 'someone');
 export const nameOf = (s, id) => (id && s.chars[id] ? fullName(s.chars[id]) : 'an unknown captain');
@@ -154,7 +165,7 @@ export const months = (n) => `${n} ${n === 1 ? 'month' : 'months'}`;
 export function newChar(s, c) {
   const id = `c${s.nextId++}`;
   s.chars[id] = {
-    id, name: c.name, title: c.title ?? null, role: c.role, realm: c.realm, born: c.born ?? 1170, traits: c.traits ?? [], temper: c.temper ?? null, skill: c.skill ?? 3,
+    id, name: c.name, title: c.title ?? null, role: c.role, realm: c.realm, born: c.born ?? (s.startYear ?? 1200) - 30, traits: c.traits ?? [], temper: c.temper ?? null, skill: c.skill ?? 3,
     loyalty: c.loyalty ?? 70, alive: true, died: null, cause: null, female: !!c.female, invented: !!c.invented, since: c.since ?? null, relation: c.relation ?? null,
     parent: c.parent ?? null, parentId: c.parentId ?? null, spouse: null, kids: [], family: c.family ?? null, culture: c.culture ?? null, epithet: c.epithet ?? null,
     deeds: { wins: 0, losses: 0, captures: 0, works: 0, purges: 0 }, army: null, famous: c.famous ?? null,
@@ -177,7 +188,7 @@ export function newRealm(s, rng, { name, short: sh, capital, ruler, origin, colo
   const id = `${origin}${s.nextId++}`;
   s.realms[id] = {
     id, name, short: sh, plural, color: color ?? colorFor(rng), capital, ai: false, nomad, agents: false, overlord: null, gold: 10, grain: 10, horses: 2, iron: 4, tax: 'normal', ruler, heir: null,
-    power: null, origin, founded: s.month, fallen: false, plan: null, rebel, cause, culture: cultureOf(capital), fa: s.names?.[capital]?.fa ?? PROV[capital].fa, lineage: [],
+    power: null, origin, founded: s.month, fallen: false, plan: null, rebel, cause, culture: cultureOf(capital, s), fa: s.names?.[capital]?.fa ?? PROV[capital].fa, lineage: [],
     dynasty: ruler ? `House of ${s.chars[ruler].name}` : null, elective, rep: R.reputation.start, known: [], learning: 0, fortune: [], golden: null, reforms: [], regent: null, vizier: null,
   };
   if (ruler) Object.assign(s.chars[ruler], { realm: id, role: 'ruler', since: yearOf(s.month, s), family: s.realms[id].dynasty });
