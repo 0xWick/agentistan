@@ -5,6 +5,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newAge, tick, frame, ENGINE } from '../web/silk/engine.js';
 import { brain } from '../web/silk/doctrine.js';
+import { makeCast } from './cast.js';
 
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' };
 const json = (status, body, cache = 'no-store') => new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': cache } });
@@ -22,9 +23,12 @@ export class Era extends DurableObject {
     super(ctx, env);
     this.sql = ctx.storage.sql;
     this.hits = new Map();
-    this.hooks = []; // after each month: the AI cast, the heralds, the chain (added by later parts)
+    this.hooks = []; // after each month: the AI cast, the heralds, the chain
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
-    ctx.blockConcurrencyWhile(async () => this.load());
+    ctx.blockConcurrencyWhile(async () => {
+      this.load();
+      if (env.LLM_API_KEY && env.CAST !== 'off') this.hooks.push(makeCast(env, this));
+    });
   }
 
   load() {

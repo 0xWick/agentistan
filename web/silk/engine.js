@@ -137,10 +137,8 @@ export function tick(s0, brain, inputs = {}) {
 // ---------- plans: what each ruler means to do, and the acts that follow ----------
 function plans(s, rng, emit, brain, inputs) {
   for (const r of living(s)) {
-    if (!r.plan || r.plan.until <= s.month) {
-      r.plan = brain.planFor(s, r.id, rng);
-      if (inputs.plans?.[r.id]) Object.assign(r.plan, inputs.plans[r.id], { by: inputs.plans[r.id].by ?? 'ai' });
-    }
+    if (!r.plan || r.plan.until <= s.month) r.plan = brain.planFor(s, r.id, rng);
+    if (inputs.plans?.[r.id]) Object.assign(r.plan, inputs.plans[r.id], { by: inputs.plans[r.id].by ?? 'ai' }); // the AI or a player sets the course
     const p = r.plan;
     r.tax = r.charter > s.month && p.tax === 'high' ? 'normal' : p.tax ?? 'normal';
     const todo = [...(p.acts ?? []), ...(inputs.acts?.[r.id] ?? [])];

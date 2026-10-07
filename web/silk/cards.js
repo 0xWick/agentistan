@@ -111,6 +111,7 @@ function realm(id) {
     r.tax === 'high' ? 'Taxes are heavy' : r.tax === 'low' ? 'Taxes eased to calm the people' : null,
     r.charter > st.month ? 'Bound by a charter: no heavy taxes' : null,
   ].filter(Boolean);
+  const said = p.said ? `<p class="voice">“${esc(p.said)}”</p>` : '';
   const past = (r.lineage ?? []).slice().reverse();
   const word = r.rep ?? 60;
   return `<div class="who"><i class="shield big" style="--c:${r.color}"></i>${r.rebel ? 'A rebellion' : r.origin === 'historic' ? 'A power of 1200' : r.origin === 'commune' ? 'A free city' : `Founded ${yearOf(r.founded, st)}`}${r.golden > st.month ? `<span class="badge gold">${icon('sun')} Golden age</span>` : pros < 30 ? `<span class="badge poor">${icon('wheat')} Poverty</span>` : ''}</div>
@@ -144,7 +145,7 @@ function realm(id) {
     ${friends.length ? `<div class="row">${icon('rings')}<span>Friends</span> ${friends.map(chip).join('')}</div>` : ''}
     ${tr.length ? `<div class="row">${icon('coin')}<span>Tribute</span> ${tr.map((t) => `${t.pay.from === id ? 'pays' : 'receives'} ${t.pay.gold} a month ${t.pay.from === id ? 'to' : 'from'} ${chip(t.pay.from === id ? t.pay.to : t.pay.from)}`).join('; ')}</div>` : ''}
     ${generals.length ? `<div class="row gens">${icon('helmet')}<span>Generals</span> ${generals.slice(0, 5).map((g) => personChip(g)).join('')}</div>` : ''}
-    ${thoughts.length ? `<div class="mind"><b>${icon('eye')} In the ruler's mind</b>${thoughts.join('. ')}.</div>` : ''}
+    ${thoughts.length || said ? `<div class="mind"><b>${icon('eye')} In the ruler's mind</b>${thoughts.join('. ')}.${said}</div>` : ''}
     ${past.length ? `<details class="lineage"><summary>${icon('scroll')} The ${esc(r.dynasty ?? 'line')}: ${past.length} before</summary><ol>${past.map((l) => `<li><span>${esc(l.name)}${l.epithet ? ` <i>${esc(l.epithet)}</i>` : ''}</span><small>${l.since}–${l.until}</small>${l.cause && END[l.cause] ? `<i title="${esc(l.cause)}">${icon(END[l.cause])}</i>` : ''}</li>`).join('')}</ol></details>` : ''}`;
 }
 

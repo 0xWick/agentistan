@@ -117,7 +117,7 @@ export function plan(s, id, rng) {
 
 // The work that would do a realm the most good: a caravanserai on a busy road, a canal on rich fields, a market in
 // a rich town, a library in the capital.
-function bestWork(s, id) {
+export function bestWork(s, id) {
   const r = s.realms[id], options = [];
   for (const p of provincesOf(s, id)) {
     for (const kind of Object.keys(R.works)) {

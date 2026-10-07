@@ -507,7 +507,7 @@ function feed(events) {
     if (!worth(e)) continue;
     const [ic, color] = kindOf(e);
     const li = document.createElement('li');
-    li.innerHTML = `<span style="color:${color}">${icon(ic)}</span><span class="t">${esc(e.text)}<span class="d">${esc(e.date)}</span></span>`;
+    li.innerHTML = `<span style="color:${color}">${icon(ic)}</span><span class="t">${esc(e.text)}${e.said ? ` <q>${esc(e.said)}</q>` : ''}<span class="d">${esc(e.date)}</span></span>`;
     if (e.at) li.dataset.at = e.at;
     if (e.war) li.dataset.war = e.war;
     else if (e.chars?.[0] && ['death', 'crowned', 'birth', 'epithet', 'marriage', 'regency', 'turncoat', 'intrigue'].includes(e.type) && s.chars[e.chars[0]]) li.dataset.char = e.chars[0];

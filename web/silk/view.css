@@ -452,3 +452,4 @@ dialog.event::backdrop { background: rgba(43, 33, 22, 0.42); }
 .link { border: 0; background: none; padding: 0; font: 600 12px var(--kufi); color: var(--lapis); text-decoration: underline; cursor: pointer; }
 .powers { top: 172px; max-height: calc(100dvh - 272px); }
 @media (max-width: 760px) { .powers { top: 146px; } .title .live { font-size: 11px; } }
+.feed q { font-style: italic; color: var(--ink-soft); }
