@@ -1,5 +1,5 @@
 // The living map: the Silk Road world, simulated month by month right here in the browser, drawn like an old map.
-import { newAge, tick, PROVINCES, PROV, living, provincesOf, armiesOf, dateText, yearOf, atWar, friendly, yieldOf, cavalryOf } from './engine.js';
+import { newAge, tick, PROVINCES, PROV, living, provincesOf, armiesOf, dateText, yearOf, atWar, friendly, yieldOf, cavalryOf, rations, isWinter } from './engine.js';
 import { brain } from './doctrine.js';
 import { RULES } from './rules.js';
 
@@ -445,6 +445,7 @@ function closeCard() {
 }
 const pips = (n, max) => `<span class="pips">${Array.from({ length: max }, (_, i) => `<span class="${i < n ? '' : 'off'}">●</span>`).join('')}</span>`;
 const age_ = (c) => (c ? yearOf(s.month) - c.born : '');
+const months = (n) => `${n} ${n === 1 ? 'month' : 'months'}`;
 const sign = (n) => `${(n ?? 0) >= 0 ? '+' : '−'}${Math.abs(Math.round(n ?? 0))}`;
 const chip = (id) => `<span class="chip" data-realm="${id}"><i class="shield" style="--c:${colorOf(id)}"></i>${esc(s.realms[id]?.short ?? id)}</span>`;
 
@@ -464,9 +465,38 @@ function refreshCard() {
         <span class="stat" title="Terrain">${icon('hill')}${esc(p.terrain)}</span>
       </div>
       <div class="gives">${(() => { const y = yieldOf(s, card.id); return [['wheat', y.grain, 'grain'], ['horse', y.horses, 'horses'], ['anvil', y.iron, 'iron']].filter(([, v]) => v > 0).map(([i, v, w]) => `<span title="${w} a month">${icon(i)}${Math.round(v * 10) / 10}</span>`).join(''); })()}<small>a month</small></div>
-      ${q.siege ? `<div class="row" style="color:var(--vermilion)">${icon('tower', 'i')} Besieged by ${chip(q.siege.realm)} · ${q.siege.left} months</div>` : ''}
+      ${q.siege ? `<div class="row" style="color:var(--vermilion)">${icon('tower', 'i')} Besieged by ${chip(q.siege.realm)} · ${months(q.siege.left)}</div>` : ''}
       ${here.length ? `<div class="row">${icon('banner')} ${here.map((a) => `${chip(a.realm)} ${Math.round(a.size)}k`).join(' ')}</div>` : ''}
       <p class="fact">${esc(p.fact)}</p>`;
+  } else if (card.kind === 'army') {
+    // One army: who leads it, what it is doing, what it costs to feed, and what it has done.
+    const a = s.armies[card.id];
+    if (!a) return closeCard();
+    const r = s.realms[a.realm], g = s.chars[a.general], lead = leaderOf(a), P = PROV[a.at], n = a.path.length;
+    const doing = a.mode === 'siege' ? ['tower', `Besieging ${P.city} · ${months(s.provinces[a.at].siege?.left ?? 1)} to go`]
+      : a.mode === 'garrison' ? ['castle', `Holding the walls of ${P.city}`]
+      : a.rest > 0 ? ['swords', `Recovering from battle at ${P.city}`]
+      : n ? ['banner', `Marching on ${PROV[a.path[n - 1]].city} · ${n} ${n === 1 ? 'province' : 'provinces'} to go`]
+      : isWinter(s.month) && !r.nomad ? ['wheat', `In winter quarters at ${P.city}`]
+      : ['banner', `Camped at ${P.city}`];
+    const deeds = [];
+    for (let m = s.month - 1; g && m >= 0 && deeds.length < 4; m--) for (const e of [...(story.events[m] ?? [])].reverse()) if (deeds.length < 4 && kindOf(e)[2] && e.chars?.includes(g.id)) deeds.push(e);
+    c.innerHTML = `<button class="x" aria-label="Close">×</button>
+      <div class="who">${chip(a.realm)}<span>${lead === 'crown' ? 'The ruler leads in person' : lead === 'circlet' ? 'Led by the heir' : 'An army in the field'}</span></div>
+      <div class="king">
+        <span class="medal" style="--c:${r.color}">${icon(lead)}</span>
+        <span><b>${esc(g ? `${g.title ?? ''} ${g.name}`.trim() : 'No commander')}</b>
+          <small>${g ? `aged ${age_(g)}${g.invented ? ' · invented by this age' : ''}` : 'its general has fallen'}</small></span>
+      </div>
+      ${g ? `<div class="stats"><span class="stat" title="Skill in war">${icon('swords')}${pips(g.skill, 5)}</span>${g.traits.map((t) => `<span class="trait">${esc(t)}</span>`).join('')}</div>` : ''}
+      <div class="stores four">
+        <span title="Soldiers">${icon('banner')}<b>${Math.round(a.size * 10) / 10}k</b><small>soldiers</small></span>
+        <span title="Share that rides">${icon('horse')}<b>${Math.round(cavalryOf(s, a.realm) * 100)}%</b><small>ride</small></span>
+        <span title="Grain this army eats each month">${icon('wheat')}<b>${Math.round(rations(s, a) * 10) / 10}</b><small>grain a month</small></span>
+        <span title="Spirit: battles won lift it, defeats and hunger sink it">${icon('flame')}<b>${Math.round(a.morale * 100)}%</b><small>spirit</small></span>
+      </div>
+      <div class="row doing">${icon(doing[0])}${esc(doing[1])}</div>
+      ${deeds.length ? `<ol class="deeds">${deeds.map((e) => `<li><span style="color:${kindOf(e)[1]}">${icon(kindOf(e)[0])}</span><span>${esc(e.text)}<small>${esc(e.date)}</small></span></li>`).join('')}</ol>` : ''}`;
   } else if (card.kind === 'realm') {
     const r = s.realms[card.id];
     if (!r) return closeCard();
@@ -696,8 +726,8 @@ function click(e) {
   const realm = t?.closest('[data-realm]')?.dataset.realm;
   const army = t?.closest('[data-army]')?.dataset.army;
   const prov = t?.closest('.prov')?.dataset.id;
+  if (army && s.armies[army]) return openCard('army', army, { x: e.clientX, y: e.clientY });
   if (realm) return openCard('realm', realm, { x: e.clientX, y: e.clientY });
-  if (army && s.armies[army]) return openCard('realm', s.armies[army].realm, { x: e.clientX, y: e.clientY });
   if (prov) return openCard('province', prov, { x: e.clientX, y: e.clientY });
   closeCard();
 }
@@ -778,8 +808,7 @@ function wire() {
   addEventListener('keydown', (e) => {
     if (e.key === ' ' && !e.target.closest('button, a, input, textarea')) { e.preventDefault(); playPause(); }
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.target.closest('input, textarea')) step((e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 12 : 1));
-    if (e.key === 'Escape') { closeCard(); $('#ask').hidden = true; }
-    if (e.key === 'Escape') closeCard();
+    if (e.key === 'Escape') { closeCard(); toggleAsk(false); }
   });
   for (const y of [1200, 1210, 1220, 1230, 1240, 1250]) {
     const t = document.createElement('span');

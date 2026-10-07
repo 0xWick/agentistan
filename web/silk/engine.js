@@ -57,6 +57,8 @@ const short = (s, id) => (id ? s.realms[id]?.short ?? id : 'the locals');
 const plural = (w) => ({ has: 'have', is: 'are' })[w] ?? w.replace(/(sh|ch|ss|x)es$/, '$1').replace(/([^s])s$/, '$1');
 const vb = (s, id, verb) => (s.realms[id]?.plural || id === null ? verb.replace(/^\S+/, plural) : verb);
 const poss = (name) => (name.endsWith('s') ? `${name}'` : `${name}'s`);
+// "of the Ghurids", "of Khwarazm".
+const ofR = (s, id) => (s.realms[id]?.plural ? `the ${short(s, id)}` : short(s, id));
 const say = (s, id, verb) => `${short(s, id)} ${vb(s, id, verb)}`;
 const nameOf = (s, c) => (c ? `${s.chars[c]?.title ? `${s.chars[c].title} ` : ''}${s.chars[c]?.name ?? 'someone'}` : 'an unknown captain');
 const ageOf = (s, c) => yearOf(s.month) - (s.chars[c]?.born ?? yearOf(s.month));
@@ -269,7 +271,7 @@ function plans(s, rng, emit, planFor) {
     if (p.independence && r.overlord) {
       const was = r.overlord;
       r.overlord = null;
-      declareWar(s, r.id, was, emit, `${say(s, r.id, 'throws')} off the rule of ${short(s, was)}`);
+      declareWar(s, r.id, was, emit, `${say(s, r.id, 'throws')} off the rule of ${ofR(s, was)}`);
     }
     if (p.power && !r.power) { powerMove(s, r.id, p.power, rng, emit); p.power = null; } // once, not every month of the plan
     if (p.hire && !r.contract) { hire(s, r.id, p.hire, emit); p.hire = null; }
@@ -483,7 +485,8 @@ export function fight(s, rng, emit, A, D, pid, garrison = false) {
   const sideA = short(s, A.realm), sideD = garrison ? `the defenders of ${P.city}` : short(s, D.realm);
   const crushing = ratio < 0.6;
   const verb = (id, one) => (garrison && id === null ? one.replace(/(sh|ch)es$/, '$1').replace(/([^s])s$/, '$1') : vb(s, id, one));
-  emit('battle', won ? `${sideA} ${verb(A.realm, crushing ? 'crushes' : 'defeats')} ${sideD} at ${P.city}` : `${sideD} ${garrison ? (crushing ? 'crush' : 'beat back') : verb(D.realm, crushing ? 'crushes' : 'beats back')} ${sideA} at ${P.city}`,
+  const at = garrison ? '' : ` at ${P.city}`; // "the defenders of Herat" already says where
+  emit('battle', won ? `${sideA} ${verb(A.realm, crushing ? 'crushes' : 'defeats')} ${sideD}${at}` : `${sideD} ${garrison ? (crushing ? 'crush' : 'beat back') : verb(D.realm, crushing ? 'crushes' : 'beats back')} ${sideA}${at}`,
     { realms: [A.realm, garrison ? s.provinces[pid].owner : D.realm].filter(Boolean), at: pid, chars: [A.general, D.general, ...fallen].filter(Boolean), winner: won ? A.realm : garrison ? s.provinces[pid].owner : D.realm, sizes: [A.size, D.size] });
   if (!garrison) {
     if (L.size < R.armies.minSize) disband(s, L, emit, `${poss(short(s, L.realm))} army at ${P.city} is destroyed`);
@@ -655,7 +658,7 @@ function lives(s, rng, emit) {
       const old = yearOf(s.month) - (ruler?.born ?? 1170) > 58, relation = old && rng() < 0.5 ? pick(rng, ['brother', 'nephew', 'grandson']) : 'son';
       r.heir = newChar(s, { name: personName(rng, r.culture, usedNames(s)), role: 'heir', realm: r.id, born: relation === 'brother' ? (ruler?.born ?? 1170) + 4 : Math.max((ruler?.born ?? 1170) + 18, yearOf(s.month) - 20),
         traits: randomTraits(rng, 2), skill: 1 + Math.floor(rng() * 4), family: r.dynasty, relation, parent: ruler?.name });
-      emit('heir', `${nameOf(s, r.ruler)} of ${r.short} names ${s.chars[r.heir].name} heir`, { realms: [r.id], chars: [r.ruler, r.heir] });
+      emit('heir', `${nameOf(s, r.ruler)} of ${ofR(s, r.id)} names ${s.chars[r.heir].name} heir`, { realms: [r.id], chars: [r.ruler, r.heir] });
     }
   }
 }
@@ -668,7 +671,7 @@ export function die(s, id, cause, emit, rng, how) {
   const r = s.realms[c.realm];
   const age = yearOf(s.month) - c.born;
   const who = `${c.title ? `${c.title} ` : ''}${c.name}`;
-  const text = how ? `${who} of ${short(s, c.realm)} ${how}` : cause === 'age' ? `${who} of ${short(s, c.realm)} dies, aged ${age}` : `${who} of ${short(s, c.realm)} is killed`;
+  const text = how ? `${who} of ${ofR(s, c.realm)} ${how}` : cause === 'age' ? `${who} of ${ofR(s, c.realm)} dies, aged ${age}` : `${who} of ${ofR(s, c.realm)} is killed`;
   if (r && !r.fallen && r.ruler === id) {
     emit('death', text, { realms: [r.id], chars: [id], ruler: true, cause });
     succession(s, r.id, rng, emit);
@@ -693,7 +696,7 @@ function succession(s, id, rng, emit) {
     const title = s.chars[r.ruler]?.title ?? 'Lord';
     Object.assign(s.chars[chosen], { role: 'ruler', title, since: yearOf(s.month) });
     Object.assign(r, { ruler: chosen, heir: null, power: null, plan: null });
-    emit('crowned', `${s.chars[chosen].name} is chosen ${title} of ${r.short}`, { realms: [id], chars: [chosen] });
+    emit('crowned', `${s.chars[chosen].name} is chosen ${title} of ${ofR(s, r.id)}`, { realms: [id], chars: [chosen] });
     return;
   }
   let heir = r.heir && s.chars[r.heir]?.alive ? r.heir : null;
@@ -714,7 +717,7 @@ function succession(s, id, rng, emit) {
   r.heir = null;
   r.power = null; // a new reign may make its own power move
   r.plan = null;
-  emit('crowned', `${h.name} becomes ${title} of ${r.short}${weak ? ', but the court whispers' : ''}`, { realms: [id], chars: [heir] });
+  emit('crowned', `${h.name} becomes ${title} of ${ofR(s, r.id)}${weak ? ', but the court whispers' : ''}`, { realms: [id], chars: [heir] });
   if (provs.length < 4) return;
   for (const g of pretenders.slice(0, provs.length > 14 ? 2 : 1)) {
     if (chance(rng, p)) split(s, id, g.id, rng, emit);
@@ -738,7 +741,7 @@ function split(s, id, gid, rng, emit, why = 'breaks away') {
   s.wars[key(nid, id)] = { since: s.month };
   s.record.splits++;
   s.record.founded++;
-  emit('split', `${g.name} ${why} and founds the ${s.realms[nid].name}: ${taken.length} provinces of ${r.short} go with him`, { realms: [nid, id], at: seat, chars: [gid] });
+  emit('split', `${g.name} ${why} and founds the ${s.realms[nid].name}: ${taken.length} provinces of ${ofR(s, r.id)} go with him`, { realms: [nid, id], at: seat, chars: [gid] });
 }
 
 function plots(s, rng, emit) {
@@ -755,7 +758,7 @@ function plots(s, rng, emit) {
     if (ok) {
       s.record.assassinations++;
       die(s, t.id, 'assassin', emit, rng, `is struck down by ${c.by === 'alamut' ? 'the hidden agents of Alamut' : 'hired daggers'}${exposed && r.id !== 'alamut' ? `, paid by ${r.short}` : ''}`);
-    } else emit('plot', `A plot against ${nameOf(s, t.id)} of ${short(s, t.realm)} fails${exposed ? `: the trail leads to ${r.short}` : ''}`, { realms: [t.realm, ...(exposed ? [r.id] : [])], chars: [t.id] });
+    } else emit('plot', `A plot against ${nameOf(s, t.id)} of ${ofR(s, t.realm)} fails${exposed ? `: the trail leads to ${r.short}` : ''}`, { realms: [t.realm, ...(exposed ? [r.id] : [])], chars: [t.id] });
     if (exposed && t.realm && t.realm !== r.id) declareWar(s, t.realm, r.id, emit, `${say(s, t.realm, 'declares')} war on ${r.short} to avenge the plot`);
   }
   // The Lords of Alamut strike on their own account at whoever threatens them.
@@ -805,7 +808,7 @@ function betrayals(s, rng, emit) {
     const a = s.armies[c.army];
     if (a.at === r.capital || chance(rng, R.betrayal.coupShare * (troubled ? 1.3 : 0.6))) {
       const old = s.chars[r.ruler];
-      emit('coup', `${c.name} seizes the throne of ${r.short}${old ? `, overthrowing ${old.name}` : ''}`, { realms: [r.id], chars: [c.id, old?.id].filter(Boolean) });
+      emit('coup', `${c.name} seizes the throne of ${ofR(s, r.id)}${old ? `, overthrowing ${old.name}` : ''}`, { realms: [r.id], chars: [c.id, old?.id].filter(Boolean) });
       if (old) Object.assign(old, { alive: false, died: s.month, cause: 'overthrown' });
       endReign(s, r, 'overthrown');
       if (r.heir && s.chars[r.heir]) s.chars[r.heir].role = 'exile';
@@ -894,28 +897,28 @@ export function powerMove(s, id, kind, rng, emit) {
   if (kind === 'levy') {
     for (const a of armiesOf(s, id)) a.size = round1(a.size * 1.5);
     for (const p of mine) s.provinces[p.id].loyalty = Math.max(0, s.provinces[p.id].loyalty - 10);
-    emit('power', `${who} of ${r.short} calls a Great Levy: every village sends its sons`, { realms: [id], chars: [r.ruler], power: kind });
+    emit('power', `${who} of ${ofR(s, r.id)} calls a Great Levy: every village sends its sons`, { realms: [id], chars: [r.ruler], power: kind });
   } else if (kind === 'walls') {
     const frontier = mine.filter((p) => p.neighbors.some((n) => s.provinces[n].owner !== id)).sort((a, b) => b.wealth - a.wealth)[0];
     for (const p of [s.provinces[r.capital], frontier && s.provinces[frontier.id]].filter(Boolean)) p.walls = Math.min(4, p.walls + 1);
-    emit('power', `${who} of ${r.short} raises Mighty Walls around ${PROV[r.capital].city}${frontier ? ` and ${frontier.city}` : ''}`, { realms: [id], chars: [r.ruler], power: kind, at: r.capital });
+    emit('power', `${who} of ${ofR(s, r.id)} raises Mighty Walls around ${PROV[r.capital].city}${frontier ? ` and ${frontier.city}` : ''}`, { realms: [id], chars: [r.ruler], power: kind, at: r.capital });
   } else if (kind === 'bribe') {
     const t = mine.flatMap((p) => p.neighbors).filter((n) => s.provinces[n].owner !== id && s.provinces[n].loyalty < 55 && s.realms[s.provinces[n].owner]?.capital !== n).sort((a, b) => PROV[b].wealth - PROV[a].wealth)[0];
     if (!t || r.gold < 40) return false;
     r.gold -= 40;
     const old = s.provinces[t].owner;
     Object.assign(s.provinces[t], { owner: id, loyalty: 45, siege: null });
-    emit('power', `${who} of ${r.short} bribes the governor of ${PROV[t].city}, who opens the gates${old ? ` to spite ${short(s, old)}` : ''}`, { realms: [id, old].filter(Boolean), chars: [r.ruler], power: kind, at: t });
+    emit('power', `${who} of ${ofR(s, r.id)} bribes the governor of ${PROV[t].city}, who opens the gates${old ? ` to spite ${short(s, old)}` : ''}`, { realms: [id, old].filter(Boolean), chars: [r.ruler], power: kind, at: t });
     if (old && s.realms[old] && !provincesOf(s, old).length) fall(s, old, emit, `${s.realms[old].name} ${vb(s, old, 'is')} no more`);
   } else if (kind === 'feast') {
     for (const p of mine) s.provinces[p.id].loyalty = Math.min(100, s.provinces[p.id].loyalty + 20);
-    emit('power', `${who} of ${r.short} holds a Royal Feast: the people cheer their ruler`, { realms: [id], chars: [r.ruler], power: kind });
+    emit('power', `${who} of ${ofR(s, r.id)} holds a Royal Feast: the people cheer their ruler`, { realms: [id], chars: [r.ruler], power: kind });
   } else if (kind === 'silktax') {
     const silk = mine.filter((p) => p.silk);
     if (!silk.length) return false;
     r.gold = round1(r.gold + 20 * silk.length);
     for (const p of silk) s.provinces[p.id].loyalty = Math.max(0, s.provinces[p.id].loyalty - 12);
-    emit('power', `${who} of ${r.short} levies a Silk Tax on the caravans: ${20 * silk.length} gold, and angry merchants`, { realms: [id], chars: [r.ruler], power: kind });
+    emit('power', `${who} of ${ofR(s, r.id)} levies a Silk Tax on the caravans: ${20 * silk.length} gold, and angry merchants`, { realms: [id], chars: [r.ruler], power: kind });
   }
   r.power = kind;
   return true;

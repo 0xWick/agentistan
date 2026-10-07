@@ -17,6 +17,7 @@
   color-scheme: light;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; } /* a panel's own display (flex, grid) must never override "hidden" */
 html, body { margin: 0; height: 100%; overflow: hidden; background: #2b2116; color: var(--ink); font: 17px/1.35 var(--body); }
 button { font: inherit; color: inherit; cursor: pointer; }
 a { color: var(--lapis); }
@@ -256,6 +257,12 @@ textarea, input, .plan-result { -webkit-user-select: text; user-select: text; }
 .gives span { display: inline-flex; align-items: center; gap: 3px; }
 .gives svg { width: 17px; height: 17px; color: var(--ink-soft); }
 .gives small { font: 12px var(--kufi); color: var(--ink-soft); }
+.stores.four { grid-template-columns: repeat(4, 1fr); }
+.trait { font: 600 12px var(--kufi); letter-spacing: 0.04em; padding: 1px 8px; border-radius: 9px; background: rgba(39, 70, 110, 0.1); color: var(--lapis); }
+.card .row.doing { font: 600 15px var(--body); color: var(--ink); }
+.deeds { list-style: none; margin: 8px 0 0; padding: 6px 0 0; border-top: 1px solid rgba(140, 107, 63, 0.3); display: grid; gap: 5px; font-size: 15px; line-height: 1.2; }
+.deeds li { display: grid; grid-template-columns: 20px 1fr; gap: 6px; }
+.deeds small { display: block; font: 11px var(--kufi); color: var(--ink-soft); letter-spacing: 0.06em; }
 .lineage { margin-top: 8px; font-size: 15px; }
 .lineage summary { cursor: pointer; display: flex; align-items: center; gap: 6px; font: 600 13px var(--kufi); letter-spacing: 0.06em; color: var(--lapis); list-style: none; }
 .lineage summary::-webkit-details-marker { display: none; }
