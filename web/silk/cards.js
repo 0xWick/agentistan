@@ -255,10 +255,11 @@ const HEAD = {
   battle: (e) => `The Battle of ${cityOf(s(), e.at)}`, capture: (e) => `The Fall of ${cityOf(s(), e.at)}`, fallen: () => 'The End of a Realm', founded: () => 'A New Kingdom', split: () => 'The Realm Splits',
   separatist: () => 'A Governor Rebels', coup: () => 'A Coup', horde: () => 'The Great Khan', golden: () => 'A Golden Age', charter: () => 'The Charter', commune: () => 'A Free City',
   uprising: () => 'The People Rise', turncoat: () => 'Treachery on the Field', death: (e) => (e.cause === 'assassin' ? 'Murder' : 'A Ruler Dies'), invention: () => 'A Discovery',
-  defied: () => 'A Verdict Defied', ceded: () => 'A Verdict Obeyed', war: () => 'War', 'age.ended': () => 'The End of the Age', decline: () => 'Decline', marriage: () => 'A Royal Wedding',
+  defied: () => 'A Verdict Defied', plague: () => 'Plague', famine: () => 'Famine', earthquake: () => 'Earthquake', flood: () => 'The Flood', ceded: () => 'A Verdict Obeyed', war: () => 'War', 'age.ended': () => 'The End of the Age', decline: () => 'Decline', marriage: () => 'A Royal Wedding',
 };
 const ARTKEY = { battle: 'battle', capture: 'siege', fallen: 'fallen', founded: 'crowned', split: 'split', separatist: 'split', coup: 'coup', horde: 'horde', golden: 'golden', charter: 'charter',
-  commune: 'commune', uprising: 'uprising', turncoat: 'turncoat', invention: 'invention', defied: 'court', ceded: 'court', war: 'war', 'age.ended': 'crowned', decline: 'decline', marriage: 'wedding', plague: 'plague' };
+  commune: 'commune', uprising: 'uprising', turncoat: 'turncoat', invention: 'invention', defied: 'court', ceded: 'court', war: 'war', 'age.ended': 'crowned', decline: 'decline', marriage: 'wedding',
+  plague: 'plague', famine: 'famine', earthquake: 'earthquake', flood: 'flood', raid: 'raid', peace: 'peace', built: 'built', toll: 'winter', revolt: 'uprising' };
 export function artFor(e) {
   const k = e.type === 'death' ? (e.cause === 'assassin' ? 'assassin' : e.cause === 'battle' ? 'battle' : 'funeral') : e.type === 'war' && /Frankish|knights/.test(e.text) ? 'expedition' : ARTKEY[e.type];
   return k && ART.has(k) ? `/art/events/${k}.webp` : null;
@@ -269,6 +270,7 @@ export function isGreat(e, st) {
   if (e.type === 'death' && e.ruler && (e.cause !== 'age' || rankOf(st, e.realms?.[0]) < 8)) return true;
   if (e.type === 'battle' && (e.lost?.[0] ?? 0) + (e.lost?.[1] ?? 0) >= 14) return true;
   if (e.type === 'invention' && e.first) return true;
+  if (['famine', 'earthquake', 'flood'].includes(e.type) || (e.type === 'plague' && !e.minor)) return true;
   if (e.type === 'war' && /Frankish/.test(e.text)) return true;
   return false;
 }

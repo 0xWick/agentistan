@@ -6,41 +6,39 @@ import { mkdirSync, existsSync, writeFileSync } from 'node:fs';
 
 const SITE = process.env.PUBLIC_URL || 'https://agentistan.umarkhatana.com';
 const OUT = new URL('./art-raw/', import.meta.url).pathname;
-const PERSIAN = 'Persian miniature painting in the style of a 13th-century illuminated manuscript, flat perspective, delicate brushwork, rich lapis blue, vermilion and gold pigments, aged parchment tones, no text, no letters, no border';
-const LATIN = '13th-century illuminated manuscript miniature, flat gothic perspective, tempera and gold leaf, lapis blue and vermilion, aged parchment tones, no text, no letters, no border';
-const SONG = 'Song dynasty court painting on silk, fine ink lines and mineral colours, muted gold and blue, aged silk tones, no text, no seals, no calligraphy';
+const PERSIAN = 'Persian miniature painting in the style of a 13th-century illuminated manuscript, flat perspective, delicate brushwork, rich lapis blue, vermilion and gold pigments, aged parchment tones, plain coloured banners without emblems or symbols, no writing anywhere, no inscriptions, no calligraphy, no halos, no crosses or religious symbols, no border';
+const LATIN = '13th-century illuminated manuscript miniature, flat gothic perspective, tempera and gold leaf, lapis blue and vermilion, aged parchment tones, plain coloured banners without emblems or symbols, no writing anywhere, no inscriptions, no calligraphy, no halos, no crosses or religious symbols, no border';
+const SONG = 'Song dynasty court painting on silk, fine ink lines and mineral colours, muted gold and blue, aged silk tones, no writing anywhere, no seals, no calligraphy, no halos, no religious symbols';
 
+// Left out after several tries: a coup, a wedding and a funeral (the model keeps adding halos, crosses and script).
 export const EVENTS = {
   battle: 'two medieval armies clash on an open plain, armoured cavalry with lances and banners, horse archers loosing arrows, rising dust',
-  siege: 'a walled city under siege, counterweight trebuchets hurling stones, soldiers climbing ladders, a tower burning',
+  siege: 'a walled city under siege, counterweight trebuchets hurling stones, soldiers climbing ladders against the walls, a tower burning, no flags',
   fallen: 'the smoking ruins of a captured palace, torn banners trampled on the ground, crows circling at dusk',
   crowned: 'a coronation in a palace hall, a new ruler seated on a jewelled throne receiving a crown, courtiers bowing',
   split: 'a rebel lord raising his own banner on a hill before his army, the old capital far behind him',
-  coup: 'night in a torch-lit throne room, conspirators with drawn daggers, an overturned throne',
   horde: 'a vast Mongol army of horse archers riding across the open steppe under a great white standard of horse tails',
   golden: 'a city in a golden age, palace gardens with fountains and cypress trees, poets reading, a busy bazaar, domed palaces',
   charter: 'great lords gathered in a meadow forcing a king to seal a charter, a scroll with a red wax seal on a table',
   commune: 'a rich merchant city, guildsmen and merchants gathered in the square to elect their leader, ships in the harbour',
   uprising: 'a crowd of townspeople with torches and clubs storming a palace gate',
   turncoat: 'on a battlefield a general wheels his horsemen around to charge his own side, banners turning',
-  invention: 'scholars in a great library with an astrolabe, books and scrolls, an engineer showing a model of a trebuchet',
+  invention: 'scholars gathered around a brass astrolabe and a celestial globe on a carpet, shelves of bound books, an engineer holding a small model of a siege engine',
   court: 'a ruler seated in judgement between two kneeling envoys holding scrolls, a balance scale on a cloth',
   war: 'an envoy delivering a declaration of war to a seated ruler, armies gathering outside the palace',
   decline: 'a half-empty city with cracked walls and overgrown fields, a weary old ruler on a worn throne',
-  wedding: 'a royal wedding procession, a bride on a white horse under a canopy, musicians, gifts, two royal banners',
   plague: 'a plague-stricken town, people carrying the sick on litters, empty streets, smoke from fires',
   assassin: 'an assassin with a dagger striking in a palace corridor at night, lamplight and curtains',
-  funeral: 'a royal funeral procession carrying a draped bier, mourners, banners lowered',
-  expedition: 'a fleet of galleys landing armoured knights and horses on a beach, a great walled city with domes on the horizon',
+  expedition: 'a fleet of galleys with plain red sails landing armoured knights and horses on a beach, a great walled city with plain domes and towers on the horizon',
   famine: 'famine, cracked dry fields, thin peasants beside an empty granary',
   earthquake: 'an earthquake striking a hill fortress, walls cracking and stones falling',
   flood: 'a great river flooding villages and fields under heavy monsoon rain',
   peace: 'two rulers clasping hands beneath a pavilion, scribes writing a treaty, courtiers on both sides',
   raid: 'steppe horsemen raiding a village, huts burning, riders carrying off sacks of loot',
-  built: 'masons and labourers building a caravanserai and digging a canal, a master builder with plans, camels',
+  built: 'masons laying the brick arches of a caravanserai courtyard, labourers digging a canal beside it, camels resting, a master builder pointing',
   winter: 'an army struggling through deep snow in a mountain pass, frozen banners, a blizzard',
 };
-const styleOf = (k) => (['charter', 'commune', 'expedition'].includes(k) ? LATIN : PERSIAN);
+const styleOf = (k) => (['charter', 'commune'].includes(k) ? LATIN : PERSIAN);
 
 // name slug -> [description, style]
 export const PEOPLE = {
@@ -50,7 +48,6 @@ export const PEOPLE = {
   'muhammad-ii': ['Muhammad II, Khwarazmshah, a proud Turkic sultan in a white turban with a jewelled plume', PERSIAN],
   'jalal-al-din': ['Jalal al-Din, a young fierce Khwarazmian prince in mail armour and a turban', PERSIAN],
   'al-adil': ['al-Adil, an elderly Ayyubid sultan with a white beard and a large turban, shrewd eyes', PERSIAN],
-  'alexios-iii-angelos': ['Alexios III Angelos, Byzantine emperor with a jewelled crown with hanging pearls, purple robes', LATIN],
   kaloyan: ['Kaloyan, tsar of Bulgaria, a fierce bearded king with a golden crown and red cloak', LATIN],
   'enrico-dandolo': ['Enrico Dandolo, the aged blind Doge of Venice in the horned ducal cap and gold robe', LATIN],
   'theodore-laskaris': ['Theodore Laskaris, a Byzantine general in lamellar armour with a dark beard', LATIN],
@@ -62,11 +59,9 @@ export const PEOPLE = {
   kuchlug: ['Kuchlug, a young Naiman prince with a fur hat and a cruel smile', PERSIAN],
   zhangzong: ['Emperor Zhangzong of Jin in imperial robes and a black crown, a scholarly face', SONG],
   ningzong: ['Emperor Ningzong of Song in yellow robes and an imperial hat, a gentle tired face', SONG],
-  'han-tuozhou': ['Han Tuozhou, chancellor of the Song, in a black official hat with long wings', SONG],
-  'leo-i': ['Leo I, king of Armenian Cilicia, crowned, with a dark beard and a red mantle', LATIN],
+  'han-tuozhou': ['Han Tuozhou, chancellor of the Song, a stern man in a black official hat with long wings and a red robe', SONG],
   'suleymanshah-ii': ['Suleymanshah II, Seljuk sultan of Rum, turban and armour, a bold face', PERSIAN],
   aimery: ['Aimery, a crusader king of Outremer in mail with a golden crown', LATIN],
-  'stefan-nemanjic': ['Stefan Nemanjic, grand prince of Serbia, crowned, in Byzantine-style robes', LATIN],
   emeric: ['Emeric, king of Hungary, crowned, with a forked beard and a fur-lined cloak', LATIN],
   borte: ['Borte, a Mongol khatun wearing the tall boqta headdress, wise calm face', PERSIAN],
   'terken-khatun': ['Terken Khatun, a formidable Turkic queen mother in jewels and a veil', PERSIAN],

@@ -98,8 +98,8 @@ async function boot() {
     layer.cities.append(g);
   }
   setupPanZoom();
-  newWorld();
   wire();
+  if (!(await joinLive())) newWorld();
   // /#plan is the link for outreach: straight to the plan. Everyone else gets five seconds of welcome, then 1200 begins.
   if (location.hash === '#plan') {
     openPlan();
@@ -111,29 +111,125 @@ async function boot() {
 }
 let welcome = 0;
 
-// ---------- one month on the map ----------
-function newWorld(seed) {
-  age = seed ?? 1 + Math.floor(Math.random() * 99999);
-  setState(newAge(age));
-  Object.assign(story, { keys: { 0: structuredClone(s) }, events: [], frontier: 0 });
+// ---------- two kinds of age: the living world (one history on the server, shared by everyone) and your own ----------
+// The living world turns a month every 15 minutes. The page downloads its record (each month's inputs and events)
+// and replays it with the same engine, so every visitor sees the same history and can scroll back through it.
+let mode = 'own', era = null, ws = null, waiting = false, seekSeq = 0;
+story.inputs = [];
+const getJSON = (u) => fetch(u).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${u}: ${r.status}`))));
+function resetStory(first) {
+  Object.assign(story, { keys: { 0: structuredClone(first) }, events: [], inputs: [], frontier: 0 });
   last = {};
   shown.length = 0;
   $('#feed-list').innerHTML = '';
   $('#track-events').innerHTML = '';
   closeCard();
+  setState(structuredClone(first));
   layer.road.innerHTML = '';
   for (const road of s.roads ?? []) layer.road.append(el('path', { class: 'silkroad', d: `M${road.map((id) => PROV[id].xy.join(' ')).join('L')}` }));
   ticks();
+}
+const record = (row) => { story.events[row.m] = row.events; story.inputs[row.m] = row.inputs ?? {}; };
+async function joinLive() {
+  try {
+    era = await getJSON('/api/era');
+    if (!era || era.status === 'none') return false;
+    const [first, months, now] = await Promise.all([getJSON(`/api/era/snap?m=0&age=${era.age}`), getJSON(`/api/era/months?age=${era.age}`), getJSON(`/api/era/snap?m=${era.month}&age=${era.age}`)]);
+    mode = 'live';
+    resetStory(first.state);
+    story.keys[now.m] = now.state;
+    for (const row of months) record(row);
+    story.frontier = months.length ? months.at(-1).m + 1 : 0;
+    let x = structuredClone(now.state);
+    while (x.month < story.frontier) x = tick(x, brain, story.inputs[x.month] ?? {}).state;
+    setState(x);
+    for (const evs of story.events) markTrack(evs ?? []);
+    render(recentEvents(s.month), { quiet: true });
+    connect();
+    liveChip();
+    return true;
+  } catch (err) {
+    console.error('could not join the living world:', err);
+    return false;
+  }
+}
+function connect() {
+  ws?.close();
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/era/live`);
+  ws.onmessage = (ev) => {
+    if (mode !== 'live' || ev.data === 'pong') return;
+    const d = JSON.parse(ev.data);
+    if (d.t === 'age' && d.era?.age !== era.age) return location.reload(); // a new age has begun
+    if (d.t === 'hello' && d.era) {
+      Object.assign(era, d.era);
+      if (d.era.month > story.frontier) catchUp();
+    }
+    if (d.t === 'month' && d.m >= story.frontier) {
+      if (d.m > story.frontier) return catchUp();
+      record(d);
+      story.frontier = d.m + 1;
+      Object.assign(era, { next: d.next, month: d.m + 1, status: d.status });
+      markTrack(d.events);
+      $('#done').style.width = `${(Math.min(story.frontier, total()) / total()) * 100}%`;
+      liveChip();
+      if (playing && waiting) { waiting = false; loop(); }
+    }
+  };
+  ws.onclose = () => { if (mode === 'live') setTimeout(() => mode === 'live' && connect(), 4000 + Math.random() * 6000); };
+}
+setInterval(() => ws?.readyState === 1 && ws.send('ping'), 50_000);
+setInterval(() => liveChip(), 20_000);
+async function catchUp() {
+  const months = await getJSON(`/api/era/months?age=${era.age}&from=${story.frontier}`).catch(() => []);
+  for (const row of months) { record(row); markTrack(row.events); }
+  if (months.length) story.frontier = months.at(-1).m + 1;
+  liveChip();
+  if (playing && waiting) { waiting = false; loop(); }
+}
+function liveChip() {
+  const c = $('#live');
+  if (!c) return;
+  if (mode !== 'live') {
+    c.innerHTML = `<span class="own">${icon('dice')} Your own age</span><button class="link" data-go="live">The living world</button>`;
+    return;
+  }
+  const behind = story.frontier - s.month, mins = Math.max(0, Math.round(((era?.next ?? Date.now()) - Date.now()) / 60000));
+  c.innerHTML = behind <= 0
+    ? `<span class="on"><i></i>Live</span><small>${era?.status === 'running' ? `next month in ${mins} min` : 'the age has ended'}</small>${s.month > 12 ? '<button class="link" data-go="start">Watch from the start</button>' : ''}`
+    : `<span class="replay">${icon('play')} ${behind >= 24 ? `${Math.round(behind / 12)} years` : behind === 1 ? 'a month' : `${behind} months`} behind</span><button class="link" data-go="now">To the present</button>`;
+}
+function recentEvents(m) {
+  const out = [];
+  for (let i = m - 1; i >= 0 && out.length < 7; i--) for (const e of [...(story.events[i] ?? [])].reverse()) if (worth(e) && out.length < 7) out.push(e);
+  return out.reverse();
+}
+
+// ---------- one month on the map ----------
+function newWorld(seed) {
+  mode = 'own';
+  ws?.close();
+  ws = null;
+  age = seed ?? 1 + Math.floor(Math.random() * 99999);
+  resetStory(newAge(age));
+  liveChip();
   render([{ type: 'age.started', text: `The year ${yearOf(0, s)}. The realms of the Old World stand as history left them.`, date: dateText(0, s) }]);
 }
 
-// One month forward. At the edge of what has been lived, the world is simulated (and remembered); behind it, the
-// recorded month is simply replayed.
+// One month forward. In your own age, the edge of what has been lived is simulated (and remembered). In the living
+// world the record is replayed, and at its edge the page waits for the server's next month.
 function advance() {
-  const before = s;
-  const r = tick(s, brain);
+  const before = s, live = mode === 'live';
+  if (live && s.month >= story.frontier) return null;
+  const r = tick(s, brain, live ? story.inputs[s.month] ?? {} : {});
   setState(r.state);
   S.prev = before;
+  if (live) {
+    r.events = story.events[s.month - 1] ?? r.events; // the record is the truth
+    if (s.month % 12 === 0 && !story.keys[s.month]) story.keys[s.month] = structuredClone(s);
+    r.fresh = true;
+    liveChip();
+    return r;
+  }
   story.events[s.month - 1] = r.events;
   if (s.month > story.frontier) {
     story.frontier = s.month;
@@ -144,25 +240,33 @@ function advance() {
   return r;
 }
 
-// Jump to any month already lived: back to the year's snapshot, then forward month by month.
-function seek(month) {
+// Jump to any month already lived: back to the year's snapshot (from the server if need be), then forward.
+async function seek(month) {
   const m = Math.max(0, Math.min(story.frontier, Math.round(month)));
   if (m === s.month) return;
-  const k = Math.max(...Object.keys(story.keys).map(Number).filter((x) => x <= m));
+  const my = ++seekSeq;
+  let k = Math.max(...Object.keys(story.keys).map(Number).filter((x) => x <= m));
+  if (mode === 'live' && m - k >= 12) {
+    const snap = await getJSON(`/api/era/snap?m=${m}&age=${era.age}`).catch(() => null);
+    if (my !== seekSeq) return; // a later seek has overtaken this one
+    if (snap) { story.keys[snap.m] = snap.state; k = snap.m; }
+  }
   let x = structuredClone(story.keys[k]);
-  while (x.month < m) x = tick(x, brain).state;
+  while (x.month < m) x = tick(x, brain, mode === 'live' ? story.inputs[x.month] ?? {} : {}).state;
   setState(x);
   last = {};
   $('#feed-list').innerHTML = '';
-  // The chronicle as it stood that month: its latest entries.
-  const recent = [];
-  for (let i = m - 1; i >= 0 && recent.length < 7; i--) for (const e of [...(story.events[i] ?? [])].reverse()) if (worth(e) && recent.length < 7) recent.push(e);
-  render(recent.reverse(), { quiet: true });
+  render(recentEvents(m), { quiet: true });
+  liveChip();
 }
 function step(months) {
   playPause(false);
   if (months > 0 && s.month + months > story.frontier) {
-    for (let i = 0; i < months && s.status === 'running'; i++) render(advance().events);
+    for (let i = 0; i < months && s.status === 'running'; i++) {
+      const r = advance();
+      if (!r) break;
+      render(r.events);
+    }
   } else seek(s.month + months);
 }
 
@@ -518,6 +622,7 @@ function loop() {
     return;
   }
   const r = advance();
+  if (!r) { waiting = true; liveChip(); return; } // the living world's next month has not been turned yet
   render(r.events);
   // A great event, freshly lived, gets its card: at 1× the story waits for the reader; at 4× it shows for a moment.
   const great = r.fresh && speed < 16 && s.month - lastCard >= (speed === 1 ? 3 : 8) ? r.events.filter((e) => isGreat(e, s)).sort((a, b) => rank(b) - rank(a))[0] : null;
@@ -657,6 +762,13 @@ function wire() {
   });
   document.querySelectorAll('.speed button').forEach((b) => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
   $('#new').addEventListener('click', () => { playPause(false); newWorld(); playPause(true); });
+  // The live chip: to the present, back to the start, back to the living world.
+  $('#live').addEventListener('click', async (e) => {
+    const go = e.target.closest('[data-go]')?.dataset.go;
+    if (go === 'now') { await seek(story.frontier); playPause(true); }
+    if (go === 'start') { await seek(0); setSpeed(4); playPause(true); }
+    if (go === 'live') { playPause(false); if (await joinLive()) playPause(true); else newWorld(); }
+  });
   $('#zin').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, 1.5));
   $('#zout').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.5));
   $('#forge').addEventListener('close', () => {

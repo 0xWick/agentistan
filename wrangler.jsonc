@@ -12,8 +12,8 @@
   "assets": { "directory": "./web", "html_handling": "auto-trailing-slash" },
 
   // One Durable Object is the whole world: state (SQLite), the turn clock (alarms) and the live stream.
-  "durable_objects": { "bindings": [{ "name": "WORLD", "class_name": "World" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["World"] }],
+  "durable_objects": { "bindings": [{ "name": "WORLD", "class_name": "World" }, { "name": "ERA", "class_name": "Era" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["World"] }, { "tag": "v2", "new_sqlite_classes": ["Era"] }],
 
   // Workers AI (free: 10,000 neurons a day): the paintings in web/art/, made once by tools/art.js.
   "ai": { "binding": "AI" },
@@ -31,6 +31,8 @@
     "NETWORK": "base-sepolia",
     "CHAIN_RPC_URL": "https://sepolia.base.org",
     "SCENARIO": "demo",
+    // The two-kingdom war is over; its seasons stay replayable at /classic/. The living world is the Era object.
+    "CLASSIC_RETIRED": "1",
     // One turn every 30 minutes keeps 24/7 play inside the free AI tier (see README)
     "TURN_INTERVAL_MS": "1800000",
     "LLM_BASE_URL": "https://api.groq.com/openai/v1",

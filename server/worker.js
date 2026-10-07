@@ -1,8 +1,10 @@
-// Worker entry. Pages come straight from web/ as static assets (the Worker isn't even invoked for them);
-// everything else (/api/*, /internal/*) goes to the one World Durable Object, except /internal/art, which paints.
+// Worker entry. Pages come straight from web/ as static assets (the Worker isn't even invoked for them).
+// /api/era* is the living world (the Era Durable Object); /internal/art paints; the rest is the classic war (World).
 export { World } from './world.js';
+export { Era } from './era.js';
 
 const world = (env) => env.WORLD.get(env.WORLD.idFromName('world'));
+const era = (env, name = 'main') => env.ERA.get(env.ERA.idFromName(name));
 
 // The secret header, compared in constant time.
 function authorized(req, env) {
@@ -10,7 +12,7 @@ function authorized(req, env) {
   return want.length > 0 && got.length === want.length && crypto.subtle.timingSafeEqual(got, want);
 }
 
-// One picture from Workers AI (free: about 230 a day), for tools/art.js to save into web/art/. Never public.
+// One picture from Workers AI (free: about 230 a day), for tools/art.mjs to save into web/art/. Never public.
 async function art(req, env) {
   if (req.method !== 'POST' || !authorized(req, env)) return new Response('forbidden', { status: 403 });
   if (!env.AI) return Response.json({ error: 'no AI binding' }, { status: 503 });
@@ -21,6 +23,16 @@ async function art(req, env) {
 }
 
 export default {
-  fetch: (req, env) => (new URL(req.url).pathname === '/internal/art' ? art(req, env) : world(env).fetch(req)),
-  scheduled: (_event, env, ctx) => ctx.waitUntil(world(env).tick()), // every 10 min: wake-up call and fallbacks
+  fetch(req, env) {
+    const p = new URL(req.url).pathname;
+    if (p === '/internal/art') return art(req, env);
+    const game = p.match(/^\/api\/game\/([\w-]{3,40})\/era/)?.[1];
+    if (game) return era(env, `game:${game}`).fetch(req);
+    if (p === '/api/era' || p.startsWith('/api/era/') || p.startsWith('/internal/era/')) return era(env).fetch(req);
+    return world(env).fetch(req);
+  },
+  scheduled: (_event, env, ctx) => ctx.waitUntil(Promise.all([
+    world(env).tick(), // every 10 min: wake-up call and fallbacks for the classic war
+    era(env).fetch('https://era/internal/era/watch').catch((err) => console.error('era watch failed:', err)),
+  ])),
 };

@@ -13,6 +13,7 @@ import { cultureOf, personName, kingdomName, titleFor, pickTemper, temperFromTra
 import AGE_1200 from './ages/1200.js';
 
 export const AGES = { 1200: AGE_1200 };
+export const ENGINE = 2; // bump when a change to the rules would make old records replay differently
 export * from './core.js';
 export { wealthOf, yieldOf, suppliesOf, yearlyGrain, rations, cavalryOf, garrisonOf, wallPower, strength, manpower, incomeOf, prosperityOf, steersman, rulingTemper, knows, canBuild, tradeOpen, treatiesOf, pairTreaties } from './economy.js';
 export { moveCost, route, declareWar, makePeace, peaceTerms, capture, conflictOf } from './war.js';
@@ -110,6 +111,7 @@ export function tick(s0, brain, inputs = {}) {
   if (s.status !== 'running') return { state: s, events };
   const rng = (step) => rngFor('age', s.age, 'month', s.month, step);
 
+  for (const [id, p] of Object.entries(inputs.personas ?? {})) if (s.chars[id]) s.chars[id].persona = p; // written by the AI cast
   if (s.month === 0) emit('age.started', `The year ${yearOf(0, s)}. ${living(s).length} realms share the Old World.`);
   settleDecisions(s, inputs, brain, rng('decide'), emit);
   applyAnswers(s, rng('answers'), emit);

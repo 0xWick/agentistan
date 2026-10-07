@@ -109,5 +109,7 @@ function headgear({ culture, role, female, child, fw, fy, hair, gold, color, r, 
 
 // Painted portraits for the famous (made once, see tools/art.js). Keyed by name.
 export const PAINTED = new Set();
-export const paintedFor = (c) => (c && PAINTED.has(slug(c.name)) ? `/art/people/${slug(c.name)}.webp` : null);
+// Only the real figures of history (famous), and the right one of two namesakes.
+const OWNER = { 'muhammad-ii': 'khwarazm' };
+export const paintedFor = (c) => (c?.famous && PAINTED.has(slug(c.name)) && (!OWNER[slug(c.name)] || OWNER[slug(c.name)] === c.realm) ? `/art/people/${slug(c.name)}.webp` : null);
 export const slug = (n) => String(n).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

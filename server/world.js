@@ -46,6 +46,7 @@ export class World extends DurableObject {
       timeout: +(env.TURN_TIMEOUT_MS || 90_000),
       results: +(env.RESULTS_MS || 60_000),
       scenario: env.SCENARIO || 'standard',
+      retired: env.CLASSIC_RETIRED === '1', // the classic war has ended: its replays stay, no new turns or seasons
       site: env.PUBLIC_URL || 'https://agentistan.umarkhatana.com',
       public: { owner: env.PUBLIC_OWNER_NAME || 'the builder', hireUrl: env.PUBLIC_HIRE_URL || '', bookingUrl: env.PUBLIC_BOOKING_URL || '', repoUrl: env.PUBLIC_REPO_URL || '', email: env.PUBLIC_CONTACT_EMAIL || '' },
     };
@@ -180,7 +181,7 @@ export class World extends DurableObject {
 
   async beginTurn() {
     const W = this.W;
-    if (W.state.status !== 'running' || W.pending) return;
+    if (W.state.status !== 'running' || W.pending || this.cfg.retired) return;
     const traceId = this.trace();
     if (W.startedTurn !== traceId) { // restart-safe: a turn's economy is never applied twice
       const r = E.startTurn(W.state);
@@ -290,6 +291,7 @@ export class World extends DurableObject {
 
   async startSeason() {
     const W = this.W;
+    if (this.cfg.retired) return;
     W.state = E.newSeason(W.state.season + 1, this.cfg.scenario, Object.fromEntries(COINS.map((c) => [c, W.prices[c]?.usd ?? null])));
     W.memory.journal = { red: [], blue: [] };
     W.startedTurn = null;
@@ -478,8 +480,9 @@ export class World extends DurableObject {
   async tick() {
     if (!this.W) return;
     const W = this.W;
-    if (W.state.status === 'running' && !W.pending && !W.timers.turn) this.schedule(Math.max(3000, (W.nextTurnAt ?? 0) - Date.now()));
-    if (W.state.status === 'ended' && !W.timers.season && !W.timers.seasonEnd) this.at('season', 5000);
+    if (this.cfg.retired) { delete W.timers.turn; delete W.timers.season; W.nextTurnAt = null; }
+    else if (W.state.status === 'running' && !W.pending && !W.timers.turn) this.schedule(Math.max(3000, (W.nextTurnAt ?? 0) - Date.now()));
+    if (W.state.status === 'ended' && !W.timers.season && !W.timers.seasonEnd && !this.cfg.retired) this.at('season', 5000);
     this.arm();
     if (this.cfg.n8n) await fetch(`${this.cfg.n8n}/healthz`, { signal: AbortSignal.timeout(10_000) }).then((r) => r.ok && (W.n8nAt = Date.now())).catch(() => {});
     if (Date.now() - (W.pricesAt ?? 0) > 20 * 60_000) await this.refreshPrices().catch((err) => console.error('oracle read failed:', err.shortMessage ?? err.message));
