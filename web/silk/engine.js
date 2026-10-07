@@ -412,7 +412,7 @@ export function fight(s, rng, emit, A, D, pid, garrison = false) {
   emit('battle', won ? `${sideA} ${verb(A.realm, crushing ? 'crushes' : 'defeats')} ${sideD} at ${P.city}` : `${sideD} ${garrison ? (crushing ? 'crush' : 'beat back') : verb(D.realm, crushing ? 'crushes' : 'beats back')} ${sideA} at ${P.city}`,
     { realms: [A.realm, garrison ? s.provinces[pid].owner : D.realm].filter(Boolean), at: pid, chars: [A.general, D.general, ...fallen].filter(Boolean), winner: won ? A.realm : garrison ? s.provinces[pid].owner : D.realm, sizes: [A.size, D.size] });
   if (!garrison) {
-    if (L.size < R.armies.minSize) disband(s, L, emit, `${short(s, L.realm)}'s army at ${P.city} is destroyed`);
+    if (L.size < R.armies.minSize) disband(s, L, emit, `${poss(short(s, L.realm))} army at ${P.city} is destroyed`);
     else retreat(s, L);
   }
   return won;
@@ -652,7 +652,7 @@ function plots(s, rng, emit) {
     const ok = chance(rng, odds), exposed = chance(rng, ok ? A.exposed : A.exposed + 0.3);
     if (ok) {
       s.record.assassinations++;
-      die(s, t.id, 'assassin', emit, rng, `is struck down by ${c.by === 'alamut' ? 'the hidden agents of Alamut' : 'hired daggers'}${exposed ? `, paid by ${r.short}` : ''}`);
+      die(s, t.id, 'assassin', emit, rng, `is struck down by ${c.by === 'alamut' ? 'the hidden agents of Alamut' : 'hired daggers'}${exposed && r.id !== 'alamut' ? `, paid by ${r.short}` : ''}`);
     } else emit('plot', `A plot against ${nameOf(s, t.id)} of ${short(s, t.realm)} fails${exposed ? `: the trail leads to ${r.short}` : ''}`, { realms: [t.realm, ...(exposed ? [r.id] : [])], chars: [t.id] });
     if (exposed && t.realm && t.realm !== r.id) declareWar(s, t.realm, r.id, emit, `${say(s, t.realm, 'declares')} war on ${r.short} to avenge the plot`);
   }
