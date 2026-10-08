@@ -86,7 +86,7 @@ export class Campaigns extends DurableObject {
   async owns(run, token) { return !!run && typeof token === 'string' && token.length >= 16 && (await sha(token)) === run.key; }
   public(run, withTurns = false) {
     if (!run) return null;
-    const out = { id: run.id, cid: run.cid, seed: run.seed, name: run.name, status: run.status, turn: run.turn, created: run.created, updated: run.updated, verdict: run.verdict, stars: run.stars, why: run.why, summary: run.summary, owner: run.owner, token: run.token, nft: run.nft, tx: run.tx };
+    const out = { id: run.id, cid: run.cid, seed: run.seed, name: run.name, status: run.status, turn: run.turn, created: run.created, updated: run.updated, verdict: run.verdict, stars: run.stars, why: run.why, summary: run.summary, owner: run.owner, token: run.token, nft: run.nft, tx: run.tx, heralded: !!run.heralded };
     if (withTurns) out.turns = this.turnsOf(run.id);
     return out;
   }

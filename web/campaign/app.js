@@ -314,8 +314,8 @@ function planPop(a, pid, odds, e) {
 function siegePop(a, pid, odds, e) {
   const C = G.C, pop = $('#pop');
   pop.innerHTML = `<button class="x" aria-label="Close">×</button><h3>The walls of ${esc(C.prov[pid].name)}</h3>
-    <div class="facts">Walls ${G.pre.prov[pid].walls} · garrison ${fmtMen(odds.garrison)}. A siege takes about ${odds.turns} turn${odds.turns > 1 ? 's' : ''}; a storm is quick but bloody, and fails if the walls hold.</div>
-    <div class="plans"><button data-s="0"><b>Lay siege</b><small>Starve them out: about ${odds.turns} turn${odds.turns > 1 ? 's' : ''}.</small></button>
+    <div class="facts">Walls ${G.pre.prov[pid].walls} · garrison ${fmtMen(odds.garrison)}. ${odds.fed ? 'The city is fed from the sea by its fleet: it cannot be starved out until that fleet is gone.' : `A siege takes about ${odds.turns} turn${odds.turns > 1 ? 's' : ''}`}; a storm is quick but bloody, and fails if the walls hold.</div>
+    <div class="plans"><button data-s="0"><b>Lay siege</b><small>${odds.fed ? 'It will not starve while its ships come and go.' : `Starve them out: about ${odds.turns} turn${odds.turns > 1 ? 's' : ''}.`}</small></button>
     <button data-s="1"><b>Storm the walls</b><small>Your strength against the walls: ${odds.ratio >= 1 ? `${odds.ratio.toFixed(1)} to 1` : `1 to ${(1 / odds.ratio).toFixed(1)}`}. ${odds.ratio >= 1.3 ? 'It should succeed.' : odds.ratio >= 1 ? 'A gamble.' : 'It would likely fail.'}</small></button></div>`;
   pop.hidden = false;
   place(pop, e);

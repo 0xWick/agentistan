@@ -181,7 +181,7 @@ export function makeMap(svg, data, C, handlers) {
       for (const id of Object.keys(r)) {
         layer.reach.append(el('path', { class: 'reach', d: P[id].d }));
         const o = oddsOf(C, s, sel, id), [x, y] = P[id].city;
-        const text = o.kind === 'battle' ? `${o.ratio >= 1 ? o.ratio.toFixed(1) : `1:${(1 / o.ratio).toFixed(1)}`}` : o.kind === 'siege' ? `siege ${o.turns}` : s.prov[id].owner && atWar(s, s.armies[sel].side, s.prov[id].owner) ? 'take' : 'go';
+        const text = o.kind === 'battle' ? `${o.ratio >= 1 ? o.ratio.toFixed(1) : `1:${(1 / o.ratio).toFixed(1)}`}` : o.kind === 'siege' ? (o.fed ? 'fed by sea' : `siege ${o.turns}`) : s.prov[id].owner && atWar(s, s.armies[sel].side, s.prov[id].owner) ? 'take' : 'go';
         const mood = o.kind === 'battle' ? (o.ratio >= 1.2 ? 'good' : o.ratio >= 0.9 ? 'even' : 'bad') : o.kind === 'siege' ? (o.ratio >= 1.3 ? 'even' : 'bad') : 'good';
         const g = el('g', { class: `badge-map ${mood}`, 'data-go': id, transform: `translate(${x} ${y - 18 * k()}) scale(${k()})` });
         const w = 8 + text.length * 6.4;

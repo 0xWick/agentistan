@@ -238,6 +238,7 @@ export function oddsOf(C, s, army, at) {
   if (!foes.length) {
     const p = s.prov[at];
     if (!p.owner || !atWar(s, a.side, p.owner) || !p.walls) return { kind: 'take', ratio: Infinity };
+    if (C.prov[at].port && (s.sides[p.owner]?.fleet ?? 0) > 0 && (s.sides[p.owner]?.fleet ?? 0) >= (s.sides[a.side]?.fleet ?? 0)) return { kind: 'siege', turns: 99, fed: true, garrison: p.garrison, ratio: (a.men * (C.sides[a.side].quality ?? 1)) / Math.max(1, p.garrison * wallPower(p.walls) * (C.sides[p.owner]?.quality ?? 1)) };
     return { kind: 'siege', turns: Math.max(1, Math.ceil((p.walls - (p.by === a.side ? p.siege : 0)) / (a.men >= 4 * p.garrison ? 2 : 1))), garrison: p.garrison, ratio: (a.men * (C.sides[a.side].quality ?? 1)) / Math.max(1, p.garrison * wallPower(p.walls) * (C.sides[p.owner]?.quality ?? 1)) };
   }
   const best = Math.max(...plansFor(C, false).map((id) => fitOf(f, id)));
@@ -741,6 +742,12 @@ function siegeAt(C, s, at, orders, rng, emit) {
     return;
   }
   if (P.by !== side) Object.assign(P, { siege: 0, by: side });
+  // a port fed from the sea cannot be starved while its masters rule the sea
+  if (C.prov[at].port && (s.sides[owner]?.fleet ?? 0) > 0 && (s.sides[owner]?.fleet ?? 0) >= (s.sides[side]?.fleet ?? 0)) {
+    if (!P.fedNoted) emit({ type: 'fed', text: `${C.prov[at].name} is fed from the sea: only a storm, or the loss of its fleet, will take it`, at, sides: [side, owner] });
+    P.fedNoted = true;
+    return;
+  }
   P.siege += men >= 4 * P.garrison ? 2 : 1;
   if (P.siege >= P.walls) {
     emit({ type: 'starved', text: `${C.prov[at].name} opens its gates to ${C.sides[side].name} after a siege`, at, sides: [side, owner] });

@@ -26,7 +26,7 @@ function smartOrders(C, s) {
   }
   // no battle worth fighting: march on the cities the goal names (or the enemy capital), and take them
   const goalCities = (C.goal.provs ?? [C.sides[C.goal.foe]?.capital].filter(Boolean)).filter((p) => s.prov[p] && s.prov[p].owner !== you && !friends(s, you, s.prov[p].owner));
-  if (goalCities.length && ['take', 'destroy', 'peace'].includes(C.goal.kind)) {
+  if (goalCities.length && ['take', 'destroy', 'peace', 'custom'].includes(C.goal.kind)) {
     for (const a of mine.sort((x, y) => y.men - x.men)) {
       const near = goalCities.map((p) => [p, wayTo(C, s, you, a.at, p)]).filter(([, w]) => w).sort((x, y) => x[1].length - y[1].length)[0];
       if (!near) continue;
