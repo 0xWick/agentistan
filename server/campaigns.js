@@ -167,7 +167,11 @@ STRICT: use only the people, armies, places and numbers in the data. The dead ca
     const draft = normalize(C, s, body.draft ?? {}, {}).draft;
     if (!text) return { replies: [], draft, end: false, by: 'rules' };
     const used = this.get(`talk:${run.id}:${s.turn}`) ?? 0;
-    const viaRules = () => ({ ...interpret(C, s, draft, text), by: 'rules' });
+    // First the literal reading: the armies, places and cards the words name. It is exact, and the AI may not overrule it.
+    const rules = interpret(C, s, draft, text), lit = rules.literal;
+    const heard = Object.keys(lit.orders).length + Object.keys(lit.raise).length + Object.keys(lit.peace).length + Object.keys(lit.cards).length;
+    const viaRules = () => ({ draft: rules.draft, replies: rules.replies, end: rules.end, by: 'rules' });
+    if (rules.asking && !heard && !/\b(should|shall|would|could|advise|think|suggest|best|wise)\b/i.test(text)) return viaRules(); // a question of fact: the war's data answers it
     if (!this.llm || used >= +(this.env.COUNCIL_PER_SEASON || 8)) return viaRules();
     this.put(`talk:${run.id}:${s.turn}`, used + 1);
     const court = courtOf(C, s), ids = new Set(court.map((p) => p.id));
@@ -177,11 +181,14 @@ The commander speaks to you. Answer in character, briefly: one to three plain se
 STRICT RULES: use only the people, armies, places, numbers and decisions in the data. The dead cannot speak or act. Never invent events, battles or deaths. An army may be ordered to any province; if it is not under "can reach this season", the army goes as far as it can and the rest next season, and you should say so. Keep any order the commander did not change. Your replies must match the orders you return exactly: never say an army will go somewhere unless that order is in your JSON, and if the commander's words change nothing, say so. The commander's own army is the one led by the commander. Never mock any faith or people; no slurs; nothing graphic.
 Reply with JSON only: {"replies": [{"who": "<member id>", "text": "..."}], "orders": {"<army id>": {"to": "<province id, or null to hold>", "plan": "<plan id or null>", "storm": false}}, "raise": {"<army id, or @home>": <number of men>}, "peace": {"<side id>": true}, "cards": {"<card id>": <option number>}, "end": false}
 Include in orders, raise, peace and cards only what the commander's words change. "end": true only when the commander clearly ends the season ("make it so", "end the turn"). Plans: ${plansFor(C, false).map((p) => `${p} = ${PLANS[p].name}`).join('; ')}.`;
-    const out = await this.askAI(system, `${situation(C, s, draft)}\n\nThis season so far:\n${chat || '(nothing yet)'}\n\nCOMMANDER: ${text}`, 700);
+    const understood = heard ? `\nALREADY UNDERSTOOD from these words (fixed; do not contradict or repeat them in orders): ${[...Object.entries(rules.draft.cards).filter(([id]) => id in lit.cards).map(([id, n]) => `card ${id} = ${n}`), ...summary(C, s, { ...rules.draft, orders: Object.fromEntries(Object.entries(rules.draft.orders).filter(([id]) => id in lit.orders)), raise: lit.raise, peace: lit.peace })].join('; ')}.` : '';
+    const out = await this.askAI(system, `${situation(C, s, rules.draft)}\n\nThis season so far:\n${chat || '(nothing yet)'}\n\nCOMMANDER: ${text}${understood}`, 700);
     if (!out) return viaRules();
-    const { draft: next, notes } = normalize(C, s, draft, { orders: out.orders ?? {}, raise: out.raise ?? {}, peace: Object.fromEntries(Object.entries(out.peace ?? {}).filter(([, v]) => v)), cards: out.cards ?? {} });
-    const replies = (Array.isArray(out.replies) ? out.replies : []).slice(0, 4).map((r) => ({ who: ids.has(r?.who) ? r.who : court[0]?.id ?? 'adviser', text: clean(String(r?.text ?? ''), 70) })).filter((r) => r.text);
-    for (const n of notes) replies.push({ who: court[0]?.id ?? 'adviser', text: n });
+    const mine = (o, taken) => Object.fromEntries(Object.entries(o ?? {}).filter(([k]) => !(k in taken)));
+    const { draft: next, notes } = normalize(C, s, rules.draft, { orders: mine(out.orders, lit.orders), raise: Object.keys(lit.raise).length ? {} : out.raise ?? {}, peace: mine(Object.fromEntries(Object.entries(out.peace ?? {}).filter(([, v]) => v)), lit.peace), cards: mine(out.cards, lit.cards) });
+    const before = new Set((Array.isArray(body.chat) ? body.chat : []).map((m) => clean(String(m.text ?? ''), 70)));
+    const replies = (Array.isArray(out.replies) ? out.replies : []).slice(0, 4).map((r) => ({ who: ids.has(r?.who) ? r.who : court[0]?.id ?? 'adviser', text: clean(String(r?.text ?? ''), 70) })).filter((r) => r.text && !before.has(r.text)); // nothing said twice
+    for (const n of [...rules.notes, ...notes]) replies.push({ who: court[0]?.id ?? 'adviser', text: n });
     if (!replies.length) replies.push({ who: court[0]?.id ?? 'adviser', text: 'As you command.' });
     return { replies, draft: next, end: out.end === true, by: 'ai', left: Math.max(0, +(this.env.COUNCIL_PER_SEASON || 8) - used - 1) };
   }

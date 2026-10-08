@@ -186,7 +186,7 @@ export function interpret(C, s, draft, text) {
   for (const side of Object.keys(out.peace)) said.push({ who: advisor.id, text: `An envoy will ride to ${C.sides[side].name}. They will listen only if their will to fight is low (it is ${Math.round(s.sides[side].will)}).` });
   for (const n of notes) said.push({ who: advisor.id, text: n });
   if (!changed && !Object.keys(out.cards).length && !end) said.push({ who: advisor.id, text: answer(C, s, t) });
-  return { draft: next, replies: said, end };
+  return { draft: next, replies: said, end, asking, notes, literal: out }; // literal: what the words themselves said, before any guessing
 }
 
 // A question, answered from the war's data.
