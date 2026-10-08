@@ -202,7 +202,7 @@ function renderTurn() {
   const due = cardsDue(C, s), advisor = C.advisor ?? { name: 'Your advisor', look: C.hero.look };
   const lines = G.advice?.advice?.length ? G.advice.advice : counsel(C, pre);
   const by = G.advice?.by === 'ai' ? 'counsel by the AI' : 'counsel by the rules';
-  const foes = Object.keys(C.sides).filter((x) => x !== you && pre.sides[x].alive && atWar(pre, you, x));
+  const foes = Object.keys(C.sides).filter((x) => x !== you && pre.sides[x].alive && atWar(pre, you, x) && !C.sides[x].noPeace);
   box.innerHTML = `<h2>${esc(turnLabel(C, s.turn))}</h2>
     <div class="advisor"><div class="face">${face(advisor, C.sides[you].color, 44, 'adv')}</div><div>${lines.slice(0, 3).map((l) => `<p>${esc(l)}</p>`).join('')}<span class="by">${esc(advisor.name)}${advisor.title ? `, ${esc(advisor.title)}` : ''} · ${by}</span></div></div>
     ${due.length ? `<h3>Decisions</h3><div class="decide">${due.map((c) => `<button data-card="${esc(c.id)}" class="${G.draft.cards[c.id] !== undefined ? 'done' : ''}">${esc(c.title)}<span class="tag">${G.draft.cards[c.id] !== undefined ? esc(c.options[G.draft.cards[c.id]].label) : 'decide'}</span></button>`).join('')}</div>` : ''}

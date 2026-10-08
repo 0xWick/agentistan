@@ -2,7 +2,7 @@
 //   node tools/campaign/sim.mjs [id] [runs] [--verbose] [--smart] [--cards=history|advise|first|second]
 // --smart plays your side as a competent player would: gather, then strike together with the plan that fits.
 import { CAMPAIGNS } from '../../web/campaign/catalog.js';
-import { newCampaign, resolve, cardsDue, autoOrders, autoRaise, VERDICT, menOf, fmtMen, withCards, reach, wayTo, atWar, armiesOf, battleFacts, plansFor, fitOf, friends } from '../../web/campaign/engine.js';
+import { newCampaign, resolve, cardsDue, autoOrders, autoRaise, VERDICT, menOf, fmtMen, withCards, goalState, reach, wayTo, atWar, armiesOf, battleFacts, plansFor, fitOf, friends } from '../../web/campaign/engine.js';
 
 // A competent player: all armies gather against the enemy's main army and strike together, with the plan that fits,
 // only when the odds are good; otherwise the rules' orders.
@@ -24,12 +24,32 @@ function smartOrders(C, s) {
     for (const a of can) orders[a.id] = { to: T.at, plan };
     return orders;
   }
+  // no battle worth fighting: march on the cities the goal names (or the enemy capital), and take them
+  const goalCities = (C.goal.provs ?? [C.sides[C.goal.foe]?.capital].filter(Boolean)).filter((p) => s.prov[p] && s.prov[p].owner !== you && !friends(s, you, s.prov[p].owner));
+  if (goalCities.length && ['take', 'destroy', 'peace'].includes(C.goal.kind)) {
+    for (const a of mine.sort((x, y) => y.men - x.men)) {
+      const near = goalCities.map((p) => [p, wayTo(C, s, you, a.at, p)]).filter(([, w]) => w).sort((x, y) => x[1].length - y[1].length)[0];
+      if (!near) continue;
+      const [p, way] = near, r = reach(C, s, a.id);
+      if (a.at === p) { orders[a.id] = { to: null, storm: s.prov[p].garrison * 3 < a.men }; continue; }
+      let pick = null;
+      for (const x of way.slice(1)) {
+        if (!r[x]) break;
+        const foesThere = Object.values(s.armies).filter((o) => o.at === x && atWar(s, you, o.side)).reduce((t, o) => t + q(o), 0);
+        if (foesThere && q(a) < foesThere * 1.15) break; // never walk into a battle at bad odds
+        pick = x;
+        if (foesThere) break;
+      }
+      if (pick) orders[a.id] = { to: pick, storm: pick === p && s.prov[p].garrison * 3 < a.men };
+    }
+    return orders;
+  }
   for (const a of mine) { // gather next to the enemy, or come closer
     const r = reach(C, s, a.id), way = wayTo(C, s, you, a.at, T.at);
     if (!way) continue;
     const near = Object.keys(r).filter((p) => C.prov[T.at].neighbors.includes(p) && !Object.values(s.armies).some((o) => o.at === p && atWar(s, you, o.side)));
-    if (near.length) orders[a.id] = { to: near[0], plan: 'hold' };
-    else { let pick = null; for (const p of way.slice(1, -1)) if (r[p]) pick = p; else break; orders[a.id] = { to: pick, plan: 'hold' }; }
+    if (near.length) orders[a.id] = { to: near[0] };
+    else { let pick = null; for (const p of way.slice(1, -1)) if (r[p]) pick = p; else break; orders[a.id] = { to: pick }; }
   }
   return orders;
 }
@@ -46,11 +66,12 @@ for (const C of CAMPAIGNS.filter((c) => !id || c.id === id)) {
       const r = resolve(s, C, { cards, orders: smart ? smartOrders(C, pre) : autoOrders(C, pre), raise: autoRaise(C, pre) });
       if (verbose && seed === 1) {
         console.log(`\n${C.turns[s.turn].label}: ${C.sides[C.you].name} ${fmtMen(menOf(r.state, C.you))} men, gold ${Math.round(r.state.sides[C.you].gold)}, will ${Math.round(r.state.sides[C.you].will)}; ` + Object.keys(C.sides).filter((x) => x !== C.you && r.state.sides[x].alive).map((x) => `${x} ${fmtMen(menOf(r.state, x))} w${Math.round(r.state.sides[x].will)} ${r.state.plans[x]?.stance ?? ''}`).join(', '));
-        for (const e of r.events) if (!e.minor) console.log('   ', e.type, '·', e.text);
+        for (const e of r.events) if (!e.minor) console.log('   ', e.type, '·', e.text, e.type === 'battle' ? JSON.stringify({ men: e.men, lost: e.lost, plans: e.plans }) : '');
       }
       s = r.state;
     }
     tally[s.verdict.as]++;
+    if (args.includes('--why')) console.log(`   seed ${seed}: turn ${s.end.turn}, ${s.end.why} · ${goalState(C, s).text}`);
     ends[s.end.why] = (ends[s.end.why] ?? 0) + 1;
     turns.push(s.end.turn);
   }

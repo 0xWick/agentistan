@@ -490,7 +490,7 @@ export function resolve(s0, C0, inputs = {}) {
   if (s.status !== 'running') return wrap(C, s, log);
   // the player's own offer of peace
   for (const [side, how] of Object.entries(inputs.peace ?? {})) {
-    if (how !== 'offer' || !atWar(s, C.you, side)) continue;
+    if (how !== 'offer' || !atWar(s, C.you, side) || C.sides[side].noPeace) continue;
     const yes = s.sides[side].will < 40 || (s.sides[side].will < 55 && menOf(s, side) < menOf(s, C.you) * 0.6);
     if (yes) makePeace(C, s, side, emit);
     else emit({ type: 'peace.refused', text: `${C.sides[side].name} refuses your offer of peace`, sides: [side] });
@@ -505,7 +505,7 @@ export function resolve(s0, C0, inputs = {}) {
     s.plans[side] = plan;
     if (ai?.say) s.said[side] = String(ai.say).slice(0, 200);
     Object.assign(orders, aiOrders(C, s, side, plan, rng(`ai:${side}`)));
-    if (plan.peace && atWar(s, side, C.you) && !s.offers[side] && s.sides[side].will < 45) s.offers[side] = { turn: s.turn + 1, to: C.you };
+    if (plan.peace && !C.sides[side].noPeace && atWar(s, side, C.you) && !s.offers[side] && s.sides[side].will < 45) s.offers[side] = { turn: s.turn + 1, to: C.you };
     const r = aiRaise(C, s, side);
     if (r) {
       const there = armiesAt(s, r.at).find((a) => a.side === side);
@@ -534,7 +534,18 @@ export function resolve(s0, C0, inputs = {}) {
     if (!way) continue;
     moves.push([a, way]);
   }
+  // an army that an enemy marches on stands to fight it, unless it refuses battle; when two armies march on each
+  // other, the larger presses on and the smaller stands
+  const pinned = new Set();
   for (const [a, way] of moves) {
+    const threats = moves.filter(([o, w]) => o.id !== a.id && atWar(s, o.side, a.side) && w.slice(1).includes(a.at));
+    if (!threats.length || orders[a.id]?.plan === 'refuse') continue;
+    const mutual = threats.filter(([o]) => way.slice(1).includes(o.at));
+    if (mutual.length && mutual.every(([o]) => a.men >= o.men) && mutual.length === threats.length) continue;
+    pinned.add(a.id);
+  }
+  for (const [a, way] of moves) {
+    if (pinned.has(a.id)) continue;
     let stop = a.at;
     for (const p of way.slice(1)) {
       stop = p;
@@ -564,6 +575,7 @@ export function resolve(s0, C0, inputs = {}) {
       s.sides[side].alive = false;
       emit({ type: 'fallen', text: `${C.sides[side].name} is no more`, sides: [side] });
     }
+    if (C.sides[side].noPeace) continue; // some never treat: the Great King did not, while he lived
     if (side !== C.you && atWar(s, side, C.you) && s.sides[side].will < 25 && !s.offers[side]) s.offers[side] = { turn: s.turn + 1, to: C.you };
     if (side !== C.you && atWar(s, side, C.you) && s.sides[side].will <= 0) { emit({ type: 'yield', text: `${C.sides[side].name} can fight no more and yields`, sides: [side] }); makePeace(C, s, side, emit); }
   }
@@ -674,6 +686,14 @@ function battleAt(C, s, at, orders, start, rng, emit) {
     if (back && a.men >= 1500) a.at = back;
     else { gone.push(a); delete s.armies[a.id]; }
   }
+  // after a great victory, nearby towns of the beaten side may open their gates rather than face a siege
+  if (decisive && atWar(s, ws, ls)) {
+    for (const p of [at, ...C.prov[at].neighbors]) {
+      const st = s.prov[p];
+      if (st.owner !== ls || C.prov[p].capital || armiesAt(s, p).some((o) => o.side === ls) || C.prov[p].sea.includes(at)) continue;
+      if (rng() < (C.surrender ?? 0.35)) capture(C, s, p, ws, emit, 'opens its gates');
+    }
+  }
   const P = C.prov[at].name, wn = C.sides[ws].name, ln = C.sides[ls].name;
   emit({
     type: 'battle', at, sides: [as, ds], winner: ws, loser: ls, decisive,
@@ -681,7 +701,16 @@ function battleAt(C, s, at, orders, start, rng, emit) {
     men: [Math.round(att.reduce((t, a) => t + a.men, 0) + (aWins ? lostW : lostL)), Math.round(d.reduce((t, a) => t + a.men, 0) + (aWins ? lostL : lostW))],
     lost: aWins ? [lostW, lostL] : [lostL, lostW], plans: { a: { ...pa, fit: round(fitA, 0.01) }, d: { ...pd, fit: round(fitD, 0.01) } }, gens: [la.gen, ld.gen],
   });
-  for (const a of gone) if (a.hero) emit({ type: 'hero', text: `${a.gen} is lost with his army`, at, sides: [a.side] });
+  // a commander whose army is destroyed may still escape with his bodyguard, to the nearest friendly ground
+  for (const a of gone) {
+    if (!a.hero) continue;
+    const safe = Object.keys(s.prov).filter((p) => (s.prov[p].owner === a.side || friends(s, a.side, s.prov[p].owner)) && !armiesAt(s, p).some((o) => atWar(s, a.side, o.side)))
+      .map((p) => [p, wayTo(C, s, a.side, at, p)?.length ?? 99]).sort((x, y) => x[1] - y[1])[0];
+    if (safe && safe[1] < 99 && rng() < 0.85) {
+      s.armies[a.id] = { ...a, at: safe[0], from: at, men: 3000, morale: 30 };
+      emit({ type: 'escape', text: `${a.gen} escapes the rout with a few hundred horsemen and reaches ${C.prov[safe[0]].name}`, at: safe[0], sides: [a.side] });
+    } else emit({ type: 'hero', text: `${a.gen} is lost with his army`, at, sides: [a.side] });
+  }
 }
 
 function siegeAt(C, s, at, orders, rng, emit) {
@@ -720,7 +749,7 @@ function siegeAt(C, s, at, orders, rng, emit) {
   if (P.siege === 1) emit({ type: 'siege', text: `${C.sides[side].name} lays siege to ${C.prov[at].name}`, at, sides: [side, owner], minor: true });
 }
 export const wallPower = (walls) => 1.5 + 0.6 * walls;
-function capture(C, s, at, side, emit) {
+function capture(C, s, at, side, emit, how = null) {
   const P = s.prov[at], was = P.owner, D = C.prov[at];
   Object.assign(P, { owner: side, siege: 0, by: null, garrison: Math.round(garrisonOf({ ...D, walls: P.walls }) * 0.3) });
   const capital = was && C.sides[was]?.capital === at;
@@ -728,7 +757,11 @@ function capture(C, s, at, side, emit) {
   s.sides[side].will = clamp(s.sides[side].will + (capital ? 12 : 1 + Math.ceil(D.wealth / 2)), 0, 100);
   if (side === C.you) s.stats.taken++;
   if (was === C.you) s.stats.fallen++;
-  emit({ type: 'capture', text: `${C.sides[side].name} takes ${D.name}${was ? ` from ${C.sides[was].name}` : ''}`, at, sides: [side, was], capital, minor: !capital && D.wealth < 2 && !D.walls });
+  // a city taken pays: its plunder, and a royal treasury once
+  const loot = Math.round(D.wealth * (C.plunder ?? 6) + (P.looted ? 0 : D.treasure ?? 0));
+  P.looted = true;
+  if (loot) s.sides[side].gold += loot;
+  emit({ type: 'capture', text: how ? `${D.name} ${how} to ${C.sides[side].name}${D.treasure && loot > 100 ? `, with its treasury: ${loot} gold` : ''}` : `${C.sides[side].name} takes ${D.name}${was ? ` from ${C.sides[was].name}` : ''}${D.treasure && loot > 100 ? `, and its treasury: ${loot} gold` : ''}`, at, sides: [side, was], capital, minor: !capital && D.wealth < 2 && !D.walls && !D.treasure });
 }
 function economy(C, s, side, emit) {
   const st = s.sides[side], d = C.sides[side];

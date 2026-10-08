@@ -75,7 +75,7 @@ export default {
     ['arretium', 'Arretium', 43.46, 11.88, 'rome', 1, 2],
     ['trasimene', 'Lake Trasimene', 43.13, 12.1, 'rome', 0, 1, { lake: true, terrain: 'hills' }],
     ['picenum', 'Asculum', 42.85, 13.58, 'rome', 0, 1],
-    ['rome', 'Rome', 41.89, 12.49, 'rome', 3, 6],
+    ['rome', 'Rome', 41.89, 12.49, 'rome', 3, 6, { garrison: 45000 }],
     ['capua', 'Capua', 41.08, 14.25, 'rome', 2, 4],
     ['samnium', 'Beneventum', 41.13, 14.78, 'rome', 1, 1],
     ['cannae', 'Cannae', 41.3, 16.13, 'rome', 0, 2, { terrain: 'plains' }],
