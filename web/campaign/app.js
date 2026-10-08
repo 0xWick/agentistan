@@ -3,7 +3,7 @@
 import { CAMPAIGNS, CAMPAIGN } from './catalog.js';
 import {
   newCampaign, resolve, cardsDue, withCards, counsel, reach, oddsOf, battleFacts, plansFor, fitOf, PLANS, armiesOf, armiesAt, menOf,
-  owned, heroOf, goalState, atWar, fmtMen, checksum, VERDICT, incomeOf, upkeepOf, temperOf, friends, wallPower,
+  owned, heroOf, goalState, atWar, fmtMen, checksum, VERDICT, incomeOf, upkeepOf, temperOf, friends, homeOf,
 } from './engine.js';
 import { makeMap } from './map.js';
 import { portrait } from '../silk/portrait.js';
@@ -207,6 +207,7 @@ function renderTurn() {
     <div class="advisor"><div class="face">${face(advisor, C.sides[you].color, 44, 'adv')}</div><div>${lines.slice(0, 3).map((l) => `<p>${esc(l)}</p>`).join('')}<span class="by">${esc(advisor.name)}${advisor.title ? `, ${esc(advisor.title)}` : ''} · ${by}</span></div></div>
     ${due.length ? `<h3>Decisions</h3><div class="decide">${due.map((c) => `<button data-card="${esc(c.id)}" class="${G.draft.cards[c.id] !== undefined ? 'done' : ''}">${esc(c.title)}<span class="tag">${G.draft.cards[c.id] !== undefined ? esc(c.options[G.draft.cards[c.id]].label) : 'decide'}</span></button>`).join('')}</div>` : ''}
     <h3>Your armies</h3><div class="armies">${armiesOf(pre, you).sort((a, b) => (b.hero ? 1 : 0) - (a.hero ? 1 : 0) || b.men - a.men).map((a) => armyRow(a)).join('') || '<p class="sub">You have no army in the field.</p>'}</div>
+    ${homeRow(pre)}
     ${foes.length ? `<h3>Peace</h3><div class="peace-row">${foes.map((f) => `<button class="btn${G.draft.peace[f] ? ' blue' : ''}" data-peace="${f}">${G.draft.peace[f] ? '✓ ' : ''}Offer peace to ${esc(C.sides[f].short ?? C.sides[f].name)}</button>`).join('')}</div><p class="fine">They accept only when their will to fight is low.</p>` : ''}
     <div class="end"><button class="btn main wide" id="end-turn">${G.busy ? 'The turn unfolds…' : `End the turn${due.some((c) => G.draft.cards[c.id] === undefined) ? ' (your advisor decides the rest)' : ''}`}</button></div>`;
   box.querySelectorAll('[data-card]').forEach((b) => b.addEventListener('click', () => openCard(due.find((c) => c.id === b.dataset.card))));
@@ -250,6 +251,15 @@ function armyRow(a) {
   </div>`;
 }
 
+// New troops raised at home, as an army of their own.
+function homeRow(pre) {
+  const C = G.C, home = homeOf(C, pre, C.you), cost = C.raiseCost ?? 10;
+  if (!home) return '';
+  const n = Math.min(C.sides[C.you].levy, Math.floor(pre.sides[C.you].gold / cost) * 1000);
+  if (n < 1000) return '';
+  const on = !!G.draft.raise['@home'];
+  return `<p class="peace-row"><button class="btn${on ? ' blue' : ''}" data-raise="@home" data-men="${n}" title="New men, green but welcome: ${cost} gold for every thousand">${on ? `✓ raising ${fmtMen(n)} at ${esc(C.prov[home].name)}` : `Raise ${fmtMen(n)} new men at ${esc(C.prov[home].name)} (${(n / 1000) * cost} gold)`}</button></p>`;
+}
 function select(id) {
   closePop();
   G.sel = G.sel === id ? null : id;

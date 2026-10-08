@@ -31,7 +31,7 @@ function cleanInputs(raw = {}) {
     if (!/^[\w-]{1,24}$/.test(id) || !o || typeof o !== 'object') continue;
     out.orders[id] = { to: typeof o.to === 'string' && /^[\w-]{1,32}$/.test(o.to) ? o.to : null, plan: PLANS[o.plan] ? o.plan : null, storm: !!o.storm };
   }
-  for (const [id, n] of Object.entries(raw.raise ?? {}).slice(0, 20)) if (/^[\w-]{1,24}$/.test(id) && Number.isFinite(+n)) out.raise[id] = Math.max(0, Math.min(200000, Math.round(+n)));
+  for (const [id, n] of Object.entries(raw.raise ?? {}).slice(0, 20)) if (/^(@home|[\w-]{1,24})$/.test(id) && Number.isFinite(+n)) out.raise[id] = Math.max(0, Math.min(2000000, Math.round(+n)));
   for (const [id, n] of Object.entries(raw.cards ?? {}).slice(0, 20)) if (/^[\w:-]{1,40}$/.test(id) && Number.isInteger(n) && n >= 0 && n < 6) out.cards[id] = n;
   for (const [id, v] of Object.entries(raw.peace ?? {}).slice(0, 10)) if (/^[\w-]{1,24}$/.test(id) && v === 'offer') out.peace[id] = 'offer';
   return out;

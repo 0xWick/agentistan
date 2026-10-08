@@ -239,7 +239,7 @@ export function oddsOf(C, s, army, at) {
     const p = s.prov[at];
     if (!p.owner || !atWar(s, a.side, p.owner) || !p.walls) return { kind: 'take', ratio: Infinity };
     if (C.prov[at].port && (s.sides[p.owner]?.fleet ?? 0) > 0 && (s.sides[p.owner]?.fleet ?? 0) >= (s.sides[a.side]?.fleet ?? 0)) return { kind: 'siege', turns: 99, fed: true, garrison: p.garrison, ratio: (a.men * (C.sides[a.side].quality ?? 1)) / Math.max(1, p.garrison * wallPower(p.walls) * (C.sides[p.owner]?.quality ?? 1)) };
-    return { kind: 'siege', turns: Math.max(1, Math.ceil((p.walls - (p.by === a.side ? p.siege : 0)) / (a.men >= 4 * p.garrison ? 2 : 1))), garrison: p.garrison, ratio: (a.men * (C.sides[a.side].quality ?? 1)) / Math.max(1, p.garrison * wallPower(p.walls) * (C.sides[p.owner]?.quality ?? 1)) };
+    return { kind: 'siege', turns: Math.max(p.by === a.side ? 1 : 2, Math.ceil((p.walls - (p.by === a.side ? p.siege : 0)) / (a.men >= 4 * p.garrison ? 2 : 1))), garrison: p.garrison, ratio: (a.men * (C.sides[a.side].quality ?? 1)) / Math.max(1, p.garrison * wallPower(p.walls) * (C.sides[p.owner]?.quality ?? 1)) };
   }
   const best = Math.max(...plansFor(C, false).map((id) => fitOf(f, id)));
   const pow = (list, side, fit, defending) => list.reduce((t, x) => t + x.men * (C.sides[x.side].quality ?? 1) * (1 + 0.08 * (x.skill - 3)) * (0.6 + x.morale / 250), 0) * planFactor(fit, 3) * (defending ? groundOf(C, s, at) : 1);
@@ -280,6 +280,7 @@ export function applyFx(C, s, fx, side = C.you, emit = () => {}) {
   for (const f of [].concat(fx.unflag ?? [])) delete s.flags[f];
   if (fx.remove) for (const id of [].concat(fx.remove)) { const a = s.armies[id]; if (a) delete s.armies[a.id]; }
   for (const id of [].concat(fx.free ?? [])) if (s.armies[id]) delete s.armies[id].stay;
+  for (const [id, f] of Object.entries(fx.fort ?? {})) if (s.armies[id]) s.armies[id].fort = f; // dug in: siege lines, a fortified camp
   for (const [id, to] of Object.entries(fx.aim ?? {})) if (s.armies[id]) s.armies[id].target = to;
   if (fx.end) finish(C, s, fx.end, fx.why ?? '');
   if (fx.log) emit({ type: 'story', text: fx.log });
@@ -438,7 +439,7 @@ export function autoRaise(C0, s, side) {
   const r = aiRaise(C, s, side);
   if (!r) return {};
   const a = armiesOf(s, side).filter((x) => s.prov[x.at].owner === side && C.prov[x.at].wealth >= 1).sort((x, y) => (x.at === r.at ? -1 : 0) - (y.at === r.at ? -1 : 0) || y.men - x.men)[0];
-  return a ? { [a.id]: r.men } : {};
+  return a ? { [a.id]: r.men } : homeOf(C, s, side) ? { '@home': r.men } : {};
 }
 // How much an AI side raises this turn.
 export const incomeOf = (C, s, side) => owned(s, side).reduce((t, p) => t + C.prov[p].wealth, 0) * (C.goldPer ?? 6) + (C.sides[side].income ?? 0);
@@ -485,6 +486,7 @@ export function resolve(s0, C0, inputs = {}) {
   const emit = (e) => log.push({ turn: s.turn, ...e });
   for (const a of Object.values(s.armies)) a.from = a.at;
   s.said = {};
+  const dug = Object.fromEntries(Object.values(s.armies).filter((a) => a.fort).map((a) => [a.id, a.at]));
 
   // 1. the cards
   answer(C, s, inputs, emit);
@@ -560,6 +562,7 @@ export function resolve(s0, C0, inputs = {}) {
     a.at = stop;
   }
 
+  for (const [id, at] of Object.entries(dug)) if (s.armies[id] && s.armies[id].at !== at) delete s.armies[id].fort; // siege lines stay behind when an army marches
   // 4. battles, wherever enemies stand together
   const places = [...new Set(Object.values(s.armies).map((a) => a.at))];
   for (const at of places) battleAt(C, s, at, orders, start, rng(`battle:${at}`), emit);
@@ -577,6 +580,7 @@ export function resolve(s0, C0, inputs = {}) {
       emit({ type: 'fallen', text: `${C.sides[side].name} is no more`, sides: [side] });
     }
     if (C.sides[side].noPeace) continue; // some never treat: the Great King did not, while he lived
+    if (submits(C, s, side, emit)) continue;
     if (side !== C.you && atWar(s, side, C.you) && s.sides[side].will < 25 && !s.offers[side]) s.offers[side] = { turn: s.turn + 1, to: C.you };
     if (side !== C.you && atWar(s, side, C.you) && s.sides[side].will <= 0) { emit({ type: 'yield', text: `${C.sides[side].name} can fight no more and yields`, sides: [side] }); makePeace(C, s, side, emit); }
   }
@@ -589,6 +593,7 @@ export function resolve(s0, C0, inputs = {}) {
     applyFx(C, s, ev.fx, ev.side ?? C.you, emit);
     if (ev.text) emit({ type: ev.type ?? 'history', text: ev.text, at: ev.place, sides: ev.sides });
   }
+  for (const side of living(s)) submits(C, s, side, emit); // history's moves may have broken a people's will
   s.stats.peak = Math.max(s.stats.peak, menOf(s, C.you));
 
   // 10. the goal, and the next turn
@@ -610,7 +615,25 @@ function wrap(C, s, log) {
 }
 export const fmtMen = (n) => (n >= 995000 ? `${(n / 1e6).toFixed(n >= 9.95e6 ? 0 : 1)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : `${Math.round(n / 100) * 100}`);
 
+// Where new troops can be raised away from any army: the capital, or failing it the richest city still held.
+export function homeOf(C, s, side) {
+  const cap = C.sides[side].capital;
+  if (cap && s.prov[cap]?.owner === side && !armiesAt(s, cap).some((o) => atWar(s, side, o.side))) return cap;
+  return owned(s, side).filter((p) => C.prov[p].wealth >= 2 && !armiesAt(s, p).some((o) => atWar(s, side, o.side))).sort((a, b) => C.prov[b].wealth - C.prov[a].wealth)[0] ?? null;
+}
 function raise(C, s, id, men, emit) {
+  if (id === '@home') { // a new army, raised at home
+    const side = C.you, at = homeOf(C, s, side), cost = C.raiseCost ?? 10;
+    if (!at) return;
+    const n = Math.min(Math.round(men / 1000) * 1000, C.sides[side].levy, Math.floor(s.sides[side].gold / cost) * 1000);
+    if (n < 1000) return;
+    s.sides[side].gold -= (n / 1000) * cost;
+    const there = armiesAt(s, at).find((a) => a.side === side);
+    if (there) there.men += n;
+    else spawn(s, side, at, n, C.sides[side].levyGeneral ?? 'New levies', 2, { morale: 50 });
+    emit({ type: 'raised', text: `${fmtMen(n)} new men are raised at ${C.prov[at].name}`, at, sides: [side] });
+    return;
+  }
   const a = s.armies[id], side = a?.side, cost = C.raiseCost ?? 10;
   if (!a || side !== C.you || !men) return;
   const p = s.prov[a.at];
@@ -629,12 +652,11 @@ function battleAt(C, s, at, orders, start, rng, emit) {
   const sides = [...new Set(here.map((a) => a.side))];
   const hostile = sides.some((x) => sides.some((y) => atWar(s, x, y)));
   if (!hostile) return;
-  // two camps: whoever stood here first defends, the rest attack
+  // two camps: the strongest army that stood here first defends, with its friends; its enemies attack
   const stood = here.filter((a) => start[a.id] === at), came = here.filter((a) => start[a.id] !== at);
-  let d = stood.length ? stood : [came.sort((x, y) => y.men - x.men)[0]];
-  const ds = d[0].side;
-  d = here.filter((a) => friends(s, a.side, ds) || (d.includes(a)));
-  const att = here.filter((a) => !d.includes(a) && atWar(s, a.side, ds));
+  const ds = [...(stood.length ? stood : came)].sort((x, y) => y.men - x.men)[0].side;
+  const d = here.filter((a) => friends(s, a.side, ds));
+  const att = here.filter((a) => atWar(s, a.side, ds));
   if (!att.length) return;
   const as = [...att].sort((x, y) => y.men - x.men)[0].side;
   const fa = battleFacts(C, s, at, att, d, false), fd = battleFacts(C, s, at, d, att, true);
@@ -659,7 +681,7 @@ function battleAt(C, s, at, orders, start, rng, emit) {
     pd.id = generalsPlan(C, fd, { temper: 'steady', skill: ld.skill }, rng, ['refuse']);
   }
   const fitA = clamp(fitOf(fa, pa.id) - (countered(pa.id, pd.id) ? 0.8 : 0), -1, 1), fitD = clamp(fitOf(fd, pd.id) - (countered(pd.id, pa.id) ? 0.8 : 0), -1, 1);
-  const pow = (list, fit, defending) => list.reduce((t, a) => t + a.men * (C.sides[a.side].quality ?? 1) * (1 + 0.08 * (a.skill - 3)) * (0.6 + a.morale / 250), 0)
+  const pow = (list, fit, defending) => list.reduce((t, a) => t + a.men * (C.sides[a.side].quality ?? 1) * (1 + 0.08 * (a.skill - 3)) * (0.6 + a.morale / 250) * (defending ? a.fort ?? 1 : 1), 0)
     * planFactor(fit, lead(list).skill) * (defending ? groundOf(C, s, at) : 1) * (0.85 + 0.3 * rng());
   const PA = pow(att, fitA, false), PD = pow(d, fitD, true);
   const aWins = PA > PD, win = aWins ? att : d, lose = aWins ? d : att, r = Math.max(PA, PD) / Math.max(1, Math.min(PA, PD));
@@ -741,7 +763,7 @@ function siegeAt(C, s, at, orders, rng, emit) {
     emit({ type: 'repulsed', text: `The assault on ${C.prov[at].name} is thrown back with heavy losses`, at, sides: [side, owner] });
     return;
   }
-  if (P.by !== side) Object.assign(P, { siege: 0, by: side });
+  if (P.by !== side) Object.assign(P, { siege: 0, by: side, since: s.turn });
   // a port fed from the sea cannot be starved while its masters rule the sea
   if (C.prov[at].port && (s.sides[owner]?.fleet ?? 0) > 0 && (s.sides[owner]?.fleet ?? 0) >= (s.sides[side]?.fleet ?? 0)) {
     if (!P.fedNoted) emit({ type: 'fed', text: `${C.prov[at].name} is fed from the sea: only a storm, or the loss of its fleet, will take it`, at, sides: [side, owner] });
@@ -749,7 +771,7 @@ function siegeAt(C, s, at, orders, rng, emit) {
     return;
   }
   P.siege += men >= 4 * P.garrison ? 2 : 1;
-  if (P.siege >= P.walls) {
+  if (P.siege >= P.walls && (P.since ?? -1) < s.turn) { // a siege lasts at least a season
     emit({ type: 'starved', text: `${C.prov[at].name} opens its gates to ${C.sides[side].name} after a siege`, at, sides: [side, owner] });
     return capture(C, s, at, side, emit);
   }
@@ -803,6 +825,15 @@ function attrition(C, s, a, emit) {
   if (a.side === C.you) s.stats.dead += lost;
   if (rate >= 0.08) emit({ type: 'attrition', text: `${a.gen ?? C.sides[a.side].name} loses ${fmtMen(lost)} men to ${P.terrain === 'mountains' ? 'the cold of the mountains' : P.terrain === 'desert' ? 'the heat and thirst' : 'hunger and sickness'}`, at: a.at, sides: [a.side], minor: a.side !== C.you });
   if (a.men < 800) { delete s.armies[a.id]; emit({ type: 'melted', text: `${a.gen ?? `An army of ${C.sides[a.side].name}`}'s army melts away`, at: a.at, sides: [a.side] }); }
+}
+// A beaten people that submits gives hostages and becomes a client of the player.
+function submits(C, s, side, emit) {
+  if (!C.sides[side].submits || side === C.you || !atWar(s, side, C.you) || s.sides[side].will >= 30) return false;
+  setRel(s, side, C.you, 'ally', emit, C);
+  emit({ type: 'submits', text: `${C.sides[side].name} submit${/s$/.test(C.sides[side].name) ? '' : 's'} to ${C.sides[C.you].short ?? C.sides[C.you].name} and give hostages`, sides: [side, C.you] });
+  for (const a of armiesOf(s, side)) a.stay = true;
+  s.sides[side].will = 40;
+  return true;
 }
 function makePeace(C, s, side, emit) {
   if (!atWar(s, side, C.you)) return;
