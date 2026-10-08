@@ -27,7 +27,8 @@ export function summary(C, s0, draft) {
 }
 
 // ---------- the situation, for the AI: only what the war's data says ----------
-export function situation(C, s, draft = null) {
+export function situation(C, s0, draft = null) {
+  const s = draft?.cards && Object.keys(draft.cards).length ? withCards(C, s0, draft.cards) : s0; // the world the chosen cards make
   const you = C.you, sides = Object.keys(C.sides).filter((id) => s.sides[id].alive), t = turnOf(C, s);
   const L = [`Date: ${t.label} (turn ${s.turn + 1} of ${C.turns.length}; it is ${t.season}). The war: ${C.title}. The commander (the player) is ${heroOf(s)?.gen ?? C.hero.name} of ${C.sides[you].name}. Goal: ${C.goal.text}. ${goalState(C, s).text}.`];
   for (const id of sides) {
@@ -48,7 +49,7 @@ export function situation(C, s, draft = null) {
   }
   L.push(`Provinces (id: name, holder, walls): ${C.ids.map((p) => `${p}: ${C.prov[p].name}, ${s.prov[p].owner ?? 'free'}${s.prov[p].walls ? `, walls ${s.prov[p].walls}` : ''}`).join(' | ')}`);
   if (s.dead?.length) L.push(`DEAD (they cannot act or speak; never mention them as alive): ${s.dead.join(', ')}.`);
-  const cards = cardsDue(C, s);
+  const cards = cardsDue(C, s0);
   if (cards.length) L.push(`DECISIONS before the commander this season: ${cards.map((c) => `card ${c.id} "${c.title}": ${c.text} Options: ${c.options.map((o, i) => `${i} = ${o.label}`).join('; ')}${draft?.cards?.[c.id] !== undefined ? ` (already chosen: ${draft.cards[c.id]})` : ''}`).join(' || ')}`);
   return L.join('\n');
 }

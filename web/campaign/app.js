@@ -475,7 +475,10 @@ function dispatch(events, s, t, { quiet = false } = {}) {
   const fell = new Set(events.filter((e) => ['starved', 'storm'].includes(e.type)).map((e) => e.at));
   const shown = events.filter((e) => e.type !== 'card' && (!e.minor || (e.sides ?? []).includes(C.you)) && !(e.type === 'capture' && fell.has(e.at))).slice(0, 12);
   chat({ kind: 'dispatch', title: `Dispatches: ${turnLabel(C, t)}`, items: shown.length ? shown.map((e) => news(C, s, e)).join('') : '<li>A quiet season: the armies march and watch each other.</li>' });
-  for (const [side, line] of Object.entries(s.said ?? {})) if (C.sides[side]) chat({ kind: 'msg', who: `side:${side}`, text: line });
+  // what the other sides declare: only those at war with you, or allied to you, and the two that matter most
+  const said = Object.entries(s.said ?? {}).filter(([side]) => C.sides[side] && side !== C.you && (atWar(s, C.you, side) || friends(s, C.you, side)))
+    .sort(([a], [b]) => atWar(s, C.you, b) - atWar(s, C.you, a) || menOf(s, b) - menOf(s, a)).slice(0, 2);
+  for (const [side, line] of said) chat({ kind: 'msg', who: `side:${side}`, text: line });
   if (C.turns[t]?.history) chat({ kind: 'history', text: C.turns[t].history });
   if (quiet) return;
   const big = events.find((e) => ['victory', 'defeat'].includes(e.type)) ?? events.find((e) => e.type === 'battle' && e.decisive && (e.sides ?? []).includes(C.you)) ?? events.find((e) => e.type === 'capture' && e.capital);
