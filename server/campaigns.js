@@ -60,19 +60,24 @@ export class Campaigns extends DurableObject {
     ] : [];
     this.usage = usage;
     this.usage2 = usage2;
+    // the council's voice: the larger model, on a small budget of its own (the Watch's cast has the rest of its day)
+    this.usage3 = this.get('usage3') ?? {};
+    this.voice = env.LLM_API_KEY ? makeLLM({ ...env, LLM_MODEL: env.COUNCIL_MODEL || 'openai/gpt-oss-120b', MAX_LLM_TOKENS_PER_DAY: env.COUNCIL_TOKENS || '60000', MAX_LLM_CALLS_PER_DAY: '200', LLM_EXTRA: '{"reasoning_effort":"low"}' }, this.usage3) : null;
   }
   get llm() { return this.llms.find((l) => l.status().mode === 'live') ?? null; }
-  saveUsage() { this.put('usage', this.usage); this.put('usage2', this.usage2); }
-  async askAI(system, user, maxTokens, maxWait = 6) {
-    const llm = this.llm;
-    if (!llm) return null;
-    try {
-      const { message } = await llm.chat([{ role: 'system', content: system }, { role: 'user', content: user }], undefined, { max_tokens: maxTokens, temperature: 0.6, response_format: { type: 'json_object' }, maxWait });
-      return parse(message?.content);
-    } catch (err) {
-      console.error('campaign AI failed:', err.message);
-      return null;
-    } finally { this.saveUsage(); }
+  saveUsage() { this.put('usage', this.usage); this.put('usage2', this.usage2); this.put('usage3', this.usage3); }
+  async askAI(system, user, maxTokens, maxWait = 6, { voice = false } = {}) {
+    const order = [voice && this.voice?.status().mode === 'live' ? this.voice : null, this.llm].filter(Boolean); // the council's voice first, then the usual model
+    for (const llm of order) {
+      try {
+        const { message } = await llm.chat([{ role: 'system', content: system }, { role: 'user', content: user }], undefined, { max_tokens: maxTokens, temperature: 0.6, response_format: { type: 'json_object' }, maxWait });
+        const out = parse(message?.content);
+        if (out) return out;
+      } catch (err) {
+        console.error('campaign AI failed:', err.message);
+      } finally { this.saveUsage(); }
+    }
+    return null;
   }
   old(run) { return (run.v ?? 1) !== ENGINE; } // played under older rules: its record would replay differently now
   get(k) { const r = this.sql.exec('SELECT v FROM kv WHERE k = ?', k).toArray()[0]; return r ? JSON.parse(r.v) : null; }
@@ -171,18 +176,19 @@ STRICT: use only the people, armies, places and numbers in the data. The dead ca
     const rules = interpret(C, s, draft, text), lit = rules.literal;
     const heard = Object.keys(lit.orders).length + Object.keys(lit.raise).length + Object.keys(lit.peace).length + Object.keys(lit.cards).length;
     const viaRules = () => ({ draft: rules.draft, replies: rules.replies, end: rules.end, by: 'rules' });
+    const live = this.llm ?? (this.voice?.status().mode === 'live' ? this.voice : null);
     if (rules.asking && !heard && !/\b(should|shall|would|could|advise|think|suggest|best|wise)\b/i.test(text)) return viaRules(); // a question of fact: the war's data answers it
-    if (!this.llm || used >= +(this.env.COUNCIL_PER_SEASON || 8)) return viaRules();
+    if (!live || used >= +(this.env.COUNCIL_PER_SEASON || 8)) return viaRules();
     this.put(`talk:${run.id}:${s.turn}`, used + 1);
     const court = courtOf(C, s), ids = new Set(court.map((p) => p.id));
     const chat = (Array.isArray(body.chat) ? body.chat : []).slice(-8).map((m) => `${m.who === 'you' ? 'COMMANDER' : String(m.name ?? m.who).slice(0, 40)}: ${clean(String(m.text ?? ''), 80)}`).join('\n');
     const system = `You are the council of ${s.armies && Object.values(s.armies).find((a) => a.hero)?.gen || C.hero.name} in a historical war game (${C.title}, ${C.years}). Its members, by id: ${court.map((p) => `${p.id} = ${p.name}${p.title ? `, ${p.title}` : ''}`).join('; ')}.
-The commander speaks to you. Reply only to the commander's LAST words (the earlier conversation is context; never repeat an earlier answer). Answer in character, briefly: one to three plain sentences from each member who would speak (usually one or two members), as people of that time would talk: loyal, frank, sometimes disagreeing. Then turn the commander's words into orders. Answer questions from the data alone.
+The commander speaks to you. A general given an order answers for his own army (his id begins with army:); the first member speaks for the rest. Reply only to the commander's LAST words (the earlier conversation is context; never repeat an earlier answer). Answer in character, briefly: one to three plain sentences from each member who would speak (usually one or two members), as people of that time would talk: loyal, frank, sometimes disagreeing. Then turn the commander's words into orders. Answer questions from the data alone.
 STRICT RULES: use only the people, armies, places, numbers and decisions in the data. The dead cannot speak or act. Never invent events, battles or deaths. An army may be ordered to any province; if it is not under "can reach this season", the army goes as far as it can and the rest next season, and you should say so. Keep any order the commander did not change. Your replies must match the orders you return exactly: never say an army will go somewhere unless that order is in your JSON, and if the commander's words change nothing, say so. The commander's own army is the one led by the commander. Never mock any faith or people; no slurs; nothing graphic.
 Reply with JSON only: {"replies": [{"who": "<member id>", "text": "..."}], "orders": {"<army id>": {"to": "<province id, or null to hold>", "plan": "<plan id or null>", "storm": false}}, "raise": {"<army id, or @home>": <number of men>}, "peace": {"<side id>": true}, "cards": {"<card id>": <option number>}, "end": false}
 Include in orders, raise, peace and cards only what the commander's words change. "end": true only when the commander clearly ends the season ("make it so", "end the turn"). Plans: ${plansFor(C, false).map((p) => `${p} = ${PLANS[p].name}`).join('; ')}.`;
     const understood = heard ? `\nALREADY UNDERSTOOD from these words (fixed; do not contradict or repeat them in orders): ${[...Object.entries(rules.draft.cards).filter(([id]) => id in lit.cards).map(([id, n]) => `card ${id} = ${n}`), ...summary(C, s, { ...rules.draft, orders: Object.fromEntries(Object.entries(rules.draft.orders).filter(([id]) => id in lit.orders)), raise: lit.raise, peace: lit.peace })].join('; ')}.` : '';
-    const out = await this.askAI(system, `${situation(C, s, rules.draft)}\n\nThis season so far:\n${chat || '(nothing yet)'}\n\nCOMMANDER: ${text}${understood}`, 700);
+    const out = await this.askAI(system, `${situation(C, s, rules.draft)}\n\nThis season so far:\n${chat || '(nothing yet)'}\n\nCOMMANDER: ${text}${understood}`, 700, 6, { voice: true });
     if (!out) return viaRules();
     const mine = (o, taken) => Object.fromEntries(Object.entries(o ?? {}).filter(([k]) => !(k in taken)));
     const { draft: next, notes } = normalize(C, s, rules.draft, { orders: mine(out.orders, lit.orders), raise: Object.keys(lit.raise).length ? {} : out.raise ?? {}, peace: mine(Object.fromEntries(Object.entries(out.peace ?? {}).filter(([, v]) => v)), lit.peace), cards: mine(out.cards, lit.cards) });
