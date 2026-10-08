@@ -80,8 +80,8 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 700; letter-spacing: 
 .lane { fill: none; stroke: #3d6b8c; stroke-width: 1.4; stroke-dasharray: 2 5; opacity: 0.6; pointer-events: none; }
 .reach { fill: rgba(255, 246, 214, 0.42); stroke: #f8eecf; stroke-width: 2.2; pointer-events: none; }
 .city circle { fill: var(--ink); }
-.city text { font: 13px var(--body); fill: var(--ink); paint-order: stroke; stroke: rgba(240, 228, 196, 0.9); stroke-width: 3.5px; stroke-linejoin: round; pointer-events: none; }
-.city.major text { font: 700 14.5px var(--body); }
+.city text { font-family: var(--body); fill: var(--ink); paint-order: stroke; stroke: rgba(240, 228, 196, 0.9); stroke-linejoin: round; pointer-events: none; }
+.city.major text { font-weight: 700; }
 .city .wall { fill: var(--ink); }
 .city .crown { fill: var(--gold); stroke: var(--ink); stroke-width: 0.8; }
 .badge-map rect { fill: #fbf3dd; stroke: var(--ink); stroke-width: 0.9; }

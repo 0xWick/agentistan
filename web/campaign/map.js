@@ -35,7 +35,7 @@ export function makeMap(svg, data, C, handlers) {
     layer.lanes.append(el('path', { class: 'lane', d: `M${x1} ${y1}Q${mx} ${my} ${x2} ${y2}` }));
   }
   const scale = () => view.w / svg.clientWidth; // map units per screen pixel
-  const k = () => Math.max(0.55, Math.min(2.4, scale() * 1.15)); // how big the marks are drawn, so they read at any zoom
+  const k = () => Math.max(0.3, Math.min(2.4, scale() * 1.15)); // how big the marks are drawn, so they read at any zoom
 
   // ---------- the parchment, sharper as you close in ----------
   const tileLayers = {}, shown = new Set();
@@ -154,10 +154,16 @@ export function makeMap(svg, data, C, handlers) {
       });
       labels(s);
     }
-    // walls and crowns
+    // walls and crowns, and names that read the same at any zoom
     layer.cities.querySelectorAll('.city').forEach((g) => {
       const id = g.dataset.city, st = s.prov[id], p = C.prov[id];
       g.querySelectorAll('.wall, .crown').forEach((x) => x.remove());
+      const t = g.querySelector('text'), c = g.querySelector('circle'), z = k();
+      t.setAttribute('font-size', (p.wealth >= 3 ? 14.5 : 13) * z);
+      t.setAttribute('x', P[id].city[0] + 6 * z);
+      t.setAttribute('y', P[id].city[1] + 4 * z);
+      t.style.strokeWidth = `${3.5 * z}px`;
+      c.setAttribute('r', (p.wealth >= 3 ? 3.4 : 2.4) * z);
       const [x, y] = P[id].city, size = 9 * k();
       if (p.capital && st.owner === p.capital) g.append(el('path', { class: 'crown', d: GLYPH.crown, transform: `translate(${x - size / 2} ${y - size * 1.45}) scale(${size / 24})` }));
       else if (st.walls) g.append(el('path', { class: 'wall', d: GLYPH.tower, transform: `translate(${x - size / 2} ${y - size * 1.35}) scale(${size / 24})`, opacity: 0.55 + 0.15 * st.walls }));

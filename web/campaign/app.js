@@ -57,7 +57,7 @@ function openSheet(html, { onClose } = {}) {
   sheet.innerHTML = `<div class="panel">${html}</div>`;
   sheet.onclose = () => onClose?.();
   if (!sheet.open) sheet.showModal();
-  sheet.querySelector('[data-close]')?.addEventListener('click', () => sheet.close());
+  sheet.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => sheet.close()));
   return sheet;
 }
 sheet.addEventListener('click', (e) => { if (e.target === sheet && !sheet.dataset.sticky) sheet.close(); });

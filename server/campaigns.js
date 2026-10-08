@@ -10,7 +10,7 @@ import { createPublicClient, createWalletClient, http, isAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia } from 'viem/chains';
 import { CAMPAIGN } from '../web/campaign/catalog.js';
-import { newCampaign, resolve, checksum, rulesPlan, armiesOf, menOf, owned, atWar, friends, PLANS, VERDICT, temperOf, goalState, fmtMen, heroOf } from '../web/campaign/engine.js';
+import { newCampaign, resolve, checksum, rulesPlan, armiesOf, menOf, owned, atWar, friends, PLANS, VERDICT, temperOf, goalState, fmtMen, heroOf, reach, oddsOf, battleFacts, plansFor, fitOf } from '../web/campaign/engine.js';
 import { makeLLM, clean } from './agent.js';
 import REGALIA from './Regalia.json' with { type: 'json' };
 import DEPLOYED from '../deployments/regalia-base-sepolia.json' with { type: 'json' };
@@ -110,7 +110,20 @@ export class Campaigns extends DurableObject {
       const d = C.sides[id], st = s.sides[id];
       const enemies = sides.filter((o) => atWar(s, id, o)).map((o) => o).join(', ') || 'none', allies = sides.filter((o) => o !== id && friends(s, id, o)).join(', ') || 'none';
       lines.push(`SIDE ${id} (${d.name}${id === you ? ', THE PLAYER' : ''}): led by ${d.leader}; temper ${temperOf(C, s, id)}; will to fight ${Math.round(st.will)}/100; gold ${Math.round(st.gold)}; at war with ${enemies}; allied with ${allies}. ${d.persona ?? ''}`);
-      for (const a of armiesOf(s, id)) lines.push(`  army ${a.id}: ${fmtMen(a.men)} men under ${a.gen ?? 'no famous general'} (skill ${a.skill}/5${a.temper ? `, ${a.temper}` : ''}) at ${a.at} (${C.prov[a.at].terrain})`);
+      for (const a of armiesOf(s, id)) {
+        lines.push(`  army ${a.id}: ${fmtMen(a.men)} men under ${a.gen ?? 'no famous general'} (skill ${a.skill}/5${a.temper ? `, ${a.temper}` : ''}) at ${a.at} (${C.prov[a.at].terrain})`);
+        if (id !== you) continue;
+        // what the player's army can really do this turn, so the advisor's counsel is about real choices
+        const can = Object.keys(reach(C, s, a.id)).map((p) => {
+          const o = oddsOf(C, s, a.id, p);
+          if (o.kind === 'battle') {
+            const best = plansFor(C, false).map((x) => [x, fitOf(o.facts, x)]).sort((x, y) => y[1] - x[1])[0][0];
+            return `${p} (battle, odds ${o.ratio.toFixed(1)} to 1, best plan "${PLANS[best].name}")`;
+          }
+          return o.kind === 'siege' ? `${p} (siege of about ${o.turns} turns, storm odds ${o.ratio.toFixed(1)})` : p;
+        });
+        lines.push(`    can reach this turn: ${can.join(', ') || 'nowhere'}`);
+      }
       lines.push(`  holds: ${owned(s, id).map((p) => `${p}${s.prov[p].walls ? `[walls ${s.prov[p].walls}]` : ''}${C.prov[p].capital === id ? '[CAPITAL]' : ''}`).join(', ') || 'nothing'}`);
     }
     lines.push(`Map (province: owner; neighbours): ${C.ids.map((p) => `${p}: ${s.prov[p].owner ?? '-'}; ${C.prov[p].neighbors.join('/')}`).join(' | ')}`);
@@ -123,7 +136,7 @@ export class Campaigns extends DurableObject {
     if (!this.llm || this.llm.status().mode !== 'live' || !this.turningPoint(run, s)) return rules();
     const adv = C.advisor ?? { name: 'your advisor' };
     const system = `You play the leaders of every side but the player's in a historical war game, and the player's advisor. Answer with JSON only:
-{"sides": {"<side id>": {"stance": "attack" | "defend" | "delay", "target": "<province id they march on, or null>", "peace": true | false, "say": "<one sentence in character, at most 25 words, what this leader declares this season>"}}, "advice": ["<one or two short sentences of counsel from ${adv.name} to ${C.hero.name}, in character: where to march, whether to fight, which battle plan suits, what to fear>"]}
+{"sides": {"<side id>": {"stance": "attack" | "defend" | "delay", "target": "<province id they march on, or null>", "peace": true | false, "say": "<one sentence in character, at most 25 words, what this leader declares this season>"}}, "advice": ["<one or two short sentences of counsel from ${adv.name} to ${C.hero.name}, in character: which of the player's armies should go where this turn (only places listed under "can reach this turn"), whether to fight there and with which plan, and what to fear>"]}
 Rules of the game: armies march about two provinces a season; a battle's outcome turns on numbers, ground (hills, mountains and forest help defenders), the generals' skill and the battle plan; walled cities need a siege or a costly storm; a side whose will to fight falls below 25 asks for peace. Each leader acts in character and from their own interest, as history knew them: "delay" means shadowing the enemy and refusing battle. Choose only province ids from the map. "peace": true only if that side would truly accept peace now.
 Speak as the people of the time might, but never mock any faith or people; no slurs; nothing graphic. Plain words.`;
     const job = (async () => {
@@ -196,8 +209,8 @@ Speak as the people of the time might, but never mock any faith or people; no sl
     if (this.llm && this.llm.status().mode === 'live') {
       try {
         const { message } = await this.llm.chat([
-          { role: 'system', content: 'You are a historian writing the judgement on a war replayed in a strategy game, beside what really happened. Write 3 or 4 plain sentences (at most 90 words): what this commander did, the turning point, how it ended, and how it compares with real history. Name real places and people. Neutral and fair to every side and faith. No markdown.' },
-          { role: 'user', content: `The war: ${C.title} (${C.years}). The commander: ${C.hero.name}, played by ${run.name || 'a player'}. Goal: ${C.goal.text}.\nHow it went:\n${story.join('\n').slice(0, 5000)}\nThe end: ${s.end?.why}. Verdict: ${VERDICT[run.verdict]}.\nWhat really happened: ${C.history.text}` },
+          { role: 'system', content: 'You are a historian judging a war that a player fought again in a strategy game. First tell what happened in THIS game, using only the game\'s events listed, in 2 or 3 plain sentences: what the commander did, the turning point, how it ended. Never present real history as if it happened in the game. Then one sentence comparing the game\'s outcome with what really happened. At most 90 words in all. Neutral and fair to every side and faith. No markdown.' },
+          { role: 'user', content: `The war: ${C.title} (${C.years}). The commander: ${C.hero.name}, played by ${run.name || 'a player'}. Goal: ${C.goal.text}.\nTHE GAME'S EVENTS, turn by turn:\n${story.join('\n').slice(0, 5000)}\nHOW THE GAME ENDED: ${s.status === 'won' ? 'the player won' : 'the player lost'}: ${s.end?.why}. ${s.stats.won} battles won, ${s.stats.lost} lost, ${s.stats.taken} cities taken. Verdict against history: ${VERDICT[run.verdict]}.\nWHAT REALLY HAPPENED (for the comparison only): ${C.history.text}` },
         ], undefined, { max_tokens: 400, temperature: 0.6, maxWait: 20 });
         const t = clean(message?.content, 110);
         if (t && t.split(' ').length >= 15) text = t;
