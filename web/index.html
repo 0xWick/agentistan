@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Agentistan</title>
-  <meta name="description" content="The Silk Road, 1200 AD: a world that writes its own history. Real realms and rulers, revolts, assassins and steppe hordes, on a living map.">
-  <meta property="og:title" content="Agentistan: the Silk Road, 1200 AD, writing its own history">
+  <meta name="description" content="The Old World of 1200, played entirely by AI: real realms and rulers, wars, revolts and plots on a living map. And history’s great wars to play yourself, from Hannibal to Napoleon.">
+  <meta property="og:title" content="Agentistan: a world played by AI, and history’s wars to play yourself">
   <meta property="og:description" content="Real realms and rulers of 1200 on a living map. Revolts found kingdoms, heirs split empires, assassins strike, and the Mongols may or may not come.">
   <meta property="og:image" content="https://agentistan.umarkhatana.com/world/og.jpg">
   <meta property="og:url" content="https://agentistan.umarkhatana.com/">
@@ -24,7 +24,7 @@
   <script type="module" src="/silk/view.js"></script>
 </head>
 <body>
-  <svg id="map" role="img" aria-label="A living map of the Silk Road in 1200 AD, from Baghdad to Bengal"></svg>
+  <svg id="map" role="img" aria-label="A living map of the Old World in 1200, played by AI"></svg>
 
   <header class="title panel">
     <h1>Agentistan</h1>
@@ -35,47 +35,27 @@
   </header>
 
   <nav class="tools" aria-label="Tools">
-    <button class="tool panel" id="powers-btn" aria-pressed="true"><svg viewBox="0 0 24 24"><use href="#i-crown"/></svg><span>Powers</span></button>
-    <button class="tool panel" id="ledger-btn"><svg viewBox="0 0 24 24"><use href="#i-book"/></svg><span>Ledger</span></button>
-    <button class="tool panel" id="rule-btn" aria-pressed="false"><svg viewBox="0 0 24 24"><use href="#i-banner"/></svg><span>Play</span></button>
+    <a class="tool panel main" href="/campaign/"><svg viewBox="0 0 24 24"><use href="#i-swords"/></svg><span>Play a campaign</span></a>
+    <button class="tool panel" id="world-btn"><svg viewBox="0 0 24 24"><use href="#i-book"/></svg><span>The world</span></button>
     <button class="tool panel" id="ask-btn" aria-pressed="false"><svg viewBox="0 0 24 24"><use href="#i-quill"/></svg><span>Ask</span></button>
-    <button class="tool panel" id="key-btn" aria-pressed="false"><svg viewBox="0 0 24 24"><use href="#i-key"/></svg><span>Key</span></button>
-    <a class="tool panel" href="/classic/"><svg viewBox="0 0 24 24"><use href="#i-swords"/></svg><span>Classic war</span></a>
-    <button class="tool panel" id="plan-btn"><svg viewBox="0 0 24 24"><use href="#i-scroll"/></svg><span>Free plan</span></button>
+    <button class="tool panel" id="bare-btn" aria-pressed="false" title="Hide every panel for the full map (H)"><svg viewBox="0 0 24 24"><use href="#i-eye"/></svg><span>Full map</span></button>
   </nav>
 
-  <aside class="powers panel" id="powers" aria-label="The great powers"><h2>Powers</h2><ol id="powers-list"></ol></aside>
+  <aside class="glance panel" id="glance" aria-label="The world at a glance">
+    <h2>At a glance</h2>
+    <ol id="glance-list"></ol>
+    <p class="glance-wars" id="glance-wars"></p>
+    <p class="glance-note">Every kingdom is played by the AI and the rules. Nobody else is at the controls.</p>
+  </aside>
   <aside class="feed panel" id="feed" aria-live="polite" aria-label="Chronicle"><h2>Chronicle</h2><ol id="feed-list"></ol></aside>
 
-  <div class="key panel" id="key" hidden>
-    <h2>Map key</h2>
-    <ul>
-      <li><svg viewBox="0 0 24 24"><use href="#i-crown"/></svg>Capital</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-banner" style="color:#27466e"/></svg>Army</li>
-      <li><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#a3361f" stroke-width="2.4" stroke-dasharray="3 3"/></svg>Siege</li>
-      <li><svg viewBox="0 0 24 24"><path d="M3 12h13" stroke="#a3361f" stroke-width="2.6" stroke-dasharray="4 3"/><path d="M15 7l6 5-6 5z" fill="#a3361f"/></svg>March</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-flame" style="color:#c2541f"/></svg>Unrest</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-skull" style="color:#4f6b3a"/></svg>Plague</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-wheat" style="color:#9a7a2a"/></svg>Famine</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-flame" style="color:#4a3626"/></svg>Ravaged</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-swords" style="color:#a3361f"/></svg>Battle</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-hammer" style="color:#6a5032"/></svg>Building</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-snow" style="color:#8aa3ad"/></svg>Snow</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-rain" style="color:#3d6b8c"/></svg>Monsoon</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-sun" style="color:#c2541f"/></svg>Heat</li>
-      <li><svg viewBox="0 0 24 24"><use href="#i-sun" style="color:#b3852c"/></svg>Golden age</li>
-      <li><svg viewBox="0 0 24 24"><path d="M2 12h20" stroke="#301e0e" stroke-width="2.6"/></svg>Border</li>
-      <li><svg viewBox="0 0 24 24"><path d="M2 12h20" stroke="#b3852c" stroke-width="3" stroke-dasharray="1 5" stroke-linecap="round"/></svg>Silk Road</li>
-    </ul>
+  <div class="intro panel" id="intro" hidden>
+    <p><b>The Old World in 1200, played entirely by AI.</b> Kings, wars and plots unfold on their own, a month every two hours. Tap any realm, army or city to learn more.</p>
+    <div class="go"><a class="btn main" href="/campaign/">Play history’s great wars</a><button class="btn" id="intro-x">Just watch</button></div>
   </div>
+  <button class="headline panel" id="headline" hidden></button>
 
   <div class="card panel" id="card" hidden></div>
-
-  <section class="rule panel" id="rule" hidden aria-labelledby="rule-title">
-    <button class="x" id="rule-x" aria-label="Close">×</button>
-    <h2 id="rule-title"><svg viewBox="0 0 24 24"><use href="#i-banner"/></svg>Rule a realm</h2>
-    <div id="rule-body"></div>
-  </section>
 
   <section class="ask panel" id="ask" hidden aria-labelledby="ask-title">
     <button class="x" id="ask-x" aria-label="Close">×</button>
@@ -97,47 +77,15 @@
   </div>
 
   <footer class="player panel">
-    <button class="round" id="new" title="Your own age: history again from 1200, in this browser only" aria-label="Your own age"><svg viewBox="0 0 24 24"><use href="#i-dice"/></svg></button>
-    <div class="steps-ctl"><button class="round small" id="back" title="Back a month (Shift: a year)" aria-label="Back a month"><svg viewBox="0 0 24 24"><use href="#i-prev"/></svg></button><button class="round big" id="play" aria-label="Play"></button><button class="round small" id="fwd" title="Forward a month (Shift: a year)" aria-label="Forward a month"><svg viewBox="0 0 24 24"><use href="#i-next"/></svg></button></div>
-    <div class="track" title="Click or drag to go to any moment already lived"><div class="line"></div><div class="done" id="done"></div><div id="track-events"></div><div class="now" id="now"></div><div id="track-ticks"></div></div>
-    <div class="speed" role="group" aria-label="Speed"><button data-speed="1">1×</button><button data-speed="4">4×</button><button data-speed="16">16×</button></div>
+    <button class="round big" id="play" aria-label="Play"></button>
+    <div class="track" title="Click or drag to go back to any moment"><div class="line"></div><div class="done" id="done"></div><div id="track-events"></div><div class="now" id="now"></div><div id="track-ticks"></div></div>
     <span class="yr" id="yr">1200</span>
   </footer>
-
-  <dialog class="forge" id="forge" aria-labelledby="forge-title">
-    <form method="dialog" class="panel">
-      <button class="x" value="close" aria-label="Close">×</button>
-      <div class="seal"><svg viewBox="0 0 24 24"><use href="#i-star"/></svg></div>
-      <h2 id="forge-title">Agentistan</h2>
-      <p class="fa" lang="fa">ایجنتستان</p>
-      <p class="lede">The Old World, 1200.<br>One history, writing itself, for everyone.</p>
-      <ul>
-        <li><svg viewBox="0 0 24 24"><use href="#i-crown" style="color:#b3852c"/></svg>The real realms and rulers of 1200</li>
-        <li><svg viewBox="0 0 24 24"><use href="#i-dagger" style="color:#a3361f"/></svg>Revolts, assassins, successions, hordes</li>
-        <li><svg viewBox="0 0 24 24"><use href="#i-rings" style="color:#27466e"/></svg>Kings, queens, viziers and their plots</li>
-        <li><svg viewBox="0 0 24 24"><use href="#i-banner" style="color:#2b7d7a"/></svg>Seize a throne and rule it, with everyone else</li>
-      </ul>
-      <div class="go"><button class="btn main" id="begin" value="go">Begin 1200</button><button class="btn" id="forge-plan" type="button">Free plan</button></div>
-      <div class="countdown" aria-hidden="true"><i></i></div>
-    </form>
-  </dialog>
+  <button class="plan-link" id="plan-btn"><svg viewBox="0 0 24 24"><use href="#i-scroll"/></svg>A free plan for your business</button>
+  <button class="show-btn panel" id="show-btn" hidden>Show the panels</button>
 
   <dialog class="event" id="event" aria-label="A great event"><div class="panel"></div></dialog>
-  <dialog class="council" id="council" aria-label="Your council"></dialog>
-  <dialog class="dash" id="dash" aria-label="Dossier and ledger"></dialog>
-
-  <dialog class="ages" id="ages" aria-labelledby="ages-title">
-    <div class="panel">
-      <button class="x" aria-label="Close">×</button>
-      <h2 id="ages-title">Your own age</h2>
-      <p class="sub">A history of your own, in this browser. Which world?</p>
-      <div class="age-picks">
-        <button class="age-pick" data-age="1200"><b>The Old World, 1200</b><span>Genghis Khan's youth, the Silk Road, the crusader kingdoms, the Khmer and Kamakura</span></button>
-        <button class="age-pick" data-age="ancient"><b>The ancient world, 200 BC</b><span>Rome against Macedon, Antiochus the Great, the Han and the Xiongnu, the last Mauryas</span></button>
-        <button class="age-pick" data-age="modern"><b>The world wars, 1914</b><span>The great empires on the eve of war: Sarajevo, the trenches, the Russian revolutions, the Depression, and what comes after</span></button>
-      </div>
-    </div>
-  </dialog>
+  <dialog class="dash" id="dash" aria-label="The world"></dialog>
 
   <dialog class="plan" id="plan" aria-labelledby="plan-title">
     <form method="dialog" class="panel" id="plan-box">

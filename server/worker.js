@@ -1,10 +1,14 @@
 // Worker entry. Pages come straight from web/ as static assets (the Worker isn't even invoked for them).
-// /api/era* is the living world (the Era Durable Object); /internal/art paints; the rest is the classic war (World).
+// /api/era* is the living world (the Era Durable Object); /api/run* the campaigns (Campaigns); /internal/art paints;
+// the rest is the classic war (World).
 export { World } from './world.js';
 export { Era } from './era.js';
+export { Campaigns } from './campaigns.js';
 
 const world = (env) => env.WORLD.get(env.WORLD.idFromName('world'));
 const era = (env, name = 'main') => env.ERA.get(env.ERA.idFromName(name));
+const campaigns = (env) => env.CAMPAIGNS.get(env.CAMPAIGNS.idFromName('campaigns'));
+const CAMPAIGN_NFT = 1_000_000; // token ids from here up are campaign scrolls
 
 // The secret header, compared in constant time.
 function authorized(req, env) {
@@ -26,10 +30,20 @@ async function art(req, env) {
   }
 }
 
+// Two games, two names: nobodysplaying.umarkhatana.com is the classic two-kingdom war (Nobody's Playing), and
+// agentistan.umarkhatana.com the living world and its campaigns. They share this Worker; only the front page differs.
+const CLASSIC_HOST = /^nobodysplaying\./;
+
 export default {
   fetch(req, env) {
-    const p = new URL(req.url).pathname;
+    const url = new URL(req.url), p = url.pathname;
+    if ((p === '/' || p === '/index.html') && env.ASSETS) {
+      const page = CLASSIC_HOST.test(url.hostname) ? '/classic/' : '/';
+      return env.ASSETS.fetch(new Request(new URL(page, url), req));
+    }
     if (p === '/internal/art') return art(req, env);
+    if (p === '/api/run' || p.startsWith('/api/run/') || p === '/api/runs' || p.startsWith('/internal/campaign/')) return campaigns(env).fetch(req);
+    if (p.startsWith('/nft/') && +p.slice(5).replace(/\.(svg|json)$/, '') >= CAMPAIGN_NFT) return campaigns(env).fetch(req);
     const game = p.match(/^\/api\/game\/([\w-]{3,40})\/era/)?.[1];
     if (game) { // a game's own world; it must have been started from the lobby
       const r = new Request(req);

@@ -9,11 +9,13 @@
   "observability": { "enabled": true },
 
   // The spectator pages, served from the edge without waking the world.
-  "assets": { "directory": "./web", "html_handling": "auto-trailing-slash" },
+  // The front page goes through the Worker, which serves the classic war's page on nobodysplaying.umarkhatana.com.
+  "assets": { "directory": "./web", "binding": "ASSETS", "html_handling": "auto-trailing-slash", "run_worker_first": ["/", "/index.html"] },
 
   // One Durable Object is the whole world: state (SQLite), the turn clock (alarms) and the live stream.
-  "durable_objects": { "bindings": [{ "name": "WORLD", "class_name": "World" }, { "name": "ERA", "class_name": "Era" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["World"] }, { "tag": "v2", "new_sqlite_classes": ["Era"] }],
+  // Campaigns holds every historical war being played or finished.
+  "durable_objects": { "bindings": [{ "name": "WORLD", "class_name": "World" }, { "name": "ERA", "class_name": "Era" }, { "name": "CAMPAIGNS", "class_name": "Campaigns" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["World"] }, { "tag": "v2", "new_sqlite_classes": ["Era"] }, { "tag": "v3", "new_sqlite_classes": ["Campaigns"] }],
 
   // Workers AI (free: 10,000 neurons a day): the paintings in web/art/, made once by tools/art.js.
   "ai": { "binding": "AI" },
@@ -21,7 +23,7 @@
   // Every 10 minutes: keep n8n awake, and read prices or weather directly if n8n has gone quiet.
   "triggers": { "crons": ["*/10 * * * *"] },
 
-  // Both names serve the same world: agentistan is the name; nobodysplaying is the old address, kept so old links work.
+  // Two names, two games: agentistan is the living world and its campaigns; nobodysplaying is the classic war.
   "routes": [
     { "pattern": "agentistan.umarkhatana.com/*", "zone_name": "umarkhatana.com" },
     { "pattern": "nobodysplaying.umarkhatana.com/*", "zone_name": "umarkhatana.com" }

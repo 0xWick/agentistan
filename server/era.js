@@ -1,9 +1,9 @@
-// Era: one shared world, alive on the server. An alarm turns the month at a set pace (15 minutes: an age lasts a
-// week). Every month is kept (what went in, what happened, a checksum) and a full snapshot each year, so any visitor
+// Era: one shared world, alive on the server: the Old World of 1200, played by the AI and the rules alone, a month
+// every two hours (a game year a day). Private games (off the menu) still turn a month every 15 minutes. Every month is kept (what went in, what happened, a checksum) and a full snapshot each year, so any visitor
 // replays the age so far in the browser with the same engine, then watches it live over a WebSocket.
 // The engine is pure, so the browser's replay and the server's world are the same history.
 import { DurableObject } from 'cloudflare:workers';
-import { newAge, tick, frame, ENGINE, AGES, QUARTER, ledgerOf } from '../web/silk/engine.js';
+import { newAge, tick, frame, ENGINE, QUARTER, ledgerOf } from '../web/silk/engine.js';
 import { RULES } from '../web/silk/rules.js';
 import { brain } from '../web/silk/doctrine.js';
 import { makeCast } from './cast.js';
@@ -14,7 +14,8 @@ import { setupRegalia, makeMinter, awardsFor, metadata, picture } from './regali
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' };
 const json = (status, body, cache = 'no-store') => new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': cache } });
 const PACE = 15 * 60_000; // a game's month every 15 minutes
-const QUARTER_MS = 6 * 3600_000, REFLECT = 3600_000; // the living world: a quarter every 6 hours, its first hour for reflection
+const REFLECT = 3600_000; // the old quarters' hour of reflection, while players ruled in the living world
+const WATCH = 2 * 3600_000; // the living world now: a month every two hours
 const REST = 6 * 3600_000; // between ages, six hours of quiet
 export function checksum(s) { // a short fingerprint of the map, so a replay that strays from the record is noticed
   const str = JSON.stringify(frame(s));
@@ -71,10 +72,21 @@ export class Era extends DurableObject {
   }
 
   // ---------- the turn of the month ----------
+  watchPace() { return +(this.env.WATCH_PACE_MS || WATCH); }
+  // The living world was once ruled in part by players, a quarter at a time: now it is the AI's alone, a month at a time.
+  toWatch() {
+    const s = this.state();
+    Object.assign(this.meta, { quarter: false, pace: this.watchPace(), next: Math.min(this.meta.next ?? Infinity, Date.now() + this.watchPace()) });
+    for (const id of Object.keys(s?.players ?? {})) this.queue(s.month, 'leave', id, true);
+    this.put('seats', {});
+    this.put('meta', this.meta);
+    this.ctx.storage.setAlarm(this.meta.next);
+  }
   begin({ seed = 1 + Math.floor(Math.random() * 99999), ageId = this.meta?.ageId ?? '1200', pace = this.meta?.pace ?? PACE, game = this.meta?.game } = {}) {
+    if (!game) ageId = '1200'; // the living world is the Old World of 1200, again and again
     const s = newAge(seed, ageId), age = (this.meta?.age ?? 0) + 1;
     if (!game) Object.assign(s, { rule: 'hegemony', months: RULES.hegemony.cap }); // the living world: an era ends only when one power masters the world
-    const quarter = !game, every = quarter ? QUARTER_MS : pace;
+    const quarter = false, every = game ? pace : this.watchPace();
     this.meta = { ...(this.meta ?? {}), age, seed, ageId, pace: every, quarter, councilOpens: Date.now(), opened: Date.now(), game: game ?? null, engine: ENGINE, started: Date.now(), next: Date.now() + every, restUntil: null, ages: this.meta?.ages ?? [] };
     this.put('seats', {}); // a new age: every throne is free again
     this.put('orders', {});
@@ -96,11 +108,11 @@ export class Era extends DurableObject {
     const s = this.state();
     if (!s || !this.meta) return;
     if (this.meta.engine !== ENGINE && !this.meta.game) return this.begin(); // new rules: an old record would replay differently, so a new age begins
+    if (!this.meta.game && this.meta.quarter) return this.toWatch();
     if (s.status !== 'running') { // the age is over: rest a while, then history starts again
       if (this.meta.game) return; // a game ends when its age ends
       if (Date.now() >= (this.meta.restUntil ?? 0)) { // the living world takes the ages in turn
-        const order = Object.keys(AGES), next = order[(order.indexOf(this.meta.ageId) + 1) % order.length];
-        this.begin({ ageId: next });
+        this.begin({ ageId: '1200' });
       }
       else this.ctx.storage.setAlarm(this.meta.restUntil);
       return;
@@ -212,6 +224,7 @@ export class Era extends DurableObject {
       }
       if (p === '/internal/era/watch') { // the cron's wake-up: a world must always be turning
         if (!this.meta) this.begin();
+        else if (!this.meta.game && this.meta.quarter) this.toWatch();
         else if (!(await this.ctx.storage.getAlarm())) this.ctx.storage.setAlarm(Math.max(Date.now() + 1000, this.state()?.status !== 'running' ? this.meta.restUntil ?? 0 : this.meta.quarter && (this.meta.opened ?? 0) < this.meta.councilOpens ? this.meta.councilOpens : this.meta.next));
         return json(200, this.public());
       }

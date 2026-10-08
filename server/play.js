@@ -78,6 +78,7 @@ export async function play(era, req, p, url) {
   if (!s) return null;
   // ---------- thrones ----------
   if (p === '/api/era/seats') return json(200, { seats: publicSeats(era, s), game: era.meta.game ?? null, month: s.month, next: era.meta.next, quarter: era.meta.quarter ? { opens: era.meta.councilOpens, ends: era.meta.next } : null });
+  if (p === '/api/era/claim' && req.method === 'POST' && !era.meta.game) return json(410, { error: 'The living world is played by the AI alone now. Play history’s wars instead: /campaign/' });
   if (p === '/api/era/claim' && req.method === 'POST') {
     const seats = era.get('seats') ?? {}, r = s.realms[body.realm];
     if (!r || r.fallen || r.rebel || !provincesOf(s, r.id).length) return json(400, { error: 'no such realm' });

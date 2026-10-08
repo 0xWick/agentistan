@@ -1,12 +1,25 @@
 # Agentistan
 
-**A war nobody is playing, run entirely by AI generals, business automations, real market data, real weather and a public ledger. Just watch.**
+**History, played by AI and by you.** Two things live here:
 
-Live: **https://agentistan.umarkhatana.com** · Past seasons: [/history](https://agentistan.umarkhatana.com/history) · How it's built: [/how](https://agentistan.umarkhatana.com/how)
+- **Watch** ([agentistan.umarkhatana.com](https://agentistan.umarkhatana.com)): the Old World of 1200, 117 real realms and their rulers, played entirely by AI agents and the rules, a month every two hours. Wars, successions, plots and revolts unfold on a living map. Every panel can be hidden for the full map; great events arrive as headlines you can open.
+- **Campaigns** ([/campaign/](https://agentistan.umarkhatana.com/campaign/)): the great wars of history in the order they happened, from the Persian Wars to the Second World War. You play the person who fought each one (Themistocles, Hannibal, Saladin, Napoleon…) with the goal they had; the AI plays every other side. Each turn ends with what really happened at that time, each decision card shows what the real person chose, and the end puts your war beside history's: better than history, as history, or worse. A finished campaign becomes a shareable replay, a summary by the AI historian, and an NFT on Base Sepolia; anyone can watch a campaign live while it is played.
 
-![The live war](docs/screenshots/live-desktop.png)
+How the tech is used:
 
-## What you're looking at
+| Technology | In Agentistan |
+|---|---|
+| **AI agents** (Groq) | In Watch, the AI sets the course of every kingdom in turn (war, peace, alliances, works) and writes personas and turning-point decisions for the famous. In campaigns, it is the strategist of every other side at the turning points, your advisor's counsel, and the historian who judges your war at the end. The rules carry out and check everything it decides, and take over when the free daily budget is spent. |
+| **n8n** | The Campaign Herald: when a war ends it asks for the historian's summary, posts the scroll to Discord and confirms; big moments of wars being played are posted with a link to watch live. World news, daily digests and real-weather syncs for Watch. |
+| **Blockchain** (Base Sepolia) | Every finished campaign can become a Campaign Scroll NFT (the Regalia contract), minted by the game so the player signs nothing; a wallet can be made in the browser. Watch seals each game year's deeds on the Chronicle contract. |
+
+Design: [docs/campaigns-design.md](docs/campaigns-design.md) (campaigns and Watch) and [docs/world-design.md](docs/world-design.md) (the 1200 world's engine).
+
+## Nobody's Playing (the classic war)
+
+The project began as **Nobody's Playing** ([nobodysplaying.umarkhatana.com](https://nobodysplaying.umarkhatana.com)): a war between two AI generals, run by business automations, real market data, real weather and a public ledger. It still runs at its own address (and at [/classic/](https://agentistan.umarkhatana.com/classic/)); the rest of this section describes it.
+
+### What you're looking at
 
 Two kingdoms fight over seven castles. Nobody plays: the technologies below run the whole thing, and every step is shown and explained on the page.
 

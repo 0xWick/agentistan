@@ -1,12 +1,13 @@
-// The living map: the world simulated month by month right here in the browser, drawn like an old map. The cards,
-// the chronicle and the great-event pictures all read the moment on the timeline (S.s).
+// The living map: the Old World of 1200, played by the AI and the rules on the server, replayed here month by month
+// and drawn like an old map. The cards, the chronicle and the great-event pictures all read the moment on the
+// timeline (S.s). Nothing interrupts: great events arrive as a headline you may open; every panel can be hidden.
 import { newAge, tick, yearLabel, AGES, PROVINCES, PROV, LAND, living, provincesOf, armiesOf, menOf, dateText, yearOf, atWar, weatherOf, seasonName, cityOf, prosperityOf, steersman, rulingTemper } from './engine.js';
 import { brain } from './doctrine.js';
 import { TEMPER_TEXT } from './names.js';
 import { S, $, esc, icon, symbols, kindOf, worth, colorOf, ink, men } from './ui.js';
 import { card, openCard, closeCard, backCard, refreshCard, eventCard, isGreat, ART } from './cards.js';
 import { PAINTED } from './portrait.js';
-import { API, GAME, openRule, closeRule, refreshRule, onSeats, loadSeats, seatsByRealm } from './rule.js';
+import { API } from './api.js';
 import './ledger.js'; // the dashboards
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -48,14 +49,17 @@ function projector({ lon0, x0, y1, scale }) {
 }
 
 // ---------- state ----------
-let geo, s, age, timer = 0, playing = false, speed = 1, last = {};
+let geo, s, age, timer = 0, playing = false, last = {};
 let W = 8192, H = 6245;
 // History, so the timeline can go back and forth: the world is a pure function of (age, month), so a snapshot each
 // year plus the months' events is enough to rebuild any month in a few milliseconds.
 const story = { keys: {}, events: [], frontier: 0 };
 S.story = story;
-const SPEED = { 1: 3000, 4: 900, 16: 220 }; // ms per month
-const HOLD = { 1: 1800, 4: 900, 16: 0 }; // extra pause after a great event, so it can be read
+// How long a month lasts on screen: quick while catching up with the present, slower near it.
+function pace() {
+  const behind = story.frontier - (s?.month ?? 0);
+  return behind > 36 ? 180 : behind > 12 ? 480 : behind > 3 ? 1200 : 2600;
+}
 const shown = []; // the feed
 const setState = (x) => { s = x; S.s = x; };
 const total = () => (s?.rule === 'hegemony' ? Math.min(s.months, Math.max(240, Math.ceil(((story.frontier || s.month) + 60) / 120) * 120)) : s?.months ?? 672); // a long era: the track grows a decade at a time
@@ -104,20 +108,24 @@ async function boot() {
   }
   setupPanZoom();
   wire();
-  if (!(await joinLive())) {
-    if (GAME) { $('#forge .lede').innerHTML = 'This game could not be found.<br>It may have ended.'; }
-    newWorld();
-  }
-  // /#plan is the link for outreach: straight to the plan. Everyone else gets five seconds of welcome, then 1200 begins.
-  if (location.hash === '#plan') {
-    openPlan();
-    playPause(true);
-  } else {
-    $('#forge').showModal();
-    welcome = setTimeout(() => $('#forge').open && $('#forge').close('auto'), 5000);
-  }
+  const live = await joinLive();
+  if (!live) newWorld(); // the living world is out of reach: history plays again, in this browser
+  // A visitor arrives to motion: the last year replays quickly up to the present, then the world goes on live.
+  if (live && story.frontier > 1) await seek(Math.max(0, story.frontier - 12));
+  if (location.hash === '#plan') openPlan(); // the link for outreach: straight to the plan
+  else intro();
+  playPause(true);
 }
-let welcome = 0;
+// One line for newcomers, never a wall: what this is, and where to play.
+function intro() {
+  let seen = false;
+  try { seen = !!localStorage.getItem('agentistan:intro'); } catch { /* a private window */ }
+  if (seen) return;
+  $('#intro').hidden = false;
+  const done = () => { $('#intro').hidden = true; try { localStorage.setItem('agentistan:intro', '1'); } catch { /* fine */ } };
+  $('#intro-x').addEventListener('click', done);
+  setTimeout(done, 16000);
+}
 
 // ---------- two kinds of age: the living world (one history on the server, shared by everyone) and your own ----------
 // The living world turns a quarter (three months) every 6 hours. The page downloads its record (each month's inputs and events)
@@ -158,8 +166,7 @@ async function joinLive() {
     for (const evs of story.events) markTrack(evs ?? []);
     render(recentEvents(s.month), { quiet: true });
     connect();
-    Object.assign(S, { live: !GAME, era });
-    await loadSeats();
+    Object.assign(S, { live: true, era });
     liveChip();
     return true;
   } catch (err) {
@@ -174,13 +181,6 @@ function connect() {
     if (mode !== 'live' || ev.data === 'pong') return;
     const d = JSON.parse(ev.data);
     if (d.t === 'age' && d.era?.age !== era.age) return location.reload(); // a new age has begun
-    if (d.t === 'seats') { onSeats(d.seats); last.powers = null; powers(); }
-    if (d.t === 'quarter' || d.t === 'council') { // a quarter has turned, or its council has opened
-      era.quarter = { opens: d.opens ?? era.quarter?.opens, ends: d.next ?? era.quarter?.ends };
-      if (d.next) era.next = d.next;
-      liveChip();
-      setTimeout(() => refreshRule(), d.t === 'quarter' ? 1500 : 0);
-    }
     if (d.t === 'hello' && d.era) {
       Object.assign(era, d.era);
       S.chain = d.era.chain ?? S.chain;
@@ -195,7 +195,6 @@ function connect() {
       $('#done').style.width = `${(Math.min(story.frontier, total()) / total()) * 100}%`;
       liveChip();
       if (playing && waiting) { waiting = false; loop(); }
-      if (GAME) refreshRule();
     }
   };
   ws.onclose = () => { if (mode === 'live') setTimeout(() => mode === 'live' && connect(), 4000 + Math.random() * 6000); };
@@ -213,16 +212,14 @@ function liveChip() {
   const c = $('#live');
   if (!c) return;
   if (mode !== 'live') {
-    c.innerHTML = `<span class="own">${icon('dice')} Your own age</span><button class="link" data-go="live">The living world</button>`;
+    c.innerHTML = `<span class="own">${icon('dice')} Offline: a history of its own, in this browser</span>`;
     return;
   }
-  if (Date.now() - (S.chainAt ?? 0) > 5 * 60_000) { S.chainAt = Date.now(); getJSON(API).then((e) => { S.chain = e.chain ?? S.chain; }).catch(() => {}); }
   const behind = story.frontier - s.month, mins = Math.max(0, Math.round(((era?.next ?? Date.now()) - Date.now()) / 60000));
-  const until = (t) => { const m = Math.max(0, Math.round((t - Date.now()) / 60000)); return m >= 90 ? `${Math.round(m / 60)} h` : `${m} min`; };
-  const q = era?.quarter, phase = !q ? `next month in ${mins} min` : Date.now() < q.opens ? `reflection · council opens in ${until(q.opens)}` : `council open · quarter turns in ${until(q.ends)}`;
+  const soon = mins >= 90 ? `${Math.round(mins / 60)} h` : `${mins} min`;
   c.innerHTML = behind <= 0
-    ? `<span class="on"><i></i>Live</span><small>${era?.status === 'running' ? phase : 'the age has ended'}</small>${s.month > 12 ? '<button class="link" data-go="start">Watch from the start</button>' : ''}`
-    : `<span class="replay">${icon('play')} ${behind >= 24 ? `${Math.round(behind / 12)} years` : behind === 1 ? 'a month' : `${behind} months`} behind</span><button class="link" data-go="now">To the present</button>`;
+    ? `<span class="on"><i></i>Live</span><small>${era?.status === 'running' ? `next month in ${soon}` : 'this age has ended'}</small>`
+    : `<span class="replay">${icon('play')} catching up · ${behind >= 24 ? `${Math.round(behind / 12)} years` : behind === 1 ? 'a month' : `${behind} months`} to the present</span><button class="link" data-go="now">Skip</button>`;
 }
 function recentEvents(m) {
   const out = [];
@@ -322,7 +319,6 @@ function render(events, { quiet = false } = {}) {
   const at = (m) => `${(Math.min(m, total()) / total()) * 100}%`;
   $('#done').style.width = at(story.frontier);
   $('#now').style.left = at(s.month);
-  $('#back').disabled = s.month === 0;
   if (card.kind) refreshCard();
 }
 
@@ -587,13 +583,16 @@ const statsOf = (r) => {
 };
 function powers() {
   const rows = living(s).map(statsOf).filter((x) => x.n > 0).sort((a, b) => b.land - a.land);
-  const key = rows.map((x) => `${x.r.id}${x.n}${x.ruler?.name}${Math.round(x.men)}${Math.round(x.r.gold / 10)}${x.r.golden > s.month}${seatsByRealm()[x.r.id]?.name ?? ''}`).join();
+  const wars = new Set(Object.values(s.wars).map((w) => w.conflict).filter((c) => s.conflicts[c] && s.conflicts[c].ended === null));
+  const key = `${rows.slice(0, 5).map((x) => `${x.r.id}${x.n}${x.ruler?.name}${Math.round(x.land * 1000)}`).join()}|${wars.size}`;
   if (key === last.powers) return;
   last.powers = key;
-  $('#powers-list').innerHTML = rows.map(({ r, land, men: m, ruler }) => `<li><button data-realm="${r.id}">
-      <i class="shield" style="--c:${r.color}"></i><span class="nm">${esc(r.short)}${r.golden > s.month ? `<span class="gold" title="A golden age">${icon('sun')}</span>` : ''}${seatsByRealm()[r.id] ? `<span class="player" title="Ruled by a player">${icon('people')}${esc(seatsByRealm()[r.id].name)}</span>` : ''}</span><span class="n">${Math.max(1, Math.round(land * 100))}%</span>
-      <span class="sub"><span>${icon('crown')}${esc(ruler?.name ?? '—')}</span><span>${icon('banner')}${men(m)}</span><span>${icon('coin')}${Math.round(r.gold)}</span>${(r.grain ?? 0) < m * 1.2 && !r.nomad ? `<span class="hungry" title="Granaries nearly empty">${icon('wheat')}</span>` : ''}</span>
+  const top = rows[0]?.land || 1;
+  $('#glance-list').innerHTML = rows.slice(0, 5).map(({ r, land, ruler }) => `<li><button data-realm="${r.id}">
+      <i class="shield" style="--c:${r.color}"></i><span class="nm">${esc(r.short)}<small>${esc(ruler?.name ?? '')}</small></span>
+      <span class="bar"><i style="width:${Math.round((land / top) * 100)}%;background:${r.color}"></i></span><span class="n">${Math.round(land * 100)}%</span>
     </button></li>`).join('');
+  $('#glance-wars').innerHTML = `${icon('swords')} ${wars.size ? `${wars.size} war${wars.size > 1 ? 's' : ''} under way` : 'The world is at peace'} · ${rows.length} realms`;
 }
 
 // ---------- the free plan: a visitor's business in, the AI's plan out (POST /api/plan, server/plan.js) ----------
@@ -687,24 +686,23 @@ function loop() {
   const r = advance();
   if (!r) { waiting = true; liveChip(); return; } // the living world's next month has not been turned yet
   render(r.events);
-  // A great event, freshly lived, gets its card: at 1× the story waits for the reader; at 4× it shows for a moment.
-  const great = r.fresh && speed < 16 && s.month - lastCard >= (speed === 1 ? 3 : 8) ? r.events.filter((e) => isGreat(e, s)).sort((a, b) => rank(b) - rank(a))[0] : null;
-  if (great) {
-    lastCard = s.month;
-    eventCard(great, S.prev, s, r.events);
-    if (speed === 1) { playing = false; $('#play').innerHTML = icon('play'); resumeAfterCard = true; return; }
-    clearTimeout(cardTimer);
-    cardTimer = setTimeout(() => $('#event').open && $('#event').close('auto'), 3500);
-  }
-  timer = setTimeout(loop, SPEED[speed] + (r.events.some((e) => isGreat(e, s)) ? HOLD[speed] : 0));
+  // A great event, freshly lived, becomes a headline you may open; the story never stops for it.
+  const great = r.fresh && s.month - lastCard >= 2 ? r.events.filter((e) => isGreat(e, s)).sort((a, b) => rank(b) - rank(a))[0] : null;
+  if (great) { lastCard = s.month; headline(great, S.prev, s, r.events); }
+  setStep();
+  timer = setTimeout(loop, pace());
 }
-let resumeAfterCard = false, cardTimer = 0;
+let resumeAfterCard = false, headTimer = 0;
+function headline(e, before, after, sameMonth) {
+  const h = $('#headline'), [ic, color] = kindOf(e);
+  h.innerHTML = `<span style="color:${color}">${icon(ic)}</span><span><b>${esc(e.text)}</b><small>${esc(e.date)} · open</small></span>`;
+  h.hidden = document.body.classList.contains('bare');
+  h.onclick = () => { h.hidden = true; resumeAfterCard = playing; playPause(false); eventCard(e, before, after, sameMonth); };
+  clearTimeout(headTimer);
+  headTimer = setTimeout(() => { h.hidden = true; }, 7000);
+}
 const rank = (e) => ({ 'age.ended': 9, horde: 8, fallen: 7, capture: 6, split: 6, coup: 6, golden: 5, death: 5, battle: 4, turncoat: 4, uprising: 4, commune: 3, charter: 3, separatist: 3, invention: 2, defied: 2, war: 2 })[e.type] ?? 1;
-function setSpeed(v) {
-  speed = v;
-  document.documentElement.style.setProperty('--step', `${Math.min(1.1, (SPEED[v] * 0.85) / 1000)}s`);
-  document.querySelectorAll('.speed button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.speed === v)));
-}
+function setStep() { document.documentElement.style.setProperty('--step', `${Math.min(1.1, (pace() * 0.85) / 1000)}s`); }
 
 // ---------- pan and zoom ----------
 const view = { x: 0, y: 0, w: W, h: H };
@@ -809,9 +807,7 @@ function focus(pid) {
 // ---------- controls ----------
 function wire() {
   $('#play').addEventListener('click', () => playPause());
-  // Back and forth through the age: a month (or, with Shift, a year), or straight to any lived moment on the timeline.
-  $('#back').addEventListener('click', (e) => step(e.shiftKey ? -12 : -1));
-  $('#fwd').addEventListener('click', (e) => step(e.shiftKey ? 12 : 1));
+  // Straight to any lived moment on the timeline.
   const track = $('.track');
   const seekAt = (e) => {
     const r = track.getBoundingClientRect();
@@ -825,30 +821,12 @@ function wire() {
     track.addEventListener('pointermove', move);
     track.addEventListener('pointerup', () => track.removeEventListener('pointermove', move), { once: true });
   });
-  document.querySelectorAll('.speed button').forEach((b) => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
-  $('#new').addEventListener('click', () => { playPause(false); $('#ages').showModal(); });
-  $('#ages').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-age]');
-    if (e.target === $('#ages') || e.target.closest('.x')) return $('#ages').close();
-    if (!b) return;
-    $('#ages').close();
-    newWorld(undefined, b.dataset.age);
-    playPause(true);
-  });
-  // The live chip: to the present, back to the start, back to the living world.
+  // The live chip: skip the catching up, straight to the present.
   $('#live').addEventListener('click', async (e) => {
-    const go = e.target.closest('[data-go]')?.dataset.go;
-    if (go === 'now') { await seek(story.frontier); playPause(true); }
-    if (go === 'start') { await seek(0); setSpeed(4); playPause(true); }
-    if (go === 'live') { playPause(false); if (await joinLive()) playPause(true); else newWorld(); }
+    if (e.target.closest('[data-go]')?.dataset.go === 'now') { await seek(story.frontier); playPause(true); }
   });
   $('#zin').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, 1.5));
   $('#zout').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.5));
-  $('#forge').addEventListener('close', () => {
-    clearTimeout(welcome);
-    if (!playing) playPause(true);
-  });
-  $('#forge-plan').addEventListener('click', () => { $('#forge').close(); openPlan(); });
   $('#plan-btn').addEventListener('click', openPlan);
   $('#plan').addEventListener('click', (e) => {
     const pick = e.target.closest('.pick');
@@ -868,32 +846,26 @@ function wire() {
     else if (b?.dataset.realm) openCard('realm', b.dataset.realm);
   });
   $('#event').addEventListener('close', () => {
-    clearTimeout(cardTimer);
     if (resumeAfterCard) { resumeAfterCard = false; playPause(true); }
   });
   const toggleAsk = (open = $('#ask').hidden) => {
     $('#ask').hidden = !open;
     $('#ask-btn').setAttribute('aria-pressed', String(open));
-    if (open) { $('#key').hidden = true; setTimeout(() => $('#ask-q').focus(), 30); }
+    if (open) setTimeout(() => $('#ask-q').focus(), 30);
   };
   $('#ask-btn').addEventListener('click', () => toggleAsk());
   $('#ask-x').addEventListener('click', () => toggleAsk(false));
   $('#ask-form').addEventListener('submit', (e) => { e.preventDefault(); askChronicler($('#ask-q').value); });
   $('#ask').addEventListener('click', (e) => { const b = e.target.closest('.pick'); if (b) askChronicler(b.dataset.q); });
-  $('#rule-btn').addEventListener('click', () => ($('#rule').hidden ? openRule() : closeRule()));
-  if (location.hash === '#council') setTimeout(() => openRule(), 5600); // the link in a council reminder
-  $('#rule-x').addEventListener('click', closeRule);
-  if (GAME) setTimeout(openRule, 5600); // in a game, the seat comes first
-  $('#key-btn').addEventListener('click', () => {
-    const k = $('#key'), open = k.hidden;
-    k.hidden = !open;
-    $('#key-btn').setAttribute('aria-pressed', String(open));
-  });
-  $('#powers-btn').addEventListener('click', () => {
-    const k = $('#powers'), open = k.hidden;
-    k.hidden = !open;
-    $('#powers-btn').setAttribute('aria-pressed', String(open));
-  });
+  // The full map: every panel hidden, until you ask for them again (H, or the eye).
+  const bare = (on = !document.body.classList.contains('bare')) => {
+    document.body.classList.toggle('bare', on);
+    $('#bare-btn').setAttribute('aria-pressed', String(on));
+    $('#show-btn').hidden = !on;
+    if (on) { closeCard(); toggleAsk(false); $('#headline').hidden = true; $('#intro').hidden = true; }
+  };
+  $('#bare-btn').addEventListener('click', () => bare());
+  $('#show-btn').addEventListener('click', () => bare(false));
   // Anything that names a realm, a person, a war, an army or a town opens its card.
   document.addEventListener('click', (e) => {
     if (e.target.closest('#map, dialog')) return;
@@ -912,15 +884,14 @@ function wire() {
     if (t.dataset.realm && s.realms[t.dataset.realm]) return openCard('realm', t.dataset.realm, at);
   });
   addEventListener('keydown', (e) => {
-    if (e.key === ' ' && !e.target.closest('button, a, input, textarea')) { e.preventDefault(); playPause(); }
-    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.target.closest('input, textarea')) step((e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 12 : 1));
+    if (e.target.closest('input, textarea')) return;
+    if (e.key === ' ' && !e.target.closest('button, a')) { e.preventDefault(); playPause(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') step((e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 12 : 1));
+    if (e.key === 'h' || e.key === 'H') bare();
     if (e.key === 'Escape') { closeCard(); toggleAsk(false); }
   });
-  if (innerWidth < 760) { // a phone: the map comes first, the powers list on request
-    $('#powers').hidden = true;
-    $('#powers-btn').setAttribute('aria-pressed', 'false');
-  }
-  setSpeed(1);
+  if (innerWidth < 760) $('#feed').hidden = true; // a phone: the map first; the chronicle comes as headlines
+  setStep();
   playPause(false);
 }
 

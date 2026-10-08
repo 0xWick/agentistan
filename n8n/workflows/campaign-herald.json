@@ -1,0 +1,264 @@
+{
+  "id": "nbpCampaignHrld1",
+  "name": "Campaign Herald",
+  "active": true,
+  "versionId": "6c2e9a10-1f2c-4d2a-9f55-0d7a3c1e0010",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": [],
+  "nodes": [
+    {
+      "id": "6c2e9a10-0001-4b7a-9d3e-1f5a2c7b0001",
+      "name": "A campaign moment",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "campaign",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "6c2e9a10-7c1f-4f8e-9a51-2d8e6b3c0010"
+    },
+    {
+      "id": "6c2e9a10-0002-4b7a-9d3e-1f5a2c7b0002",
+      "name": "Is it the world?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6c2e9a10-secret",
+              "leftValue": "={{ $json.headers['x-realm-secret'] }}",
+              "rightValue": "={{ $env.REALM_SECRET }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "6c2e9a10-0003-4b7a-9d3e-1f5a2c7b0003",
+      "name": "Is the war over?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6c2e9a10-over",
+              "leftValue": "={{ $json.body.type }}",
+              "rightValue": "finished",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "6c2e9a10-0004-4b7a-9d3e-1f5a2c7b0004",
+      "name": "Ask the historian",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WORLD_URL }}/internal/campaign/summary",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Realm-Secret",
+              "value": "={{ $env.REALM_SECRET }}"
+            },
+            {
+              "name": "X-N8N-Execution",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run: $json.body.run }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      }
+    },
+    {
+      "id": "6c2e9a10-0005-4b7a-9d3e-1f5a2c7b0005",
+      "name": "Post the scroll to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        200
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ username: \"Agentistan\", embeds: [{ title: $json.campaign + ': ' + ($json.verdict || 'the war is over'), description: $json.player + ', as ' + $json.hero + ' (' + $json.years + '). ' + ($json.why || '') + '\\n\\n' + ($json.summary || ''), color: 11743276, url: $json.link, footer: { text: 'A campaign scroll, written by the AI historian and posted by an n8n automation' } }] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "6c2e9a10-0006-4b7a-9d3e-1f5a2c7b0006",
+      "name": "Tell the world it's heralded",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1160,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WORLD_URL }}/internal/campaign/heralded",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Realm-Secret",
+              "value": "={{ $env.REALM_SECRET }}"
+            },
+            {
+              "name": "X-N8N-Execution",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run: $('A campaign moment').first().json.body.run }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "6c2e9a10-0007-4b7a-9d3e-1f5a2c7b0007",
+      "name": "Post the moment to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        420
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ username: \"Agentistan\", embeds: [{ title: $json.body.player + ' is playing ' + $json.body.campaign + ' live', description: $json.body.date + ': ' + $json.body.moment + '.\\nWatch the war as it is fought.', color: 10696223, url: $json.body.link, footer: { text: 'Posted by an n8n automation \u00b7 agentistan.umarkhatana.com' } }] }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "A campaign moment": {
+      "main": [
+        [
+          {
+            "node": "Is it the world?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is it the world?": {
+      "main": [
+        [
+          {
+            "node": "Is the war over?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is the war over?": {
+      "main": [
+        [
+          {
+            "node": "Ask the historian",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post the moment to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask the historian": {
+      "main": [
+        [
+          {
+            "node": "Post the scroll to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post the scroll to Discord": {
+      "main": [
+        [
+          {
+            "node": "Tell the world it's heralded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

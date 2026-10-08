@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Campaigns · Agentistan</title>
+  <meta name="description" content="Play the great wars of history as the people who fought them, from the Persian Wars to the Second World War. The AI plays every other side; you learn how it really went, and you can do better than history.">
+  <meta property="og:title" content="Agentistan campaigns: play history's great wars">
+  <meta property="og:description" content="Twenty-five wars in the order they happened. Play Hannibal, Alexander, Saladin, Napoleon. The AI plays everyone else, and every finished campaign becomes a scroll and an NFT.">
+  <meta property="og:image" content="https://agentistan.umarkhatana.com/world/og.jpg">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#2b2116">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 3h20v14c0 6-5 10-10 12C11 27 6 23 6 17z' fill='%23a3361f' stroke='%23b3852c' stroke-width='2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@500;700&family=Reem+Kufi:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/campaign/campaign.css">
+  <script type="module" src="/campaign/app.js"></script>
+</head>
+<body>
+  <!-- the list of campaigns -->
+  <main id="menu" class="menu" hidden>
+    <header class="menu-head">
+      <a class="back" href="/">← The living world</a>
+      <h1>Campaigns</h1>
+      <p class="lede">The great wars of history, in the order they happened. Play the person who fought each one, with the goal they had. The AI plays every other side. Learn how it really went, and try to do better than history.</p>
+    </header>
+    <section id="live-runs" class="live-runs" hidden></section>
+    <div id="eras"></div>
+    <footer class="menu-foot">Agentistan · built by <a href="https://umarkhatana.com" target="_blank" rel="noopener">Umar Khatana</a> · AI by Groq, automations by n8n, scrolls on Base Sepolia</footer>
+  </main>
+
+  <!-- a campaign: the map and the war -->
+  <div id="game" class="game" hidden>
+    <svg id="map" role="img" aria-label="The map of the campaign"></svg>
+
+    <header class="hud panel" id="hud"></header>
+    <nav class="tools" aria-label="Tools">
+      <button class="tool" id="hide-btn" title="Hide the panels for the full map (H)" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Full map</span></button>
+      <button class="tool" id="brief-btn" title="The goal and the briefing"><svg viewBox="0 0 24 24"><path d="M6 3h11a2 2 0 0 1 2 2v13a3 3 0 0 1-3 3H7M6 3a2 2 0 0 0-2 2v2h4M6 3a2 2 0 0 1 2 2v13a3 3 0 0 0 3 3M11 8h5M11 12h5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Goal</span></button>
+      <a class="tool" id="menu-btn" href="/campaign/" title="All campaigns"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" fill="none"/></svg><span>Campaigns</span></a>
+    </nav>
+    <aside class="turn panel" id="turn" aria-label="This turn"></aside>
+    <div class="zoom">
+      <button class="round" id="zin" aria-label="Zoom in">+</button>
+      <button class="round" id="zout" aria-label="Zoom out">−</button>
+    </div>
+    <div class="pop panel" id="pop" hidden></div>
+    <div class="toast" id="toast" hidden></div>
+    <button class="show-btn" id="show-btn" hidden>Show panels</button>
+  </div>
+
+  <dialog class="sheet" id="sheet"></dialog>
+</body>
+</html>

@@ -9,7 +9,7 @@ import { heldBy, RESOURCES } from './resources.js';
 import { portrait } from './portrait.js';
 import { TEMPER_TEXT } from './names.js';
 import { ageOf } from './core.js';
-import { API } from './rule.js';
+import { API } from './api.js';
 
 let cache = null;
 async function years() { // [{ m, rows: { realm: [provinces, strength, gold, prosperity] } }]
@@ -102,17 +102,21 @@ export async function openLedger() {
       <section>
         <h3>${icon('crown')} The powers</h3>
         <table class="ranks"><thead><tr><th></th><th>Realm</th><th>Land</th><th>Soldiers</th><th>Gold</th><th>Prosperity</th></tr></thead><tbody>
-        ${rows.slice(0, 24).map((x, i) => `<tr><td>${i + 1}</td><td>${chip(x.r.id)}${s.players?.[x.r.id] ? ` <span title="Ruled by ${esc(s.players[x.r.id].name)}">${icon('crown')}</span>` : ''}</td><td>${x.n}</td><td>${men(x.men)}</td><td>${Math.round(x.gold)}</td><td>${meter(x.pros, '#4f7a3a')}</td></tr>`).join('')}
+        ${rows.slice(0, 10).map((x, i) => `<tr><td>${i + 1}</td><td>${chip(x.r.id)}${s.players?.[x.r.id] ? ` <span title="Ruled by ${esc(s.players[x.r.id].name)}">${icon('crown')}</span>` : ''}</td><td>${x.n}</td><td>${men(x.men)}</td><td>${Math.round(x.gold)}</td><td>${meter(x.pros, '#4f7a3a')}</td></tr>`).join('')}
         </tbody></table>
       </section>
       <section>
         <h3>${icon('rings')} The web of power</h3>${web(s, rows.slice(0, 16).map((x) => x.r))}
         <h3>${icon('banner')} The great powers' land</h3>${chart(lines, { label: 'land of the great powers by year' })}
         <h3>${icon('swords')} Wars under way</h3>
-        <ul class="review">${wars.map((c) => `<li><button class="link" data-war="${c.id}">${esc(c.name)}</button> <small>since ${esc(yearLabel(yearOf(c.since, s)))} · ${c.battles} battles</small></li>`).join('') || '<li>The world is at peace.</li>'}</ul>
+        <ul class="review">${wars.map((c) => `<li><button class="link" data-war="${c.id}">${esc(c.name)}</button> <small>since ${esc(yearLabel(yearOf(c.since, s)))} · ${c.battles} battles</small></li>`).join('') || '<li>The world is at peace.</li>'}
+        <h3>${icon('key')} The map, read</h3>${KEY}</ul>
       </section>
     </div>`);
 }
+// What the marks on the map mean.
+const KEY = `<ul class="mapkey">${[['crown', '', 'Capital'], ['banner', '#27466e', 'Army'], ['swords', '#a3361f', 'Battle'], ['flame', '#c2541f', 'Unrest'], ['skull', '#4f6b3a', 'Plague'], ['wheat', '#9a7a2a', 'Famine'], ['hammer', '#6a5032', 'Building'], ['snow', '#8aa3ad', 'Snow'], ['rain', '#3d6b8c', 'Monsoon'], ['sun', '#b3852c', 'Golden age']]
+  .map(([ic, c, t]) => `<li><span style="color:${c || 'inherit'}">${icon(ic)}</span>${t}</li>`).join('')}<li><svg viewBox="0 0 24 24"><path d="M2 12h20" stroke="#b3852c" stroke-width="3" stroke-dasharray="1 5" stroke-linecap="round"/></svg>Silk Road</li></ul>`;
 // The web: the great powers on a circle; blue for alliances, red for wars, gold dashes for client states.
 function web(s, list) {
   const n = list.length, R = 120, C = 150, at = (i) => [C + R * Math.cos((i / n) * 2 * Math.PI - Math.PI / 2), C + R * Math.sin((i / n) * 2 * Math.PI - Math.PI / 2)];
@@ -143,5 +147,5 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#dash [data-war], #dash [data-char]')) d.close(); // a war or a person: their card, on the map
   const b = e.target.closest('[data-dossier]');
   if (b) return openDossier(b.dataset.dossier);
-  if (e.target.closest('#ledger-btn')) return openLedger();
+  if (e.target.closest('#world-btn')) return openLedger();
 });

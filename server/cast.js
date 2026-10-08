@@ -2,7 +2,8 @@
 //  1. personas: an ambition, a fear, a secret and a voice for the notable people of the world, written once each;
 //  2. decisions: when one of them faces a turning point (betray? bow to the new king? accept the match? defy the
 //     verdict? make peace?), the AI answers for them, in character, before the next month turns;
-//  3. counsel: every other month one great power's ruler sets a course: war, peace, alliance, works, taxes.
+//  3. counsel: every month the AI sets the course of a few realms in turn (war, peace, alliance, works, taxes), so in
+//     time it steers every kingdom of the world; the rules carry its course out between counsels.
 // Everything the AI says becomes an input to the next month and goes through the engine's checks like any other act.
 // When the AI is late, out of budget or wrong, doctrine decides, and the world never waits.
 import { makeLLM, clean } from './agent.js';
@@ -81,32 +82,41 @@ export function makeCast(env, era) {
     }
   }
 
-  // ---------- 3. counsel: a great power sets its course ----------
+  // ---------- 3. counsel: the AI plays every kingdom ----------
+  // Each month one request sets the course of a few realms: those whose last counsel is oldest, the great powers
+  // waiting at most three months, the rest in turn, so every realm of the world is steered by the AI every so often.
+  // What it decides goes through the engine's checks like any act; between counsels the rules follow its course.
   async function counsel(s, m) {
-    if (m % 2) return;
-    const seen = era.get('counselAt') ?? {};
-    const rid = spotlight(s, 12).filter((id) => !s.realms[id].rebel && !s.players?.[id]) // a player sets his own course.sort((a, b) => (seen[a] ?? -99) - (seen[b] ?? -99))[0];
-    if (!rid) return;
-    seen[rid] = m;
-    era.put('counselAt', seen);
-    const r = s.realms[rid], who = steersman(s, r), next = neighbours(s, rid).realms;
-    const near = next.map((id) => {
-      const o = s.realms[id], rel = atWar(s, rid, id) ? 'AT WAR' : allied(s, rid, id) ? 'ally' : (s.truces[[rid, id].sort().join('|')] ?? -1) > s.month ? 'truce' : 'peace';
-      return `${id}: ${o.name}, strength ${Math.round(strength(s, id))} (${rel}${o.overlord === rid ? ', your vassal' : ''}${s.kin[[rid, id].sort().join('|')] ? ', kin by marriage' : ''}${o.horde ? ', a horde' : ''}, its word ${Math.round(o.rep ?? 60)})`;
-    });
-    const claims = claimsOf(s, rid).map((c) => `${cityOf(s, c.place)} (held by ${s.realms[c.holder]?.short})`);
+    if (era.meta?.game) return;
+    const seen = era.get('counselAt') ?? {}, great = new Set(ranked(s, 12));
+    const all = living(s).filter((r) => provincesOf(s, r.id).length && !r.rebel && !s.players?.[r.id]).map((r) => r.id);
+    const due = all.map((id) => [id, m - (seen[id] ?? -999) - (great.has(id) ? 9 : 0)]).sort((a, b) => b[1] - a[1]).slice(0, +(env.COUNSEL_BATCH || 6)).map(([id]) => id);
+    if (!due.length) return;
     const powers = ['levy', 'walls', 'bribe', 'feast', 'silktax'];
-    const out = await ask(big, `You are the ruler of a realm in a living historical simulation of the Old World from 1200 AD. Set your course for the coming months, in character. Choose only among the ids given. war: one neighbour to attack, or null. peace: neighbours you are at war with and want peace with (may be empty). ally: one neighbour to ally with, or null. build: true to raise a work (canal, caravanserai, market, library). tax: low, normal or high. power: your reign's one great gamble (levy, walls, bribe, feast, silktax) or null${r.power ? ' (already spent: use null)' : ''}. say: one sentence in your voice, at most 22 words, about your intent. ${NO_RELIGION} Reply with JSON only: {"war":null,"peace":[],"ally":null,"build":false,"tax":"normal","power":null,"say":"..."}`,
-      `The date: ${yearOf(s.month, s)}. You are ${who.title ?? ''} ${who.name}${r.regent ? ` (regent for ${s.chars[r.ruler]?.name})` : ''}, aged ${ageOf(s, who)}, temperament ${temperText(rulingTemper(s, r))}${who.persona ? `; ambition: ${who.persona.ambition}; fear: ${who.persona.fear}` : ''}.\nYour realm: ${situation(s, rid)} Grain ${Math.round(r.grain ?? 0)}, learning: ${r.known.map((k) => INVENTIONS[k]?.name).join(', ') || 'none'}.\nNeighbours: ${near.join('; ') || 'none'}.${claims.length ? `\nYour old claims (an arbiter may rule on them): ${claims.join(', ')}.` : ''}`, 500);
-    if (!out) return;
-    const acts = [];
-    if (next.includes(out.war) && !atWar(s, rid, out.war)) acts.push({ kind: 'war', target: out.war, say: clean(out.say, 24) });
-    for (const t of Array.isArray(out.peace) ? out.peace : []) if (atWar(s, rid, t)) acts.push({ kind: 'peace', target: t });
-    if (next.includes(out.ally) && !atWar(s, rid, out.ally)) acts.push({ kind: 'ally', target: out.ally });
-    if (out.build === true) { const w = bestWork(s, rid); if (w) acts.push({ kind: 'build', ...w }); }
-    if (powers.includes(out.power) && !r.power) acts.push({ kind: 'power', power: out.power });
-    for (const a of acts) era.queue(m + 1, 'act', rid, a);
-    era.queue(m + 1, 'plan', rid, { tax: ['low', 'normal', 'high'].includes(out.tax) ? out.tax : 'normal', said: clean(out.say, 24), by: big.model });
+    const brief = (rid) => {
+      const r = s.realms[rid], who = steersman(s, r), next = neighbours(s, rid).realms;
+      const near = next.map((id) => {
+        const o = s.realms[id], rel = atWar(s, rid, id) ? 'AT WAR' : allied(s, rid, id) ? 'ally' : (s.truces[[rid, id].sort().join('|')] ?? -1) > s.month ? 'truce' : 'peace';
+        return `${id} (${o.short}, strength ${Math.round(strength(s, id))}, ${rel}${o.overlord === rid ? ', your vassal' : ''}${o.horde ? ', a horde' : ''})`;
+      });
+      const claims = claimsOf(s, rid).map((c) => cityOf(s, c.place));
+      return `REALM ${rid}: ${who ? `${who.title ?? ''} ${who.name}, ${temperText(rulingTemper(s, r))}${who.persona ? `; ambition: ${who.persona.ambition}` : ''}` : 'no ruler'}. ${situation(s, rid)}${r.power ? ' Its great gamble is spent.' : ''}\n  neighbours: ${near.join('; ') || 'none'}${claims.length ? `\n  old claims: ${claims.join(', ')}` : ''}`;
+    };
+    const out = await ask(big, `You are the minds of the rulers of a living historical simulation of the Old World from 1200 AD. For each realm given, set its course for the coming months, in character, from its ruler's temperament and its own interest. Choose only among the ids given for that realm. war: one neighbour to attack, or null. peace: neighbours it is at war with and wants peace with (may be empty). ally: one neighbour to ally with, or null. build: true to raise a work. tax: low, normal or high. power: the reign's one great gamble (levy, walls, bribe, feast, silktax) or null. say: one sentence in the ruler's voice, at most 22 words. ${NO_RELIGION} Reply with JSON only: {"realms": {"<realm id>": {"war":null,"peace":[],"ally":null,"build":false,"tax":"normal","power":null,"say":"..."}}}`,
+      `The date: ${yearOf(s.month, s)}.\n${due.map(brief).join('\n')}`, 220 + 150 * due.length);
+    for (const rid of due) seen[rid] = m;
+    era.put('counselAt', seen);
+    for (const [rid, o] of Object.entries(out?.realms ?? {})) {
+      if (!due.includes(rid) || !o || typeof o !== 'object') continue;
+      const r = s.realms[rid], next = neighbours(s, rid).realms, acts = [];
+      if (next.includes(o.war) && !atWar(s, rid, o.war)) acts.push({ kind: 'war', target: o.war, say: clean(o.say, 24) });
+      for (const t of Array.isArray(o.peace) ? o.peace : []) if (atWar(s, rid, t)) acts.push({ kind: 'peace', target: t });
+      if (next.includes(o.ally) && !atWar(s, rid, o.ally)) acts.push({ kind: 'ally', target: o.ally });
+      if (o.build === true) { const w = bestWork(s, rid); if (w) acts.push({ kind: 'build', ...w }); }
+      if (powers.includes(o.power) && !r.power) acts.push({ kind: 'power', power: o.power });
+      for (const a of acts) era.queue(m + 1, 'act', rid, a);
+      era.queue(m + 1, 'plan', rid, { tax: ['low', 'normal', 'high'].includes(o.tax) ? o.tax : 'normal', said: clean(o.say, 24), by: big.model });
+    }
   }
 
   return async function afterMonth(s, events, m) {

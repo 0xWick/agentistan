@@ -101,12 +101,9 @@ function province(id) {
 
 // ---------- a realm ----------
 const END = { age: 'skull', battle: 'swords', assassin: 'dagger', overthrown: 'dagger', coup: 'dagger', poisoned: 'dagger', executed: 'dagger' };
-// In the living world: a free realm can be seized; your own opens your council; a player's realm says who rules it.
+// The living world is played by the AI alone: a realm's card has no throne to seize. (Private games still show who rules.)
 function seizeButton(st, r) {
-  if (!S.live || r.rebel) return '';
-  if (S.mine === r.id) return `<button class="btn main seize" data-council>${icon('crown')} Open your council</button>`;
-  if (st.players?.[r.id]) return `<p class="ruled">${icon('crown')} Ruled by a player: ${esc(st.players[r.id].name)}</p>`;
-  return S.mine ? '' : `<button class="btn seize" data-seize="${r.id}">${icon('dagger')} Seize this throne</button>`;
+  return st.players?.[r.id] ? `<p class="ruled">${icon('crown')} Ruled by a player: ${esc(st.players[r.id].name)}</p>` : '';
 }
 function realm(id) {
   const st = s(), r = st.realms[id];
