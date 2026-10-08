@@ -10,7 +10,8 @@ import { createPublicClient, createWalletClient, http, isAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia } from 'viem/chains';
 import { CAMPAIGN } from '../web/campaign/catalog.js';
-import { newCampaign, resolve, checksum, rulesPlan, armiesOf, menOf, owned, atWar, friends, PLANS, VERDICT, temperOf, goalState, fmtMen, heroOf, reach, oddsOf, battleFacts, plansFor, fitOf } from '../web/campaign/engine.js';
+import { newCampaign, resolve, checksum, rulesPlan, armiesOf, PLANS, VERDICT, ENGINE, courtOf, cardsDue, plansFor, withCards } from '../web/campaign/engine.js';
+import { situation, normalize, proposal, interpret, summary } from '../web/campaign/court.js';
 import { makeLLM, clean } from './agent.js';
 import REGALIA from './Regalia.json' with { type: 'json' };
 import DEPLOYED from '../deployments/regalia-base-sepolia.json' with { type: 'json' };
@@ -50,10 +51,30 @@ export class Campaigns extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS turns (run TEXT, n INTEGER, inputs TEXT, chk TEXT, PRIMARY KEY (run, n))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS plans (run TEXT, n INTEGER, ai TEXT, advice TEXT, by TEXT, PRIMARY KEY (run, n))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)');
-    const usage = this.get('usage') ?? {};
-    this.llm = env.LLM_API_KEY ? makeLLM({ ...env, LLM_MODEL: env.CAMPAIGN_MODEL || 'openai/gpt-oss-20b', MAX_LLM_TOKENS_PER_DAY: env.CAMPAIGN_TOKENS || '180000', MAX_LLM_CALLS_PER_DAY: '900', LLM_EXTRA: '{"reasoning_effort":"low"}' }, usage) : null;
+    for (const sql of ['ALTER TABLE runs ADD COLUMN v INTEGER', 'ALTER TABLE plans ADD COLUMN proposal TEXT']) { try { this.sql.exec(sql); } catch { /* already there */ } }
+    // two free models: when the first has spent its day, the second speaks
+    const usage = this.get('usage') ?? {}, usage2 = this.get('usage2') ?? {};
+    this.llms = env.LLM_API_KEY ? [
+      makeLLM({ ...env, LLM_MODEL: env.CAMPAIGN_MODEL || 'openai/gpt-oss-20b', MAX_LLM_TOKENS_PER_DAY: env.CAMPAIGN_TOKENS || '185000', MAX_LLM_CALLS_PER_DAY: '950', LLM_EXTRA: '{"reasoning_effort":"low"}' }, usage),
+      makeLLM({ ...env, LLM_MODEL: env.CAMPAIGN_MODEL_2 || 'qwen/qwen3.8-27b', MAX_LLM_TOKENS_PER_DAY: env.CAMPAIGN_TOKENS_2 || '45000', MAX_LLM_CALLS_PER_DAY: '300', LLM_EXTRA: '{}' }, usage2),
+    ] : [];
     this.usage = usage;
+    this.usage2 = usage2;
   }
+  get llm() { return this.llms.find((l) => l.status().mode === 'live') ?? null; }
+  saveUsage() { this.put('usage', this.usage); this.put('usage2', this.usage2); }
+  async askAI(system, user, maxTokens, maxWait = 6) {
+    const llm = this.llm;
+    if (!llm) return null;
+    try {
+      const { message } = await llm.chat([{ role: 'system', content: system }, { role: 'user', content: user }], undefined, { max_tokens: maxTokens, temperature: 0.6, response_format: { type: 'json_object' }, maxWait });
+      return parse(message?.content);
+    } catch (err) {
+      console.error('campaign AI failed:', err.message);
+      return null;
+    } finally { this.saveUsage(); }
+  }
+  old(run) { return (run.v ?? 1) !== ENGINE; } // played under older rules: its record would replay differently now
   get(k) { const r = this.sql.exec('SELECT v FROM kv WHERE k = ?', k).toArray()[0]; return r ? JSON.parse(r.v) : null; }
   put(k, v) { this.sql.exec('INSERT OR REPLACE INTO kv (k, v) VALUES (?, ?)', k, JSON.stringify(v)); }
   run(id) { return this.sql.exec('SELECT * FROM runs WHERE id = ?', id).toArray()[0] ?? null; }
@@ -86,7 +107,7 @@ export class Campaigns extends DurableObject {
   async owns(run, token) { return !!run && typeof token === 'string' && token.length >= 16 && (await sha(token)) === run.key; }
   public(run, withTurns = false) {
     if (!run) return null;
-    const out = { id: run.id, cid: run.cid, seed: run.seed, name: run.name, status: run.status, turn: run.turn, created: run.created, updated: run.updated, verdict: run.verdict, stars: run.stars, why: run.why, summary: run.summary, owner: run.owner, token: run.token, nft: run.nft, tx: run.tx, heralded: !!run.heralded };
+    const out = { id: run.id, cid: run.cid, seed: run.seed, name: run.name, status: run.status, turn: run.turn, created: run.created, updated: run.updated, verdict: run.verdict, stars: run.stars, why: run.why, summary: run.summary, owner: run.owner, token: run.token, nft: run.nft, tx: run.tx, heralded: !!run.heralded, old: this.old(run) };
     if (withTurns) out.turns = this.turnsOf(run.id);
     return out;
   }
@@ -103,74 +124,74 @@ export class Campaigns extends DurableObject {
     if (s.turn === 0 || s.turn % 3 === 0) return true;
     return (s.log ?? []).some((e) => ['battle', 'capture', 'starved', 'storm', 'war', 'peace', 'alliance', 'hero'].includes(e.type) && !e.minor);
   }
-  situation(C, s) {
-    const you = C.you, sides = Object.keys(C.sides).filter((id) => s.sides[id].alive);
-    const lines = [`Date: ${C.turns[s.turn].label} (turn ${s.turn + 1} of ${C.turns.length}). The war: ${C.title}. The player is ${C.hero.name} of ${C.sides[you].name}; their goal: ${C.goal.text}.`];
-    for (const id of sides) {
-      const d = C.sides[id], st = s.sides[id];
-      const enemies = sides.filter((o) => atWar(s, id, o)).map((o) => o).join(', ') || 'none', allies = sides.filter((o) => o !== id && friends(s, id, o)).join(', ') || 'none';
-      lines.push(`SIDE ${id} (${d.name}${id === you ? ', THE PLAYER' : ''}): led by ${d.leader}; temper ${temperOf(C, s, id)}; will to fight ${Math.round(st.will)}/100; gold ${Math.round(st.gold)}; at war with ${enemies}; allied with ${allies}. ${d.persona ?? ''}`);
-      for (const a of armiesOf(s, id)) {
-        lines.push(`  army ${a.id}: ${fmtMen(a.men)} men under ${a.gen ?? 'no famous general'} (skill ${a.skill}/5${a.temper ? `, ${a.temper}` : ''}) at ${a.at} (${C.prov[a.at].terrain})`);
-        if (id !== you) continue;
-        // what the player's army can really do this turn, so the advisor's counsel is about real choices
-        const can = Object.keys(reach(C, s, a.id)).map((p) => {
-          const o = oddsOf(C, s, a.id, p);
-          if (o.kind === 'battle') {
-            const best = plansFor(C, false).map((x) => [x, fitOf(o.facts, x)]).sort((x, y) => y[1] - x[1])[0][0];
-            return `${p} (battle, odds ${o.ratio.toFixed(1)} to 1, best plan "${PLANS[best].name}")`;
-          }
-          return o.kind === 'siege' ? `${p} (siege of about ${o.turns} turns, storm odds ${o.ratio.toFixed(1)})` : p;
-        });
-        lines.push(`    can reach this turn: ${can.join(', ') || 'nowhere'}`);
-      }
-      lines.push(`  holds: ${owned(s, id).map((p) => `${p}${s.prov[p].walls ? `[walls ${s.prov[p].walls}]` : ''}${C.prov[p].capital === id ? '[CAPITAL]' : ''}`).join(', ') || 'nothing'}`);
-    }
-    lines.push(`Map (province: owner; neighbours): ${C.ids.map((p) => `${p}: ${s.prov[p].owner ?? '-'}; ${C.prov[p].neighbors.join('/')}`).join(' | ')}`);
-    return lines.join('\n');
-  }
+  // The opening counsel of a season: at the turning points the AI plays the other sides and your chief adviser speaks;
+  // the rest of the time the rules do. Either way the adviser proposes an order for each of your armies.
   async think(run, s) {
     const C = CAMPAIGN[run.cid], key = `${run.id}:${s.turn}`;
     const sides = Object.keys(C.sides).filter((id) => id !== C.you && s.sides[id].alive);
-    const rules = () => ({ ai: {}, advice: null, by: 'rules' });
-    if (!this.llm || this.llm.status().mode !== 'live' || !this.turningPoint(run, s)) return rules();
-    const adv = C.advisor ?? { name: 'your advisor' };
-    const system = `You play the leaders of every side but the player's in a historical war game, and the player's advisor. Answer with JSON only:
-{"sides": {"<side id>": {"stance": "attack" | "defend" | "delay", "target": "<province id they march on, or null>", "peace": true | false, "say": "<one sentence in character, at most 25 words, what this leader declares this season>"}}, "advice": ["<one or two short sentences of counsel from ${adv.name} to ${C.hero.name}, in character: which of the player's armies should go where this turn (only places listed under "can reach this turn"), whether to fight there and with which plan, and what to fear>"]}
-Rules of the game: armies march about two provinces a season; a battle's outcome turns on numbers, ground (hills, mountains and forest help defenders), the generals' skill and the battle plan; walled cities need a siege or a costly storm; a side whose will to fight falls below 25 asks for peace. Each leader acts in character and from their own interest, as history knew them: "delay" means shadowing the enemy and refusing battle. Choose only province ids from the map. "peace": true only if that side would truly accept peace now.
-Speak as the people of the time might, but never mock any faith or people; no slurs; nothing graphic. Plain words.`;
+    const aims = this.get(`aims:${run.id}`) ?? {};
+    const base = proposal(C, s, aims);
+    const rules = () => ({ ai: {}, advice: null, proposal: base, by: 'rules' });
+    if (!this.llm || !this.turningPoint(run, s)) return rules();
+    const court = courtOf(C, s), adv = court[0] ?? { id: 'adviser', name: 'your adviser' };
+    const system = `You play, in a historical war game, the leaders of every side except the player's, and the player's chief adviser, ${adv.name}${adv.title ? ` (${adv.title})` : ''}. Answer with JSON only:
+{"sides": {"<side id>": {"stance": "attack" | "defend" | "delay", "target": "<province id they march on, or null>", "peace": true | false, "say": "<one sentence in character, at most 25 words, what this leader declares this season>"}},
+ "advice": ["<one or two short sentences from ${adv.name} to the commander, in character: what to do this season and why>"],
+ "orders": {"<id of one of the player's armies>": {"to": "<province id from its 'can reach this season' list, or null to hold>", "plan": "<plan id or null>", "storm": false}}}
+The orders are the adviser's proposal for each of the player's armies. Rules of the game: armies march about two provinces a season; battles turn on numbers, ground, the generals' skill and the plan; walled cities need a siege or a costly storm; a side whose will falls below 25 asks for peace. Plans: ${plansFor(C, false).map((p) => `${p} (${PLANS[p].hint})`).join('; ')}.
+STRICT: use only the people, armies, places and numbers in the data. The dead cannot act or speak. Never invent battles, deaths or events. Each leader acts in character and in their own interest. Never mock any faith or people; no slurs; nothing graphic. Plain words.`;
     const job = (async () => {
-      try {
-        const { message } = await this.llm.chat([{ role: 'system', content: system }, { role: 'user', content: `${this.situation(C, s)}\nSides to play: ${sides.join(', ')}.` }], undefined, { max_tokens: 900, temperature: 0.7, response_format: { type: 'json_object' }, maxWait: 6 });
-        const out = parse(message?.content);
-        if (!out) return rules();
-        const ai = {};
-        for (const id of sides) {
-          const p = out.sides?.[id];
-          if (!p) continue;
-          ai[id] = { stance: ['attack', 'defend', 'delay'].includes(p.stance) ? p.stance : rulesPlan(C, s, id).stance, target: C.prov[p.target] ? p.target : null, peace: p.peace === true, say: clean(p.say, 26), by: 'ai' };
-        }
-        const advice = (Array.isArray(out.advice) ? out.advice : [out.advice]).filter((x) => typeof x === 'string').map((x) => clean(x, 40)).filter(Boolean).slice(0, 2);
-        return { ai, advice: advice.length ? advice : null, by: 'ai' };
-      } catch (err) {
-        console.error('campaign AI failed:', err.message);
-        return rules();
-      } finally {
-        this.put('usage', this.usage);
+      const out = await this.askAI(system, `${situation(C, s, base)}\nSides to play: ${sides.join(', ')}.`, 1000);
+      if (!out) return rules();
+      const ai = {};
+      for (const id of sides) {
+        const p = out.sides?.[id];
+        if (!p) continue;
+        ai[id] = { stance: ['attack', 'defend', 'delay'].includes(p.stance) ? p.stance : rulesPlan(C, s, id).stance, target: C.prov[p.target] ? p.target : null, peace: p.peace === true, say: clean(p.say, 26), by: 'ai' };
       }
+      const advice = (Array.isArray(out.advice) ? out.advice : [out.advice]).filter((x) => typeof x === 'string').map((x) => clean(x, 45)).filter(Boolean).slice(0, 2);
+      const prop = out.orders && typeof out.orders === 'object' ? normalize(C, s, base, { orders: out.orders }).draft : base;
+      return { ai, advice: advice.length ? advice : null, proposal: prop, by: 'ai' };
     })();
     this.pending.set(key, job);
     const plan = await job;
     this.pending.delete(key);
     return plan;
   }
+
+  // The council: the commander speaks; the council answers in character and turns the words into orders, which the
+  // rules then check. The AI does it while the free budget lasts (a few words a season per campaign); the rules
+  // otherwise.
+  async council(run, s, body) {
+    const C = CAMPAIGN[run.cid], text = clean(String(body.message ?? ''), 120).slice(0, 600);
+    const draft = normalize(C, s, body.draft ?? {}, {}).draft;
+    if (!text) return { replies: [], draft, end: false, by: 'rules' };
+    const used = this.get(`talk:${run.id}:${s.turn}`) ?? 0;
+    const viaRules = () => ({ ...interpret(C, s, draft, text), by: 'rules' });
+    if (!this.llm || used >= +(this.env.COUNCIL_PER_SEASON || 8)) return viaRules();
+    this.put(`talk:${run.id}:${s.turn}`, used + 1);
+    const court = courtOf(C, s), ids = new Set(court.map((p) => p.id));
+    const chat = (Array.isArray(body.chat) ? body.chat : []).slice(-8).map((m) => `${m.who === 'you' ? 'COMMANDER' : String(m.name ?? m.who).slice(0, 40)}: ${clean(String(m.text ?? ''), 80)}`).join('\n');
+    const system = `You are the council of ${s.armies && Object.values(s.armies).find((a) => a.hero)?.gen || C.hero.name} in a historical war game (${C.title}, ${C.years}). Its members, by id: ${court.map((p) => `${p.id} = ${p.name}${p.title ? `, ${p.title}` : ''}`).join('; ')}.
+The commander speaks to you. Answer in character, briefly: one to three plain sentences from each member who would speak (usually one or two members), as people of that time would talk: loyal, frank, sometimes disagreeing. Then turn the commander's words into orders. Answer questions from the data alone.
+STRICT RULES: use only the people, armies, places, numbers and decisions in the data. The dead cannot speak or act. Never invent events, battles or deaths. An army may be ordered to any province; if it is not under "can reach this season", the army goes as far as it can and the rest next season, and you should say so. Keep any order the commander did not change. Never mock any faith or people; no slurs; nothing graphic.
+Reply with JSON only: {"replies": [{"who": "<member id>", "text": "..."}], "orders": {"<army id>": {"to": "<province id, or null to hold>", "plan": "<plan id or null>", "storm": false}}, "raise": {"<army id, or @home>": <number of men>}, "peace": {"<side id>": true}, "cards": {"<card id>": <option number>}, "end": false}
+Include in orders, raise, peace and cards only what the commander's words change. "end": true only when the commander clearly ends the season ("make it so", "end the turn"). Plans: ${plansFor(C, false).map((p) => `${p} = ${PLANS[p].name}`).join('; ')}.`;
+    const out = await this.askAI(system, `${situation(C, s, draft)}\n\nThis season so far:\n${chat || '(nothing yet)'}\n\nCOMMANDER: ${text}`, 700);
+    if (!out) return viaRules();
+    const { draft: next, notes } = normalize(C, s, draft, { orders: out.orders ?? {}, raise: out.raise ?? {}, peace: Object.fromEntries(Object.entries(out.peace ?? {}).filter(([, v]) => v)), cards: out.cards ?? {} });
+    const replies = (Array.isArray(out.replies) ? out.replies : []).slice(0, 4).map((r) => ({ who: ids.has(r?.who) ? r.who : court[0]?.id ?? 'adviser', text: clean(String(r?.text ?? ''), 70) })).filter((r) => r.text);
+    for (const n of notes) replies.push({ who: court[0]?.id ?? 'adviser', text: n });
+    if (!replies.length) replies.push({ who: court[0]?.id ?? 'adviser', text: 'As you command.' });
+    return { replies, draft: next, end: out.end === true, by: 'ai', left: Math.max(0, +(this.env.COUNCIL_PER_SEASON || 8) - used - 1) };
+  }
   async planFor(run, s) {
-    const have = this.sql.exec('SELECT ai, advice, by FROM plans WHERE run = ? AND n = ?', run.id, s.turn).toArray()[0];
-    if (have) return { ai: JSON.parse(have.ai), advice: JSON.parse(have.advice), by: have.by };
+    const have = this.sql.exec('SELECT ai, advice, by, proposal FROM plans WHERE run = ? AND n = ?', run.id, s.turn).toArray()[0];
+    if (have) return { ai: JSON.parse(have.ai), advice: JSON.parse(have.advice), by: have.by, proposal: have.proposal ? JSON.parse(have.proposal) : null };
     const key = `${run.id}:${s.turn}`;
     if (this.pending.has(key)) return this.pending.get(key);
     const p = await this.think(run, s);
-    this.sql.exec('INSERT OR REPLACE INTO plans (run, n, ai, advice, by) VALUES (?, ?, ?, ?, ?)', run.id, s.turn, JSON.stringify(p.ai), JSON.stringify(p.advice), p.by);
+    this.sql.exec('INSERT OR REPLACE INTO plans (run, n, ai, advice, by, proposal) VALUES (?, ?, ?, ?, ?, ?)', run.id, s.turn, JSON.stringify(p.ai), JSON.stringify(p.advice), p.by, JSON.stringify(p.proposal));
     return p;
   }
 
@@ -215,7 +236,7 @@ Speak as the people of the time might, but never mock any faith or people; no sl
         const t = clean(message?.content, 110);
         if (t && t.split(' ').length >= 15) text = t;
       } catch (err) { console.error('historian failed:', err.message); }
-      this.put('usage', this.usage);
+      this.saveUsage();
     }
     this.sql.exec('UPDATE runs SET summary = ? WHERE id = ?', text, run.id);
     this.broadcast(run.id, { t: 'end', run: this.public(this.run(run.id)) });
@@ -299,8 +320,8 @@ ${lines.map((l, i) => `<text x="240" y="${448 + i * 24}" text-anchor="middle" fo
         return json(404, { error: 'not found' });
       }
       if (p === '/api/runs') {
-        const live = this.sql.exec("SELECT * FROM runs WHERE status = 'running' AND turn > 0 AND updated > ? ORDER BY updated DESC LIMIT 12", Date.now() - 20 * 60_000).toArray();
-        const recent = this.sql.exec("SELECT * FROM runs WHERE status = 'over' ORDER BY updated DESC LIMIT 12").toArray();
+        const live = this.sql.exec("SELECT * FROM runs WHERE status = 'running' AND turn > 0 AND updated > ? AND v = ? ORDER BY updated DESC LIMIT 12", Date.now() - 20 * 60_000, ENGINE).toArray();
+        const recent = this.sql.exec("SELECT * FROM runs WHERE status = 'over' AND v = ? AND (name IS NULL OR name NOT LIKE 'Test run%') ORDER BY updated DESC LIMIT 12", ENGINE).toArray();
         return json(200, { live: live.map((r) => this.public(r)), recent: recent.map((r) => this.public(r)) }, 'public, max-age=20');
       }
       if (p === '/api/run' && req.method === 'POST') {
@@ -311,8 +332,8 @@ ${lines.map((l, i) => `<text x="240" y="${448 + i * 24}" text-anchor="middle" fo
         while (this.run(id)) id = rand(10);
         const token = rand(24), seed = 1 + (crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000), now = Date.now();
         const name = typeof body.name === 'string' ? clean(body.name, 6).slice(0, 40) || null : null;
-        this.sql.exec("INSERT INTO runs (id, cid, seed, key, name, status, turn, created, updated, ip) VALUES (?, ?, ?, ?, ?, 'running', 0, ?, ?, ?)", id, body.cid, seed, await sha(token), name, now, now, await sha(`ip:${ip}`));
-        return json(200, { id, seed, token });
+        this.sql.exec("INSERT INTO runs (id, cid, seed, key, name, status, turn, created, updated, ip, v) VALUES (?, ?, ?, ?, ?, 'running', 0, ?, ?, ?, ?)", id, body.cid, seed, await sha(token), name, now, now, await sha(`ip:${ip}`), ENGINE);
+        return json(200, { id, seed, token, v: ENGINE });
       }
       const m = p.match(/^\/api\/run\/([a-z0-9]{10})(\/[a-z]+)?$/);
       if (!m) return json(404, { error: 'not found' });
@@ -333,12 +354,23 @@ ${lines.map((l, i) => `<text x="240" y="${448 + i * 24}" text-anchor="middle" fo
       const body = await req.json().catch(() => ({}));
       if (!(await this.owns(run, body.token))) return json(403, { error: 'This campaign is not yours to play.' });
       const C = CAMPAIGN[run.cid];
+      if (this.old(run) && action !== '/claim') return json(410, { error: 'This campaign was played under older rules and cannot go on. Start it again.', old: true });
       if (action === '/plan') {
         if (run.status !== 'running') return json(409, { error: 'the war is over' });
         const s = this.stateOf(run);
         if (body.t !== s.turn) return json(409, { error: 'not this turn', turn: s.turn });
         const plan = await this.planFor(run, s);
-        return json(200, { t: s.turn, advice: plan.advice, by: plan.by, said: Object.fromEntries(Object.entries(plan.ai ?? {}).filter(([, v]) => v.say).map(([k, v]) => [k, v.say])) });
+        return json(200, { t: s.turn, advice: plan.advice, by: plan.by, proposal: plan.proposal });
+      }
+      if (action === '/council') {
+        if (run.status !== 'running') return json(409, { error: 'the war is over' });
+        if (!this.allow(ip, 'talk', 240)) return json(429, { error: 'Your council needs a moment: speak again shortly.' });
+        const s = this.stateOf(run);
+        if (body.t !== s.turn) return json(409, { error: 'not this turn', turn: s.turn });
+        const r = await this.council(run, s, body);
+        const aims = this.get(`aims:${run.id}`) ?? {};
+        this.put(`aims:${run.id}`, { ...aims, ...(r.draft.aims ?? {}) });
+        return json(200, { ...r, summary: summary(C, s, r.draft) });
       }
       if (action === '/turn') {
         if (run.status !== 'running') return json(409, { error: 'the war is over', turns: this.turnsOf(id) });
@@ -349,6 +381,7 @@ ${lines.map((l, i) => `<text x="240" y="${448 + i * 24}" text-anchor="middle" fo
         let ai = plan ? JSON.parse(plan.ai) : null;
         if (!ai && this.pending.has(`${id}:${s.turn}`)) ai = (await Promise.race([this.pending.get(`${id}:${s.turn}`), new Promise((r) => setTimeout(() => r(null), 4000))]))?.ai ?? null;
         const inputs = { ...cleanInputs(body.inputs), ai: ai ?? {} };
+        if (body.aims && typeof body.aims === 'object') this.put(`aims:${id}`, Object.fromEntries(Object.entries(body.aims).filter(([k, v]) => k.length < 40 && C.prov[v]).slice(0, 30))); // where the player means to go, beyond this season
         const r = resolve(s, C, inputs), chk = checksum(r.state), now = Date.now();
         this.sql.exec('INSERT INTO turns (run, n, inputs, chk) VALUES (?, ?, ?, ?)', id, s.turn, JSON.stringify(inputs), chk);
         this.sql.exec('UPDATE runs SET turn = ?, updated = ? WHERE id = ?', s.turn + 1, now, id); // the number of turns played

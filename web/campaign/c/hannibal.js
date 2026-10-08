@@ -8,6 +8,7 @@ export default {
   you: 'carthage',
   hero: { name: 'Hannibal Barca', title: 'General of Carthage', born: -247, look: 'punic', female: false },
   advisor: { name: 'Maharbal', title: 'commander of your horse', look: 'punic' },
+  court: [{ id: 'maharbal', name: 'Maharbal', title: 'commander of your horse', look: 'punic' }, { id: 'mago', name: 'Mago Barca', title: 'your youngest brother', look: 'punic', until: 5 }],
   hook: 'Cross the Alps with your elephants and bring Rome to its knees.',
   brief: [
     'Spring 218 BC. Twenty-three years ago Rome beat Carthage in the first war between them and took Sicily, then Sardinia. Your father Hamilcar rebuilt Carthage’s power in Spain. You have just taken Saguntum, Rome’s friend, and Rome has declared war.',
@@ -43,7 +44,7 @@ export default {
     'At Zama, Scipio and Masinissa defeat Hannibal. Carthage makes peace the next year.',
   ],
   sides: {
-    carthage: { name: 'Carthage', color: '#6b2d7b', leader: 'Hannibal Barca', capital: 'carthage', gold: 160, will: 70, weariness: 0.5, quality: 1.1, horse: 0.25, fleet: 0, levy: 12000, persona: 'Hannibal Barca, sworn as a boy to be Rome’s enemy.' },
+    carthage: { name: 'Carthage', heirs: ['Hasdrubal Barca', 'Mago Barca'], color: '#6b2d7b', leader: 'Hannibal Barca', capital: 'carthage', gold: 160, will: 70, weariness: 0.5, quality: 1.1, horse: 0.25, fleet: 0, levy: 12000, persona: 'Hannibal Barca, sworn as a boy to be Rome’s enemy.' },
     rome: { name: 'Rome', color: '#a3361f', leader: 'the Senate and its consuls', capital: 'rome', gold: 220, will: 96, quality: 1.0, horse: 0.1, fleet: 3, levy: 22000, income: 20, weariness: 0.35, ai: 'bold', persona: 'The Roman Senate: proud and stubborn. It never asks for peace after a defeat; it raises new legions instead. Its consuls change every year and want glory.' },
     gauls: { name: 'The Gauls of the Po', short: 'Gauls', color: '#2b7d7a', leader: 'the chiefs of the Insubres and the Boii', capital: 'insubres', gold: 40, will: 60, quality: 0.85, horse: 0.25, levy: 5000, ai: 'rash', persona: 'Celtic chiefs: brave, quarrelsome, eager for plunder, quick to lose heart when the war goes badly.' },
     syracuse: { name: 'Syracuse', color: '#b3852c', leader: 'Hiero II', capital: 'syracuse', gold: 80, will: 55, quality: 0.95, horse: 0.15, fleet: 1, levy: 4000, ai: 'cautious', persona: 'The Greek city of Syracuse: rich and proud of its walls; old King Hiero is Rome’s loyal friend.' },
@@ -225,6 +226,7 @@ export default {
     },
     { id: 'resolve', from: 4, if: (q) => q.great() >= 2 && q.alive('rome'), side: 'rome', fx: { will: 12, ai: 'delaying' }, text: 'Rome refuses to despair: the Senate forbids public mourning, will not ransom its prisoners, arms 8,000 slaves, and will never again meet Hannibal in open battle', sides: ['rome'] },
     { id: 'marcellus', from: 7, if: (q) => q.war('syracuse', 'rome') && q.alive('rome'), side: 'rome', fx: { spawn: ['rome', 'messana', 28000, 'Marcellus', 4, { id: 'marcellus', target: 'syracuse' }] }, text: 'Marcellus, “the Sword of Rome”, crosses to Sicily to besiege Syracuse', sides: ['rome'] },
+    { id: 'scipios', at: 9, if: (q) => q.living('Publius Scipio'), side: 'rome', fx: { kill: 'Publius Scipio', succeed: { 'Publius Scipio': ['Lucius Marcius', 3] } }, text: 'Publius Scipio and his brother Gnaeus are killed in Spain, deserted by their Celtiberian mercenaries; a knight, Lucius Marcius, rallies what is left', sides: ['rome'] },
     {
       id: 'scipio', at: 10, if: (q) => q.alive('rome') && q.will('rome') > 25 && SPAIN.some((p) => q.owns('carthage', p)), side: 'rome', sides: ['rome'],
       text: 'Rome sends the young Publius Cornelius Scipio to Spain to avenge his father and his uncle',

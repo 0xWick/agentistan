@@ -5,6 +5,7 @@ export default {
   you: 'judeans',
   hero: { name: 'Judah Maccabee', title: 'leader of the Judean revolt', look: 'nabataean' },
   advisor: { name: 'Simon', title: 'your elder brother', look: 'nabataean' },
+  court: [{ id: 'simon', name: 'Simon', title: 'your elder brother', look: 'nabataean' }, { id: 'jonathan', name: 'Jonathan', title: 'your younger brother', look: 'nabataean' }, { id: 'eleazar', name: 'Eleazar', title: 'your brother', look: 'nabataean', until: 4 }],
   hook: 'A few thousand men in the hills against an empire’s phalanx and its elephants.',
   art: 'uprising',
   brief: [
@@ -39,8 +40,8 @@ export default {
     'Bacchides returns with 20,000 men. Most of Judah’s army melts away; at Elasa he fights on with 800 men and dies. His brothers carry on the struggle.',
   ],
   sides: {
-    judeans: { name: 'The Maccabees', short: 'Judeans', color: '#2e5e8c', leader: 'Judah Maccabee', capital: 'gophna', gold: 40, will: 72, quality: 1.15, horse: 0.02, levy: 2500, income: 6, raiseCost: 6, weariness: 0.4, persona: 'Judah Maccabee and his brothers: devout, fierce, and masters of the hills.' },
-    seleucids: { name: 'The Seleucid Empire', short: 'Seleucids', color: '#7a4b8c', leader: 'King Antiochus IV Epiphanes, and the regent Lysias', capital: 'damascus', gold: 260, will: 75, quality: 1.1, horse: 0.15, levy: 3000, income: 10, ai: 'bold', weariness: 1.5, persona: 'The Seleucid court at Antioch: proud of its phalanx and elephants, at war in the east and troubled by rivals at home; it wants Judea quiet, not a long war.' },
+    judeans: { name: 'The Maccabees', short: 'Judeans', heirs: ['Jonathan', 'Simon'], color: '#2e5e8c', leader: 'Judah Maccabee', capital: 'gophna', gold: 40, will: 72, quality: 1.15, horse: 0.02, levy: 2500, income: 6, raiseCost: 6, weariness: 0.4, persona: 'Judah Maccabee and his brothers: devout, fierce, and masters of the hills.' },
+    seleucids: { name: 'The Seleucid Empire', short: 'Seleucids', color: '#7a4b8c', leader: 'King Antiochus IV Epiphanes', capital: 'damascus', gold: 260, will: 75, quality: 1.1, horse: 0.15, levy: 3000, income: 10, ai: 'bold', weariness: 1.5, persona: 'The Seleucid court at Antioch: proud of its phalanx and elephants, at war in the east and troubled by rivals at home; it wants Judea quiet, not a long war.' },
     idumea: { name: 'Idumea', color: '#8c6b3f', leader: 'the Idumean chiefs', capital: 'hebron', gold: 20, will: 40, quality: 0.9, horse: 0.1, levy: 1500, ai: 'cautious', persona: 'The Idumeans to the south, old rivals of Judea, friendly to the king.' },
   },
   provinces: [
@@ -137,11 +138,12 @@ export default {
     { id: 'seron', at: 1, side: 'seleucids', fx: { spawn: ['seleucids', 'joppa', 6000, 'Seron', 2, { id: 'seron', temper: 'rash', target: 'gophna' }] }, text: 'Seron, commander in Syria, marches up from the coast to make his name by crushing the rebels', sides: ['seleucids'] },
     { id: 'gorgias', at: 2, side: 'seleucids', fx: { spawn: ['seleucids', 'jamnia', 20000, 'Nicanor and Gorgias', 3, { id: 'gorgias', target: 'gophna' }] }, text: 'Lysias sends Nicanor and Gorgias with 20,000 men to crush the revolt; slave dealers follow the army to buy the prisoners', sides: ['seleucids'] },
     { id: 'lysias', at: 3, side: 'seleucids', fx: { free: ['lysias'], aim: { lysias: 'jerusalem' } }, text: 'The regent Lysias himself marches south', sides: ['seleucids'] },
-    { id: 'antiochus', at: 3, side: 'seleucids', fx: { will: -12 }, text: 'King Antiochus IV dies on campaign in Persia; his son is a boy, and rivals gather', sides: ['seleucids'] },
+    { id: 'antiochus', at: 3, if: (q) => q.living('King Antiochus IV'), side: 'seleucids', fx: { will: -12, kill: 'King Antiochus IV', leader: 'the regent Lysias, for the boy king Antiochus V' }, text: 'King Antiochus IV dies on campaign in Persia; his son is a boy, and rivals gather', sides: ['seleucids'] },
     { id: 'home1', at: 4, side: 'seleucids', fx: { then: (s) => { for (const id of ['gorgias', 'seron', 'lysias']) delete s.armies[id]; } }, text: 'What is left of the royal armies goes home to Syria for the winter', sides: ['seleucids'] },
     { id: 'elephants', at: 4, side: 'seleucids', fx: { spawn: ['seleucids', 'bethzur', 40000, 'Lysias and the elephants', 3, { id: 'elephants', target: 'jerusalem', temper: 'bold' }] }, text: 'Lysias returns with a great army and war elephants', sides: ['seleucids'] },
     { id: 'philip', at: 5, if: (q) => q.alive('judeans'), side: 'seleucids', fx: { will: -18, remove: 'elephants' }, text: 'News comes that Philip has seized Antioch: Lysias hurries home and offers the Jews their law', sides: ['seleucids'] },
-    { id: 'nicanor', at: 6, side: 'seleucids', fx: { spawn: ['seleucids', 'samaria', 9000, 'Nicanor', 3, { id: 'nicanor', temper: 'rash', target: 'gophna' }], will: 8 }, text: 'King Demetrius sends Nicanor to finish Judah', sides: ['seleucids'] },
+    { id: 'eleazar', at: 5, side: 'judeans', fx: { kill: 'Eleazar' }, text: 'Your brother Eleazar dies at Beth Zechariah, crushed under a war elephant he stabbed from beneath', sides: ['judeans'] },
+    { id: 'nicanor', at: 6, side: 'seleucids', fx: { spawn: ['seleucids', 'samaria', 9000, 'Nicanor', 3, { id: 'nicanor', temper: 'rash', target: 'gophna' }], will: 8, kill: 'Lysias', succeed: { Lysias: ['the royal officers', 2] }, leader: 'King Demetrius I' }, text: 'Demetrius, a prince escaped from Rome, has seized the throne and put the regent and the boy king to death; King Demetrius sends Nicanor to finish Judah', sides: ['seleucids'] },
     { id: 'bacchides', at: 7, side: 'seleucids', fx: { spawn: ['seleucids', 'samaria', 22000, 'Bacchides', 4, { id: 'bacchides', temper: 'bold' }], will: 10, then: (s) => { const j = s.armies.judah; if (j) j.men = Math.min(j.men, 3000); } }, text: 'Bacchides comes with 20,000 foot and 2,000 horse; Judah’s men desert him in fear', sides: ['seleucids', 'judeans'] },
   ],
 };

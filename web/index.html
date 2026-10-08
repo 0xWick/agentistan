@@ -77,8 +77,10 @@
   </div>
 
   <footer class="player panel">
+    <button class="round" id="back" aria-label="A month back (Shift: a year)" title="A month back (Shift: a year) · ←"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button class="round big" id="play" aria-label="Play"></button>
-    <div class="track" title="Click or drag to go back to any moment"><div class="line"></div><div class="done" id="done"></div><div id="track-events"></div><div class="now" id="now"></div><div id="track-ticks"></div></div>
+    <button class="round" id="fwd" aria-label="A month forward (Shift: a year)" title="A month forward (Shift: a year) · →"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="track" title="Click, drag or scroll to move through time"><div class="line"></div><div class="done" id="done"></div><div id="track-events"></div><div class="now" id="now"></div><div id="track-ticks"></div></div>
     <span class="yr" id="yr">1200</span>
   </footer>
   <button class="plan-link" id="plan-btn"><svg viewBox="0 0 24 24"><use href="#i-scroll"/></svg>A free plan for your business</button>

@@ -461,7 +461,7 @@ function paintArmies() {
         requestAnimationFrame(() => (g.style.opacity = 1));
       }
       const scale = Math.max(0.8, Math.min(1.45, 0.75 + a.size / 30)), lead = leaderOf(a);
-      g.style.transform = `translate(${cx + dx}px, ${cy - 14}px) scale(${scale})`;
+      g.style.transform = `translate(calc(${cx}px + ${dx}px * var(--z, 1)), calc(${cy}px - 14px * var(--z, 1))) scale(calc(${scale} * var(--z, 1)))`; // the same size on screen at any zoom
       g.querySelector('.cloth').setAttribute('fill', colorOf(a.realm));
       g.querySelector('.medal').setAttribute('fill', colorOf(a.realm));
       g.querySelector('.leader').setAttribute('href', `#i-${lead}`);
@@ -497,13 +497,14 @@ function paintBattles() {
   for (const b of Object.values(s.battles ?? {})) {
     const [x, y] = PROV[b.at].xy;
     const g = el('g', { class: `battle${b.waited && !b.rounds ? ' waiting' : ''}`, 'data-battle': b.id, 'data-war': b.war ?? '', 'data-prov': b.at });
+    g.style.transform = `translate(${x}px, ${y}px) scale(var(--z, 1))`;
     const men2 = (ids) => ids.map((id) => s.armies[id]).filter((a) => a && a.at === b.at).reduce((t, a) => t + a.size, 0);
-    g.append(el('circle', { cx: x, cy: y - 14, r: 40, class: 'battle-ring' }));
-    g.append(el('circle', { cx: x - 22, cy: y - 66, r: 10, fill: colorOf(b.ra[0]), class: 'battle-side a' }), el('circle', { cx: x + 22, cy: y - 66, r: 10, fill: colorOf(b.rd[0]), class: 'battle-side d' }));
-    g.append(el('use', { href: '#i-swords', x: x - 16, y: y - 82, width: 32, height: 32, class: 'battle-swords' }));
-    for (const [dx, dy, i] of [[-8, -20, 0], [10, -6, 1], [-2, 4, 2]]) g.append(el('circle', { cx: x + dx, cy: y - 14 + dy, r: 3, class: `spark s${i}` })); // steel on steel
-    g.append(el('text', { x: x - 34, y: y - 92, class: 'battle-men a' }, men(men2(b.a))), el('text', { x: x + 34, y: y - 92, class: 'battle-men d' }, men(men2(b.d))));
-    g.append(el('text', { x, y: y + 50, class: 'battle-text' }, b.waited && b.rounds <= b.waited ? 'facing off' : `month ${b.rounds + 1}`));
+    g.append(el('circle', { cx: 0, cy: -14, r: 40, class: 'battle-ring' }));
+    g.append(el('circle', { cx: -22, cy: -66, r: 10, fill: colorOf(b.ra[0]), class: 'battle-side a' }), el('circle', { cx: 22, cy: -66, r: 10, fill: colorOf(b.rd[0]), class: 'battle-side d' }));
+    g.append(el('use', { href: '#i-swords', x: -16, y: -82, width: 32, height: 32, class: 'battle-swords' }));
+    for (const [dx, dy, i] of [[-8, -20, 0], [10, -6, 1], [-2, 4, 2]]) g.append(el('circle', { cx: dx, cy: -14 + dy, r: 3, class: `spark s${i}` })); // steel on steel
+    g.append(el('text', { x: -34, y: -92, class: 'battle-men a' }, men(men2(b.a))), el('text', { x: 34, y: -92, class: 'battle-men d' }, men(men2(b.d))));
+    g.append(el('text', { x: 0, y: 50, class: 'battle-text' }, b.waited && b.rounds <= b.waited ? 'facing off' : `month ${b.rounds + 1}`));
     layer.battles.append(g);
   }
 }
@@ -517,9 +518,9 @@ function paintFields() {
       if (e.type !== 'battle' || !e.at || seen.has(e.at) || s.battles && Object.values(s.battles).some((b) => b.at === e.at)) return;
       seen.add(e.at);
       const [x, y] = PROV[e.at].xy, age = (now - m) / 120;
-      const g = el('g', { class: 'field', 'data-field': `${m}:${i}`, style: `opacity:${(0.95 - age * 0.6).toFixed(2)}` });
-      g.append(el('circle', { cx: x + 26, cy: y + 4, r: 11, class: 'field-dot', fill: colorOf(e.winner) }), el('use', { href: '#i-swords', x: x + 18, y: y - 4, width: 16, height: 16, class: 'field-swords' }));
-      g.append(el('text', { x: x + 26, y: y + 27, class: 'field-year' }, String(yearLabel(yearOf(m, s)))));
+      const g = el('g', { class: 'field', 'data-field': `${m}:${i}`, style: `opacity:${(0.95 - age * 0.6).toFixed(2)};transform:translate(${x}px, ${y}px) scale(var(--z, 1))` });
+      g.append(el('circle', { cx: 26, cy: 4, r: 11, class: 'field-dot', fill: colorOf(e.winner) }), el('use', { href: '#i-swords', x: 18, y: -4, width: 16, height: 16, class: 'field-swords' }));
+      g.append(el('text', { x: 26, y: 27, class: 'field-year' }, String(yearLabel(yearOf(m, s)))));
       layer.fields.append(g);
     });
   }
@@ -530,8 +531,8 @@ function paintSieges() {
   for (const p of PROVINCES) {
     const sg = s.provinces[p.id].siege;
     if (!sg) continue;
-    const g = el('g', { class: 'siege' });
-    g.append(el('circle', { cx: p.xy[0], cy: p.xy[1], r: 24, stroke: ink(colorOf(sg.realm), 0.75) }), el('text', { x: p.xy[0], y: p.xy[1] + 42 }, `${sg.left}`));
+    const g = el('g', { class: 'siege', style: `transform:translate(${p.xy[0]}px, ${p.xy[1]}px) scale(var(--z, 1))` });
+    g.append(el('circle', { cx: 0, cy: 0, r: 24, stroke: ink(colorOf(sg.realm), 0.75) }), el('text', { x: 0, y: 42 }, `${sg.left}`));
     layer.sieges.append(g);
   }
 }
@@ -706,10 +707,12 @@ function setStep() { document.documentElement.style.setProperty('--step', `${Mat
 
 // ---------- pan and zoom ----------
 const view = { x: 0, y: 0, w: W, h: H };
+let fitUnits = 0, zoomTimer = 0;
 function fit() {
   const phone = innerWidth < 760;
   const [x1] = xyOf(37, phone ? 48 : -12), [x2] = xyOf(37, phone ? 82 : 132), [, cy] = xyOf(phone ? 37 : 39, 60);
   const w = x2 - x1, h = w / (innerWidth / innerHeight);
+  fitUnits = w / innerWidth;
   setView({ x: x1, y: cy - h / 2, w, h });
 }
 function setView(v) {
@@ -722,6 +725,13 @@ function setView(v) {
   Object.assign(view, v);
   map.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
   map.dataset.zoom = v.w < 950 ? 3 : v.w < 1750 ? 2 : v.w < 3800 ? 1 : 0;
+  const z = Math.max(0.25, Math.min(3.5, 1.5 * (v.w / innerWidth / (fitUnits || v.w / innerWidth)) ** 0.9)).toFixed(3);
+  if (map.style.getPropertyValue('--z') !== z) { // armies and battles keep their size on the screen; no gliding while the zoom changes
+    map.classList.add('zooming');
+    map.style.setProperty('--z', z);
+    clearTimeout(zoomTimer);
+    zoomTimer = setTimeout(() => map.classList.remove('zooming'), 160);
+  }
   clearTimeout(tileTimer);
   tileTimer = setTimeout(loadTiles, 120);
 }
@@ -807,6 +817,20 @@ function focus(pid) {
 // ---------- controls ----------
 function wire() {
   $('#play').addEventListener('click', () => playPause());
+  $('#back').addEventListener('click', (e) => step(e.shiftKey ? -12 : -1));
+  $('#fwd').addEventListener('click', (e) => step(e.shiftKey ? 12 : 1));
+  // Scroll over the timeline to move through time: a month a notch, a year with Shift.
+  let wheelAcc = 0, wheelTo = null, wheelFrame = 0;
+  $('.player').addEventListener('wheel', (e) => {
+    e.preventDefault();
+    wheelAcc += Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    const n = Math.trunc(wheelAcc / 40);
+    if (!n) return;
+    wheelAcc -= n * 40;
+    playPause(false);
+    wheelTo = Math.max(0, Math.min(story.frontier, (wheelTo ?? s.month) + n * (e.shiftKey ? 12 : 1)));
+    if (!wheelFrame) wheelFrame = requestAnimationFrame(async () => { wheelFrame = 0; const m = wheelTo; await seek(m); if (wheelTo === m) wheelTo = null; });
+  }, { passive: false });
   // Straight to any lived moment on the timeline.
   const track = $('.track');
   const seekAt = (e) => {

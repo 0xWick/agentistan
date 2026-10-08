@@ -5,8 +5,9 @@ export default {
   id: 'sparta', n: 2, era: 'The ancient world', age: 'ancient',
   title: 'Wrath of Sparta', years: '431–404 BC',
   you: 'sparta',
-  hero: { name: 'King Archidamus', title: 'King of Sparta, and after him Lysander', look: 'hellenic' },
+  hero: { name: 'King Archidamus', title: 'King of Sparta, and after him King Agis', look: 'hellenic' },
   advisor: { name: 'Brasidas', title: 'the boldest of your officers', look: 'hellenic' },
+  court: [{ id: 'lysander', name: 'Lysander', title: 'admiral of Sparta', look: 'hellenic', from: 13 }, { id: 'brasidas', name: 'Brasidas', title: 'the boldest of your officers', look: 'hellenic' }, { id: 'alcibiades', name: 'Alcibiades', title: 'an Athenian exile', look: 'hellenic', from: 8, until: 10 }],
   hook: 'The finest soldiers in Greece against the greatest navy: break the Athenian empire.',
   art: 'siege',
   brief: [
@@ -49,8 +50,8 @@ export default {
     'Starving and besieged, Athens surrenders. Its Long Walls are pulled down to the music of flute-girls.',
   ],
   sides: {
-    sparta: { name: 'Sparta and its allies', short: 'Sparta', color: '#9c2a1c', leader: 'King Archidamus II', capital: 'sparta', gold: 90, will: 72, quality: 1.3, horse: 0.06, fleet: 0, levy: 6000, income: 10, tech: ['hoplites'], weariness: 0.6, persona: 'Sparta: the finest soldiers in Greece, slow, cautious and suspicious of the sea.' },
-    athens: { name: 'Athens and its empire', short: 'Athens', color: '#27466e', leader: 'Pericles, then the Assembly', capital: 'attica', gold: 400, will: 95, quality: 1.05, horse: 0.06, fleet: 3, levy: 4000, income: 50, tech: ['hoplites'], ai: 'cautious', weariness: 0.4, persona: 'Democratic Athens: rich, clever and restless; under Pericles it will not risk its army against Sparta on land, and trusts its fleet.' },
+    sparta: { name: 'Sparta and its allies', short: 'Sparta', heirs: ['King Agis'], color: '#9c2a1c', leader: 'King Archidamus', capital: 'sparta', gold: 90, will: 72, quality: 1.3, horse: 0.06, fleet: 0, levy: 6000, income: 10, tech: ['hoplites'], weariness: 0.6, persona: 'Sparta: the finest soldiers in Greece, slow, cautious and suspicious of the sea.' },
+    athens: { name: 'Athens and its empire', short: 'Athens', heirs: ['Nicias'], color: '#27466e', leader: 'Pericles', capital: 'attica', gold: 400, will: 95, quality: 1.05, horse: 0.06, fleet: 3, levy: 4000, income: 50, tech: ['hoplites'], ai: 'cautious', weariness: 0.4, persona: 'Democratic Athens: rich, clever and restless; under Pericles it will not risk its army against Sparta on land, and trusts its fleet.' },
     argos: { name: 'Argos', color: '#8a7a5a', leader: 'the Argive democracy', capital: 'argos', gold: 40, will: 50, quality: 1.0, horse: 0.05, levy: 3000, tech: ['hoplites'], ai: 'cautious', persona: 'Argos, Sparta’s old rival in the Peloponnese, waiting for its chance.' },
     persia: { name: 'Persia', color: '#b3852c', leader: 'the satraps Tissaphernes and Pharnabazus', capital: 'sardis', gold: 300, will: 60, quality: 0.8, horse: 0.3, fleet: 2, levy: 4000, ai: 'cautious', persona: 'The Persian satraps of Asia Minor, who would pay Greeks to destroy each other and take back the cities of Ionia.' },
     macedon: { name: 'Macedon', color: '#6b4a8c', leader: 'King Perdiccas II', capital: 'macedon', gold: 40, will: 40, quality: 0.9, horse: 0.3, levy: 3000, ai: 'cautious', persona: 'Perdiccas of Macedon, who changes sides whenever it suits him.' },
@@ -168,7 +169,7 @@ export default {
       id: 'decelea', at: 9, title: 'A fort in Attica', art: 'built',
       text: 'Alcibiades says: do not just raid Attica, stay there. A fort at Decelea, in sight of Athens, would cut it off from its silver mines and its farms the whole year round.',
       options: [
-        { label: 'Fortify Decelea', fx: { give: ['decelea', 'sparta'], spawn: ['sparta', 'decelea', 8000, 'King Agis', 3, { id: 'agis', stay: true }], sides: { athens: { gold: -120, will: -6 } } }, hint: 'Twenty thousand Athenian slaves will run to you' },
+        { label: 'Fortify Decelea', fx: { give: ['decelea', 'sparta'], spawn: ['sparta', 'decelea', 8000, 'the garrison of Decelea', 3, { id: 'agis', stay: true }], sides: { athens: { gold: -120, will: -6 } } }, hint: 'Twenty thousand Athenian slaves will run to you' },
         { label: 'Keep raiding each summer', fx: {}, hint: 'The old way' },
       ],
       pick: 0, advise: 0,
@@ -197,7 +198,11 @@ export default {
   ],
   events: [
     { id: 'plague', at: 1, side: 'athens', fx: { then: (s) => { for (const a of Object.values(s.armies)) if (a.side === 'athens') a.men = Math.round(a.men * 0.72); }, will: -10 }, text: 'Plague breaks out in Athens, crowded behind its walls', sides: ['athens'] },
-    { id: 'pericles', at: 2, side: 'athens', fx: { will: -6, ai: 'bold' }, text: 'Pericles dies of the plague. Bolder men lead the Assembly', sides: ['athens'] },
+    { id: 'pericles', at: 2, if: (q) => q.living('Pericles'), side: 'athens', fx: { will: -6, ai: 'bold', leader: 'Cleon, and the Assembly', kill: 'Pericles', succeed: { Pericles: ['Cleon', 3] } }, text: 'Pericles dies of the plague. Bolder men lead the Assembly, and Cleon takes his army', sides: ['athens'] },
+    { id: 'phormio', at: 3, if: (q) => q.living('Phormio'), side: 'athens', fx: { kill: 'Phormio', succeed: { Phormio: ['Asopius', 2] } }, text: 'Phormio, the best admiral of Athens, is dead; his son Asopius leads his men', sides: ['athens'] },
+    { id: 'archidamus', at: 4, if: (q) => q.living('King Archidamus'), side: 'sparta', fx: { kill: 'King Archidamus', succeed: { 'King Archidamus': ['King Agis', 3] }, leader: 'King Agis' }, text: 'Old King Archidamus is dead. His son Agis is king of Sparta, and leads its army now', sides: ['sparta'] },
+    { id: 'cleon', at: 6, if: (q) => q.living('Cleon'), side: 'athens', fx: { kill: 'Cleon', succeed: { Cleon: ['Nicias', 3] }, leader: 'Nicias, and the Assembly' }, text: 'Cleon falls in Thrace, at Amphipolis; the cautious Nicias leads Athens now', sides: ['athens'] },
+    { id: 'syracuse', at: 10, if: (q) => q.living('Nicias') && q.living('Demosthenes'), side: 'athens', fx: { kill: ['Nicias', 'Demosthenes'], succeed: { Nicias: ['Thrasybulus', 4], Demosthenes: ['Thrasyllus', 3] }, leader: 'the Assembly, and its generals' }, text: 'Nicias and Demosthenes are put to death by the Syracusans; new generals lead Athens', sides: ['athens'] },
     { id: 'pylos', at: 4, side: 'athens', fx: { spawn: ['athens', 'pylos', 6000, 'Demosthenes', 4, { id: 'demosthenes' }], give: ['pylos', 'athens'] }, text: 'An Athenian fleet lands Demosthenes at Pylos, on Sparta’s own coast', sides: ['athens'] },
     { id: 'warAgain', at: 8, if: (q) => q.flag('nicias'), fx: { rel: ['sparta', 'athens', 'war'] }, text: 'The Peace of Nicias breaks down, and Sparta and Athens are at war again', sides: ['sparta', 'athens'] },
     { id: 'sicily', at: 8, side: 'athens', fx: { then: (s) => { const big = Object.values(s.armies).filter((a) => a.side === 'athens').sort((a, b) => b.men - a.men)[0]; if (big) big.men = Math.round(big.men * 0.5); } }, text: 'Athens sends half its army and a great fleet to conquer Sicily', sides: ['athens'] },

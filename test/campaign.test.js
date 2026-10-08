@@ -96,3 +96,42 @@ test('army sizes read well, from hundreds to millions', () => {
   assert.equal(fmtMen(1_250_000), '1.3M');
   assert.equal(fmtMen(12_000_000), '12M');
 });
+
+test('the people are real: the dead lead no army, no side and no council, and history’s deaths happen', async () => {
+  const { courtOf, leaderOf, sameMan } = await import('../web/campaign/engine.js');
+  for (const C of CAMPAIGNS) {
+    for (let seed = 1; seed <= 6; seed++) {
+      let s = newCampaign(C, seed);
+      while (s.status === 'running') {
+        s = resolve(s, C, { orders: autoOrders(C, s), raise: autoRaise(C, s) }).state;
+        const dead = new Set(s.dead);
+        for (const a of Object.values(s.armies)) assert.ok(!dead.has(a.gen), `${C.id}: ${a.gen} is dead but leads an army`);
+        for (const p of courtOf(C, s)) assert.ok(!dead.has(p.name), `${C.id}: ${p.name} is dead but sits in the council`);
+        for (const id of Object.keys(C.sides)) { const l = leaderOf(C, s, id); assert.ok(/ and /.test(l) || !s.dead.some((n) => sameMan(l, n)), `${C.id}: ${l} is dead but leads ${id}`); }
+      }
+    }
+  }
+  // Pericles dies of the plague in 429 BC, and Cleon leads his army
+  const C = CAMPAIGN.sparta;
+  let s = newCampaign(C, 1);
+  for (let t = 0; t < 3; t++) s = resolve(s, C, {}).state;
+  assert.ok(s.dead.includes('Pericles'));
+  assert.ok(!Object.values(s.armies).some((a) => a.gen === 'Pericles'));
+  assert.match(leaderOf(C, s, 'athens'), /Cleon/);
+});
+
+test('the council understands plain words, and checks them against the war', async () => {
+  const { proposal, interpret, summary } = await import('../web/campaign/court.js');
+  const C = CAMPAIGN.hannibal, s = newCampaign(C, 3);
+  let d = proposal(C, s);
+  let r = interpret(C, s, d, 'We cross the Alps');
+  assert.equal(r.draft.cards.road, 0, 'the road card is answered');
+  d = r.draft;
+  r = interpret(C, s, d, 'Hanno, hold Carthage. Hasdrubal, take Tarraco');
+  assert.equal(r.draft.orders.hanno.to, null);
+  assert.ok(r.draft.orders.hasdrubal.to, 'Hasdrubal marches');
+  assert.equal(r.draft.aims.hasdrubal, 'tarraco', 'too far for one season: the aim is kept');
+  r = interpret(C, s, r.draft, 'How many men does Rome have?');
+  assert.ok(r.replies.some((x) => /80k/.test(x.text)), 'questions are answered from the war’s data');
+  assert.ok(summary(C, s, r.draft).length >= 3);
+});

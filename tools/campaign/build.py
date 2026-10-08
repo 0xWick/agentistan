@@ -206,9 +206,25 @@ def build(c):
     lanes = [[seeds[i]['id'], seeds[j]['id']] for i, j in (tuple(sorted(x)) for x in sea)]
     x0, y0, x1, y1 = frame.bounds
     pad = 0.04 * (x1 - x0)
+    # the world map's rivers that run through this theater, cut to its frame
+    rivers = []
+    for r in GEO['rivers']:
+        nums = list(map(float, re.findall(r'-?\d+(?:\.\d+)?', r['d'])))
+        xs, ys = nums[0::2], nums[1::2]
+        if not xs or max(xs) < x0 or min(xs) > x1 or max(ys) < y0 or min(ys) > y1:
+            continue
+        parts = []
+        for seg in re.findall(r'M[^M]*', r['d']):
+            pts = [tuple(map(float, xy.split())) for xy in re.split(r'[ML]', seg) if xy.strip()]
+            if len(pts) > 1:
+                parts.append(LineString(pts))
+        g = unary_union(parts).intersection(frame.buffer(pad)) if parts else None
+        d = lines(g) if g is not None and not g.is_empty else ''
+        if d:
+            rivers.append({'d': d, 'rank': r['rank']})
     doc = {
         'id': cid, 'view': [round(x0 - pad, 1), round(y0 - pad, 1), round(x1 - x0 + 2 * pad, 1), round(y1 - y0 + 2 * pad, 1)],
-        'coast': path(land.simplify(0.4)), 'provinces': out, 'edges': edges, 'lanes': lanes,
+        'coast': path(land.simplify(0.4)), 'provinces': out, 'edges': edges, 'lanes': lanes, 'rivers': rivers,
     }
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / f'{cid}.json').write_text(json.dumps(doc, separators=(',', ':')))

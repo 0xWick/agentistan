@@ -1,11 +1,12 @@
-// The campaigns page: the list of wars, a war's briefing, the war itself (the map, your armies' orders, the cards,
-// the news of each turn) and its scroll at the end; or someone else's war, watched live or replayed.
+// The campaigns page: the list of wars, a war's briefing, the war itself and its scroll at the end; or someone else's
+// war, watched live or replayed. In a war you do not fill in forms: you speak to your council in plain words, they
+// answer in character and turn your words into orders (the AI when it can, the rules otherwise), and the map shows
+// what will happen. The big decisions arrive as cards in the same conversation.
 import { CAMPAIGNS, CAMPAIGN } from './catalog.js';
-import {
-  newCampaign, resolve, cardsDue, withCards, counsel, reach, oddsOf, battleFacts, plansFor, fitOf, PLANS, armiesOf, armiesAt, menOf,
-  owned, heroOf, goalState, atWar, fmtMen, checksum, VERDICT, incomeOf, upkeepOf, temperOf, friends, homeOf,
-} from './engine.js';
+import { newCampaign, resolve, cardsDue, withCards, PLANS, armiesOf, menOf, heroOf, goalState, atWar, fmtMen, checksum, VERDICT, incomeOf, upkeepOf, friends, courtOf, leaderOf, ENGINE, oddsOf, reach } from './engine.js';
+import { proposal, interpret, summary, suggestions, normalize } from './court.js';
 import { makeMap } from './map.js';
+import { history as pastOf, snapOf, warRoom } from './warroom.js';
 import { portrait } from '../silk/portrait.js';
 import { makeWallet, myWallet, exportKey } from './wallet.js';
 
@@ -30,7 +31,8 @@ async function post(u, body) {
 const api = {
   start: (cid, name) => post('/api/run', { cid, name }),
   plan: (run, t) => post(`/api/run/${run.id}/plan`, { token: run.token, t }),
-  turn: (run, t, inputs) => post(`/api/run/${run.id}/turn`, { token: run.token, t, inputs }),
+  council: (run, t, message, draft, chat) => post(`/api/run/${run.id}/council`, { token: run.token, t, message, draft, chat }),
+  turn: (run, t, inputs, aims) => post(`/api/run/${run.id}/turn`, { token: run.token, t, inputs, aims }),
   get: (id) => fetch(`/api/run/${encodeURIComponent(id)}`).then((r) => (r.ok ? r.json() : null)),
   runs: () => fetch('/api/runs').then((r) => (r.ok ? r.json() : { live: [], recent: [] })).catch(() => ({ live: [], recent: [] })),
   claim: (run, body) => post(`/api/run/${run.id}/claim`, { token: run.token, ...body }),
@@ -40,12 +42,11 @@ fetch('/art/manifest.json').then((r) => r.json()).then((m) => (m.events ?? []).f
 const artOf = (k) => (k && ART.has(k) ? `/art/events/${k}.webp` : null);
 
 // ---------- small pieces of markup ----------
-const face = (who, color, size = 64, uid = '') => who.art ? `<img src="/art/people/${encodeURIComponent(who.art)}.webp" alt="" width="${size}" height="${size}" style="border-radius:50%;border:3px solid #c9a03c;object-fit:cover;width:${size}px;height:${size}px">` : portrait({ id: who.name, name: who.name, culture: who.look ?? 'roman', female: !!who.female, role: 'general', title: who.title ?? '' }, { color, age: who.age ?? 38, size, uid });
+const face = (who, color, size = 64, uid = '') => (who.art ? `<img class="painted" src="/art/people/${encodeURIComponent(who.art)}.webp" alt="" width="${size}" height="${size}">` : portrait({ id: who.name, name: who.name, culture: who.look ?? 'roman', female: !!who.female, role: 'general', title: who.title ?? '' }, { color, age: who.age ?? 40, size, uid }));
 const stars = (n) => `<span class="stars">${'★'.repeat(n)}<span class="off">${'★'.repeat(3 - n)}</span></span>`;
 const meter = (v, col) => `<span class="meter"><i style="width:${Math.max(0, Math.min(100, v))}%;background:${col}"></i></span>`;
-const sideChip = (C, id) => `<b style="color:${C.sides[id].color}">${esc(C.sides[id].short ?? C.sides[id].name)}</b>`;
 const turnLabel = (C, t) => C.turns[Math.min(t, C.turns.length - 1)].label;
-function toast(text, ms = 3200) {
+function toast(text, ms = 3600) {
   const t = $('#toast');
   t.textContent = text;
   t.hidden = false;
@@ -53,21 +54,22 @@ function toast(text, ms = 3200) {
   toast.timer = setTimeout(() => (t.hidden = true), ms);
 }
 const sheet = $('#sheet');
-function openSheet(html, { onClose } = {}) {
+function openSheet(html, { onClose, wide = false } = {}) {
   sheet.innerHTML = `<div class="panel">${html}</div>`;
+  sheet.classList.toggle('wide', wide);
   sheet.onclose = () => onClose?.();
   if (!sheet.open) sheet.showModal();
   sheet.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => sheet.close()));
   return sheet;
 }
-sheet.addEventListener('click', (e) => { if (e.target === sheet && !sheet.dataset.sticky) sheet.close(); });
+sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
 
 // ---------- the menu ----------
 function showMenu() {
   $('#menu').hidden = false;
   $('#game').hidden = true;
   document.title = 'Campaigns · Agentistan';
-  const best = store.get(BEST, {}), going = Object.values(myRuns()).filter((r) => !r.done);
+  const best = store.get(BEST, {}), going = Object.values(myRuns()).filter((r) => !r.done && (r.v ?? 1) === ENGINE);
   const eras = [];
   for (const C of CAMPAIGNS) { const e = eras.find((x) => x[0] === C.era); e ? e[1].push(C) : eras.push([C.era, [C]]); }
   $('#eras').innerHTML = eras.map(([era, list]) => `<section class="era"><h2>${esc(era)}</h2><div class="cards">${list.map((C) => {
@@ -81,49 +83,42 @@ function showMenu() {
   }).join('')}</div></section>`).join('');
   api.runs().then(({ live = [], recent = [] }) => {
     const box = $('#live-runs');
-    const rows = [...live.map((r) => ({ ...r, live: true })), ...recent.slice(0, 6)];
+    const rows = [...live.map((r) => ({ ...r, live: true })), ...recent.slice(0, 6)].filter((r) => CAMPAIGN[r.cid]);
     if (!rows.length) return;
     box.hidden = false;
-    box.innerHTML = `<h2>${live.length ? 'Being played now, and lately' : 'Lately'}</h2><ul>${rows.map((r) => `<li><a href="?run=${encodeURIComponent(r.id)}">${r.live ? '<i class="dot"></i>' : r.stars ? stars(r.stars) : ''} ${esc(CAMPAIGN[r.cid]?.title ?? r.cid)}${r.name ? ` · ${esc(r.name)}` : ''} <small>${r.live ? `turn ${r.turn + 1}` : esc(VERDICT[r.verdict] ?? '')}</small></a></li>`).join('')}</ul>`;
+    box.innerHTML = `<h2>${live.length ? 'Being played now, and lately' : 'Lately'}</h2><ul>${rows.map((r) => `<li><a href="?run=${encodeURIComponent(r.id)}">${r.live ? '<i class="dot"></i>' : r.stars ? stars(r.stars) : ''} ${esc(CAMPAIGN[r.cid].title)}${r.name ? ` · ${esc(r.name)}` : ''} <small>${r.live ? `season ${r.turn + 1}` : esc(VERDICT[r.verdict] ?? '')}</small></a></li>`).join('')}</ul>`;
   });
 }
 
 // ---------- the briefing ----------
 function briefing(C, { inGame = false } = {}) {
-  if (!inGame) { $('#menu').hidden = false; showMenu(); }
+  if (!inGame) showMenu();
   const sides = Object.entries(C.sides).filter(([id]) => C.armies.some((a) => a[0] === id) || C.provinces.some((p) => p[4] === id));
   const menAt = (id) => C.armies.filter((a) => a[0] === id).reduce((t, a) => t + a[2], 0);
-  const going = Object.values(myRuns()).filter((r) => r.cid === C.id && !r.done).sort((a, b) => (b.at ?? 0) - (a.at ?? 0))[0];
-  const art = artOf(C.art ?? 'war');
+  const going = Object.values(myRuns()).filter((r) => r.cid === C.id && !r.done && (r.v ?? 1) === ENGINE).sort((a, b) => (b.at ?? 0) - (a.at ?? 0))[0];
+  const art = artOf(C.art ?? 'war'), adv = (C.court ?? [C.advisor]).filter(Boolean)[0];
   openSheet(`<button class="x" data-close aria-label="Close">×</button>
     ${art ? `<img class="art" src="${art}" alt="">` : ''}
-    <div style="display:flex;gap:14px;align-items:center">${face(C.hero, C.sides[C.you].color, 76, 'brief')}<div><h2>${esc(C.title)}</h2><p class="sub">${esc(C.years)} · you are <b>${esc(C.hero.name)}</b>, ${esc(C.hero.title)}</p></div></div>
+    <div class="brief-head">${face(C.hero, C.sides[C.you].color, 76, 'brief')}<div><h2>${esc(C.title)}</h2><p class="sub">${esc(C.years)} · you are <b>${esc(C.hero.name)}</b>, ${esc(C.hero.title)}</p></div></div>
     ${C.brief.map((p) => `<p>${esc(p)}</p>`).join('')}
-    <div class="goal"><b>Your goal:</b> ${esc(C.goal.text)}. You have ${C.turns.length} turns, from ${esc(C.turns[0].label)} to ${esc(C.turns.at(-1).label)}.</div>
+    <div class="goal"><b>Your goal:</b> ${esc(C.goal.text)}. You have ${C.turns.length} seasons, from ${esc(C.turns[0].label)} to ${esc(C.turns.at(-1).label)}.</div>
     <div class="forces">${sides.map(([id, d]) => `<div style="--c:${d.color}"><b>${esc(d.name)}</b>${esc(d.leader ?? '')}<br><small>${fmtMen(menAt(id))} men${id === C.you ? ' · you' : ''}</small></div>`).join('')}</div>
-    <details><summary><b>How to play</b></summary>
-      <ul>
-        <li>Tap one of your armies, then a place it can reach this turn. The badge on each place shows the odds of a battle there, or how long a siege would take.</li>
-        <li>When you march on an enemy army, choose a battle plan. Each plan suits some ground, some numbers and some enemies: read the hints, and your advisor’s counsel.</li>
-        <li>The big decisions of the war come as cards. After you choose, you see what the real ${esc(C.hero.name.split(' ')[0])} did.</li>
-        <li>Watch the will to fight: yours, and your enemy’s. Wars are won when the other side gives up.</li>
-        <li>End the turn. Everyone moves at once; then you read the news, and what really happened at this time.</li>
-      </ul></details>
-    <div class="share">${inGame ? '<button class="btn main" data-close>Back to the war</button>' : `${going ? `<a class="btn main" href="?run=${going.id}">Continue your campaign</a><button class="btn" data-begin>Start again</button>` : '<button class="btn main" data-begin>Begin the campaign</button>'}<a class="btn" href="/campaign/">All campaigns</a>`}</div>`, { onClose: () => { if (inGame) return void (G.s?.status === 'running' && !G.watch && nextCard()); if (!G.C) history.replaceState(null, '', '/campaign/'); } });
+    <div class="howto"><b>How to play.</b> You command through your council${adv ? `, ${esc(adv.name)} first among them` : ''}. Speak to them in plain words, as a commander would: <i>“Hasdrubal, hold Spain. We march on Capua, and if Varro comes, we envelop him.”</i> They answer, and turn your words into orders you see on the map. Ask them anything: where the enemy is, what a siege would cost. The great decisions come as cards in the conversation; afterwards you learn what the real ${esc(C.hero.name.split(' ')[0])} chose. When you are ready, end the season: everyone moves at once, and the dispatches tell you what happened, and what happened in history.</div>
+    <div class="share">${inGame ? '<button class="btn main" data-close>To the council</button>' : `${going ? `<a class="btn main" href="?run=${going.id}">Continue your campaign</a><button class="btn" data-begin>Start again</button>` : '<button class="btn main" data-begin>Begin the campaign</button>'}<a class="btn" href="/campaign/">All campaigns</a>`}</div>`, { onClose: () => { if (!inGame && !G.C) history.replaceState(null, '', '/campaign/'); } });
   sheet.querySelector('[data-begin]')?.addEventListener('click', () => { sheet.close(); startRun(C); });
 }
 
 // ---------- a war ----------
-const G = { C: null, data: null, map: null, run: null, s: null, pre: null, turns: [], events: [], draft: null, sel: null, stand: {}, advice: null, busy: false, watch: false, ws: null, view: 0, bare: false };
+const G = { C: null, data: null, map: null, run: null, s: null, pre: null, turns: [], events: [], snaps: [], draft: null, aims: {}, sel: null, busy: false, watch: false, bare: false, chat: [], thinking: false };
 
 async function startRun(C) {
   let run;
   const name = store.get(NAME, '') || null;
   try {
     const r = await api.start(C.id, name);
-    run = { id: r.id, token: r.token, seed: r.seed, cid: C.id, at: Date.now() };
+    run = { id: r.id, token: r.token, seed: r.seed, cid: C.id, at: Date.now(), v: r.v ?? ENGINE };
   } catch {
-    run = { id: `local-${Math.random().toString(36).slice(2, 10)}`, seed: 1 + Math.floor(Math.random() * 1e6), cid: C.id, local: true, turns: [], at: Date.now() };
+    run = { id: `local-${Math.random().toString(36).slice(2, 10)}`, seed: 1 + Math.floor(Math.random() * 1e6), cid: C.id, local: true, turns: [], at: Date.now(), v: ENGINE };
   }
   saveRun(run);
   history.replaceState(null, '', `?run=${encodeURIComponent(run.id)}`);
@@ -131,222 +126,153 @@ async function startRun(C) {
 }
 async function openRun(id) {
   const mine = myRuns()[id];
-  if (mine?.local) return CAMPAIGN[mine.cid] ? loadGame(CAMPAIGN[mine.cid], mine, mine.turns ?? []) : showMenu();
+  if (mine?.local) {
+    if ((mine.v ?? 1) !== ENGINE || !CAMPAIGN[mine.cid]) return oldRun(CAMPAIGN[mine.cid]);
+    return loadGame(CAMPAIGN[mine.cid], mine, mine.turns ?? []);
+  }
   const rec = await api.get(id).catch(() => null);
   if (!rec || !CAMPAIGN[rec.cid]) { showMenu(); toast('That campaign could not be found.'); return; }
+  if (rec.old) return oldRun(CAMPAIGN[rec.cid], rec);
   const run = mine?.token ? { ...mine, seed: rec.seed } : { id, cid: rec.cid, seed: rec.seed, watch: true };
   await loadGame(CAMPAIGN[rec.cid], run, rec.turns ?? [], rec);
 }
+// A campaign begun under older rules cannot be replayed faithfully: say so, kindly, and offer it again.
+function oldRun(C, rec = null) {
+  showMenu();
+  openSheet(`<button class="x" data-close aria-label="Close">×</button><h2>${esc(C?.title ?? 'This campaign')}</h2>
+    <p>This campaign was begun under an older version of the rules, which have changed since. It cannot go on as it was, and a replay would not be true to it.</p>
+    ${rec?.summary ? `<div class="history"><h4>What the historian wrote</h4><p>${esc(rec.summary)}</p></div>` : ''}
+    <div class="share">${C ? `<a class="btn main" href="?c=${C.id}">Begin it again</a>` : ''}<a class="btn" href="/campaign/">All campaigns</a></div>`);
+}
 
 async function loadGame(C, run, turns, rec = null) {
-  Object.assign(G, { C, run, turns: turns.slice(), events: [], sel: null, stand: {}, advice: null, watch: !!run.watch, rec });
+  Object.assign(G, { C, run, turns: turns.slice(), events: [], sel: null, watch: !!run.watch, rec, chat: [], aims: run.aims ?? {} });
   $('#menu').hidden = true;
   $('#game').hidden = false;
+  $('#chat').innerHTML = '';
   document.title = `${C.title} · Agentistan`;
-  G.data = await fetch(`/campaign/maps/${C.id}.json`).then((r) => r.json());
-  G.map = makeMap($('#map'), G.data, C, { army: onArmy, province: onProvince, target: onTarget, empty: () => { closePop(); if (G.sel) { G.sel = null; draw(); } }, restyle: () => { clearTimeout(G.restyle); G.restyle = setTimeout(() => G.s && draw(), 160); }, inset: () => (G.watch ? 0 : 364) });
-  let s = newCampaign(C, run.seed);
-  for (const inp of G.turns) { const r = resolve(s, C, inp); G.events.push(r.events); s = r.state; }
-  G.s = s;
-  G.view = G.turns.length;
+  try {
+    G.data = await fetch(`/campaign/maps/${C.id}.json`).then((r) => r.json());
+    G.map = makeMap($('#map'), G.data, C, { army: onArmy, province: onProvince, target: onTarget, empty: () => { closePop(); if (G.sel) { G.sel = null; draw(); } }, inset: () => (G.watch || G.bare ? 0 : $('#court').offsetWidth + 24) });
+    let s = newCampaign(C, run.seed);
+    for (const inp of G.turns) { const r = resolve(s, C, inp); G.events.push(r.events); s = r.state; }
+    G.s = s;
+    G.snaps = pastOf(C, run.seed, G.turns);
+  } catch (err) {
+    console.error(err);
+    return oldRun(C);
+  }
   if (G.watch || (rec && rec.status && rec.status !== 'running' && !run.token)) return watchMode(rec);
-  if (s.status !== 'running') { draw(); return scroll(); }
+  $('#court').hidden = false;
+  G.map.fit();
+  if (G.s.status !== 'running') { draw(); return scroll(); }
   if (!G.turns.length && !sheet.open) briefing(C, { inGame: true });
+  if (G.turns.length) dispatch(G.events.at(-1), G.s, G.turns.length - 1, { quiet: true });
   newTurn();
 }
 
+// ---------- the season: cards, counsel, your words ----------
 function newTurn() {
   const C = G.C, s = G.s;
-  G.draft = { orders: {}, raise: {}, cards: {}, peace: {} };
-  for (const a of armiesOf(s, C.you)) if (G.stand[a.id]) G.draft.orders[a.id] = { to: null, plan: G.stand[a.id] };
   G.sel = null;
-  G.advice = null;
+  G.draft = proposal(C, s, G.aims);
   G.pre = s;
+  chat({ kind: 'divider', text: turnLabel(C, s.turn), sub: `season ${s.turn + 1} of ${C.turns.length}` });
+  for (const c of cardsDue(C, s)) chat({ kind: 'card', card: c });
+  const adv = courtOf(C, s)[0];
+  G.shown = null;
+  postOrders('Unless you say otherwise, this is what we will do this season:');
   draw();
-  if (!G.run.local) api.plan(G.run, s.turn).then((p) => { G.advice = p; renderTurn(); }).catch(() => {});
-  const due = cardsDue(C, s);
-  if (due.length && !sheet.open) setTimeout(() => !sheet.open && openCard(due[0]), 500);
+  if (!G.run.local) {
+    G.thinking = adv?.name ?? true;
+    showChips();
+    api.plan(G.run, s.turn).then((p) => {
+      G.thinking = false;
+      if (p.proposal && !G.touched) { G.draft = normalize(C, s, { ...p.proposal, cards: G.draft.cards, aims: G.aims }, {}).draft; refreshOrders(); }
+      if (p.advice?.length) chat({ kind: 'msg', who: adv?.id, text: p.advice.join(' '), by: p.by });
+      draw();
+    }).catch(() => { G.thinking = false; showChips(); });
+  }
+  G.touched = false;
+  showChips();
 }
-// the state as it will be once the cards are answered: what your orders are given from
 function refreshPre() { G.pre = withCards(G.C, G.s, G.draft.cards); }
 
-function draw() {
-  if (!G.s) return;
-  const view = G.watch ? G.s : G.pre ?? G.s;
-  G.map.paint(view, { sel: G.watch ? null : G.sel, orders: G.watch ? {} : G.draft?.orders ?? {}, you: G.C.you });
-  renderHud(view);
-  if (!G.watch) renderTurn();
+// The things that can speak in your council: advisers, your generals, envoys, the dispatches.
+function speaker(id) {
+  const C = G.C, s = G.pre ?? G.s;
+  if (id === 'you') return { name: heroOf(s)?.gen ?? C.hero.name, title: 'you', look: C.hero.look, art: C.hero.art, color: C.sides[C.you].color };
+  const p = courtOf(C, s).find((x) => x.id === id) ?? courtOf(C, G.s).find((x) => x.id === id);
+  if (p) return { ...p, color: C.sides[C.you].color };
+  if (id?.startsWith('side:')) { const side = id.slice(5); return { name: `Envoy of ${C.sides[side].name}`, title: `for ${leaderOf(C, s, side)}`, look: C.sides[side].look ?? C.hero.look, color: C.sides[side].color }; }
+  const first = courtOf(C, s)[0];
+  return first ? { ...first, color: C.sides[C.you].color } : { name: 'Your council', look: C.hero.look, color: C.sides[C.you].color };
 }
 
-function renderHud(s) {
-  const C = G.C, you = C.you, st = s.sides[you], g = goalState(C, s), net = Math.round(incomeOf(C, s, you) - upkeepOf(C, s, you));
-  const hero = heroOf(s), foe = C.goal.foe;
-  $('#hud').innerHTML = `<div class="face">${face(C.hero, C.sides[you].color, 64, 'hud')}</div>
-    <div><h1>${esc(C.hero.name)}</h1>
-      <div class="date">${esc(turnLabel(C, s.turn))} · turn ${Math.min(s.turn + 1, C.turns.length)} of ${C.turns.length}${G.watch ? '' : ''}</div>
-      <div class="meters">
-        <span title="Gold, and what it gains or loses each turn after paying the armies">Gold <b>${Math.round(st.gold)}</b> <small>${net >= 0 ? '+' : ''}${net}</small></span>
-        <span title="All your soldiers">Men <b>${fmtMen(menOf(s, you))}</b></span>
-        <span title="Your side's will to fight: at 0 you are recalled">Will <b>${Math.round(st.will)}</b>${meter(st.will, st.will > 40 ? '#4f7a3a' : '#a3361f')}</span>
-        ${foe ? `<span title="${esc(g.text)}">${esc(C.sides[foe].short ?? C.sides[foe].name)}’s will <b>${Math.round(s.sides[foe].will)}</b>${meter(s.sides[foe].will, '#a3361f')}</span>` : `<span title="${esc(g.text)}">Goal ${meter(g.progress * 100, '#27466e')}</span>`}
-      </div>
-      ${hero ? '' : ''}
-    </div>`;
+// ---------- the conversation ----------
+function chat(m) {
+  G.chat.push(m);
+  const li = document.createElement('li');
+  li.className = `m ${m.kind}${m.who === 'you' ? ' you' : ''}`;
+  li.innerHTML = msgHTML(m);
+  $('#chat').append(li);
+  m.li = li;
+  wire(li, m);
+  li.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  return li;
 }
-
-// ---------- the turn panel ----------
-function renderTurn() {
-  const C = G.C, s = G.s, pre = G.pre ?? s, you = C.you, box = $('#turn');
-  if (G.watch || s.status !== 'running') { box.hidden = true; return; }
-  box.hidden = G.bare;
-  const due = cardsDue(C, s), advisor = C.advisor ?? { name: 'Your advisor', look: C.hero.look };
-  const lines = G.advice?.advice?.length ? G.advice.advice : counsel(C, pre);
-  const by = G.advice?.by === 'ai' ? 'counsel by the AI' : 'counsel by the rules';
-  const foes = Object.keys(C.sides).filter((x) => x !== you && pre.sides[x].alive && atWar(pre, you, x) && !C.sides[x].noPeace);
-  box.innerHTML = `<h2>${esc(turnLabel(C, s.turn))}</h2>
-    <div class="advisor"><div class="face">${face(advisor, C.sides[you].color, 44, 'adv')}</div><div>${lines.slice(0, 3).map((l) => `<p>${esc(l)}</p>`).join('')}<span class="by">${esc(advisor.name)}${advisor.title ? `, ${esc(advisor.title)}` : ''} · ${by}</span></div></div>
-    ${due.length ? `<h3>Decisions</h3><div class="decide">${due.map((c) => `<button data-card="${esc(c.id)}" class="${G.draft.cards[c.id] !== undefined ? 'done' : ''}">${esc(c.title)}<span class="tag">${G.draft.cards[c.id] !== undefined ? esc(c.options[G.draft.cards[c.id]].label) : 'decide'}</span></button>`).join('')}</div>` : ''}
-    <h3>Your armies</h3><div class="armies">${armiesOf(pre, you).sort((a, b) => (b.hero ? 1 : 0) - (a.hero ? 1 : 0) || b.men - a.men).map((a) => armyRow(a)).join('') || '<p class="sub">You have no army in the field.</p>'}</div>
-    ${homeRow(pre)}
-    ${foes.length ? `<h3>Peace</h3><div class="peace-row">${foes.map((f) => `<button class="btn${G.draft.peace[f] ? ' blue' : ''}" data-peace="${f}">${G.draft.peace[f] ? '✓ ' : ''}Offer peace to ${esc(C.sides[f].short ?? C.sides[f].name)}</button>`).join('')}</div><p class="fine">They accept only when their will to fight is low.</p>` : ''}
-    <div class="end"><button class="btn main wide" id="end-turn">${G.busy ? 'The turn unfolds…' : `End the turn${due.some((c) => G.draft.cards[c.id] === undefined) ? ' (your advisor decides the rest)' : ''}`}</button></div>`;
-  box.querySelectorAll('[data-card]').forEach((b) => b.addEventListener('click', () => openCard(due.find((c) => c.id === b.dataset.card))));
-  box.querySelectorAll('[data-sel]').forEach((r) => r.addEventListener('click', (e) => { if (e.target.closest('select, button')) return; select(r.dataset.sel); }));
-  box.querySelectorAll('select[data-stand]').forEach((sel) => sel.addEventListener('change', () => {
-    const id = sel.dataset.stand, o = (G.draft.orders[id] ??= { to: null });
-    o.plan = sel.value || null;
-    G.stand[id] = sel.value || null;
-    renderTurn();
-  }));
-  box.querySelectorAll('[data-raise]').forEach((b) => b.addEventListener('click', () => {
-    const id = b.dataset.raise;
-    if (G.draft.raise[id]) delete G.draft.raise[id]; else G.draft.raise[id] = +b.dataset.men;
-    renderTurn();
-  }));
-  box.querySelectorAll('[data-hold]').forEach((b) => b.addEventListener('click', () => { const o = G.draft.orders[b.dataset.hold]; if (o) o.to = null; draw(); }));
-  box.querySelectorAll('[data-peace]').forEach((b) => b.addEventListener('click', () => { const f = b.dataset.peace; G.draft.peace[f] = G.draft.peace[f] ? undefined : 'offer'; renderTurn(); }));
-  $('#end-turn').disabled = G.busy;
-  $('#end-turn').addEventListener('click', endTurn);
-}
-function armyRow(a) {
-  const C = G.C, pre = G.pre, o = G.draft.orders[a.id];
-  const where = C.prov[a.at].name;
-  let ord = `<div class="ord none">Holds at ${esc(where)}</div>`;
-  if (o?.to && o.to !== a.at) {
-    const odds = oddsOf(C, pre, a.id, o.to);
-    const what = odds.kind === 'battle' ? `Attack at ${C.prov[o.to].name}${o.plan ? ` · ${PLANS[o.plan].name.toLowerCase()}` : ''}` : odds.kind === 'siege' ? `${o.storm ? 'Storm' : 'Besiege'} ${C.prov[o.to].name}` : `March to ${C.prov[o.to].name}`;
-    ord = `<div class="ord">→ ${esc(what)} <button class="link" data-hold="${a.id}">stay instead</button></div>`;
-  } else if (pre.prov[a.at].owner && atWar(pre, C.you, pre.prov[a.at].owner) && pre.prov[a.at].walls) ord = `<div class="ord">Besieging ${esc(where)}</div>`;
-  const P = pre.prov[a.at], cost = C.raiseCost ?? 10, levy = C.sides[C.you].levy;
-  const canRaise = (P.owner === C.you || friends(pre, C.you, P.owner)) && C.prov[a.at].wealth >= 1;
-  const n = Math.min(levy, Math.floor(pre.sides[C.you].gold / cost) * 1000);
-  const defend = plansFor(C, true);
-  return `<div class="arow${G.sel === a.id ? ' sel' : ''}" data-sel="${a.id}">
-    <div class="top"><span style="color:${C.sides[C.you].color}">⚑</span><b>${fmtMen(a.men)}</b><span>${esc(a.gen ?? 'An army')}${a.hero ? ' ★' : ''}</span><small>${esc(where)}</small></div>
-    ${ord}
-    <div class="ctl">
-      <select data-stand="${a.id}" title="What this army does if it is attacked"><option value="">If attacked: the general decides</option>${defend.map((p) => `<option value="${p}"${(o?.plan ?? G.stand[a.id]) === p ? ' selected' : ''}>If attacked: ${esc(PLANS[p].name.toLowerCase())}</option>`).join('')}</select>
-      ${canRaise && n >= 1000 ? `<button class="mini${G.draft.raise[a.id] ? ' on' : ''}" data-raise="${a.id}" data-men="${n}" title="Recruit here: ${cost} gold for every thousand">${G.draft.raise[a.id] ? `✓ raising ${fmtMen(n)}` : `Raise ${fmtMen(n)} (${(n / 1000) * cost} gold)`}</button>` : ''}
-    </div>
-  </div>`;
-}
-
-// New troops raised at home, as an army of their own.
-function homeRow(pre) {
-  const C = G.C, home = homeOf(C, pre, C.you), cost = C.raiseCost ?? 10;
-  if (!home) return '';
-  const n = Math.min(C.sides[C.you].levy, Math.floor(pre.sides[C.you].gold / cost) * 1000);
-  if (n < 1000) return '';
-  const on = !!G.draft.raise['@home'];
-  return `<p class="peace-row"><button class="btn${on ? ' blue' : ''}" data-raise="@home" data-men="${n}" title="New men, green but welcome: ${cost} gold for every thousand">${on ? `✓ raising ${fmtMen(n)} at ${esc(C.prov[home].name)}` : `Raise ${fmtMen(n)} new men at ${esc(C.prov[home].name)} (${(n / 1000) * cost} gold)`}</button></p>`;
-}
-function select(id) {
-  closePop();
-  G.sel = G.sel === id ? null : id;
-  if (G.sel) G.map.focus(G.pre.armies[id].at);
-  draw();
-}
-function onArmy(id, e) {
-  const a = (G.watch ? G.s : G.pre ?? G.s).armies[id];
-  if (!a) return;
-  if (!G.watch && a.side === G.C.you && G.s.status === 'running') return select(id);
-  if (G.sel && !G.watch) return onTarget(a.at, e);
-  infoPop(a.at, e);
-}
-function onProvince(pid, e) {
-  if (G.sel && !G.watch) {
-    const r = reach(G.C, G.pre, G.sel);
-    if (r[pid] || pid === G.pre.armies[G.sel]?.at) return onTarget(pid, e);
+function msgHTML(m) {
+  const C = G.C;
+  if (m.kind === 'divider') return `<span>${esc(m.text)}</span><small>${esc(m.sub ?? '')}</small>`;
+  if (m.kind === 'history') return `<h4>Meanwhile, in history</h4><p>${esc(m.text)}</p>`;
+  if (m.kind === 'dispatch') return `<h4>${esc(m.title)}</h4><ul class="news">${m.items}</ul>`;
+  if (m.kind === 'orders') {
+    const who = speaker(m.who);
+    return `<div class="who">${face(who, who.color, 30, 'o')}<b>${esc(who.name)}</b></div><p>${esc(m.lead)}</p><ul class="plan">${summary(C, G.s, G.draft).map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`;
   }
-  infoPop(pid, e);
+  if (m.kind === 'card') {
+    const c = m.card, chosen = G.draft?.cards?.[c.id], art = artOf(c.art), adv = c.options[c.advise ?? 0]?.label;
+    return `${art ? `<img class="art" src="${art}" alt="" loading="lazy">` : ''}<h4>${esc(c.title)}</h4><p>${esc(c.text)}</p>
+      <div class="opts">${c.options.map((o, i) => `<button class="opt${chosen === i ? ' chosen' : ''}" data-opt="${i}"${chosen !== undefined && chosen !== i ? ' disabled' : ''}><b>${esc(o.label)}</b>${o.hint ? `<small>${esc(o.hint)}</small>` : ''}${fxText(C, o.fx) ? `<span class="fx">${esc(fxText(C, o.fx))}</span>` : ''}</button>`).join('')}</div>
+      ${c.peace ? '' : chosen === undefined ? `<p class="advice">${esc(speaker(courtOf(C, G.s)[0]?.id).name)} would choose “${esc(adv)}”. Choose, or say what you will do.</p>` : ''}
+      ${chosen !== undefined && c.history ? `<div class="history"><h4>What history did</h4><p>${esc(c.history)}${c.pick !== undefined ? ` <b>(${esc(c.options[c.pick].label)})</b>` : ''}</p></div>` : ''}`;
+  }
+  const who = speaker(m.who);
+  return `${m.who === 'you' ? '' : `<div class="face">${face(who, who.color, 36, `c${G.chat.length}`)}</div>`}<div class="bubble">${m.who === 'you' ? '' : `<b>${esc(who.name)}</b>${who.title ? `<small>${esc(who.title)}</small>` : ''}`}<p>${esc(m.text)}</p>${m.by === 'rules' && m.who !== 'you' ? '' : ''}</div>`;
 }
-function onTarget(pid, e) {
-  const C = G.C, pre = G.pre, a = pre.armies[G.sel];
-  if (!a) return;
-  const o = (G.draft.orders[a.id] ??= { to: null, plan: G.stand[a.id] ?? null });
-  if (pid === a.at) { o.to = null; o.storm = false; closePop(); return draw(); }
-  if (!reach(C, pre, a.id)[pid]) return toast('Too far for one turn.');
-  o.to = pid;
-  o.storm = false;
-  const odds = oddsOf(C, pre, a.id, pid);
-  if (odds.kind === 'battle') { o.plan = null; planPop(a, pid, odds, e); }
-  else if (odds.kind === 'siege') siegePop(a, pid, odds, e);
-  else closePop();
+function wire(li, m) {
+  if (m.kind === 'card') li.querySelectorAll('[data-opt]').forEach((b) => b.addEventListener('click', () => answerCard(m.card, +b.dataset.opt)));
+}
+function refreshCards() { for (const m of G.chat) if (m.kind === 'card' && m.li && !m.done) { m.li.innerHTML = msgHTML(m); wire(m.li, m); if (G.draft.cards[m.card.id] !== undefined) m.done = true; } }
+// The standing orders: one message, which moves to the end of the conversation when the orders change.
+function postOrders(lead) {
+  const now = JSON.stringify(summary(G.C, G.s, G.draft));
+  if (now === G.shown) return;
+  G.shown = now;
+  const old = [...G.chat].reverse().find((x) => x.kind === 'orders' && x.t === G.s.turn);
+  if (old) { old.li?.remove(); G.chat.splice(G.chat.indexOf(old), 1); }
+  chat({ kind: 'orders', who: courtOf(G.C, G.s)[0]?.id, lead, t: G.s.turn });
+}
+function refreshOrders() {
+  const m = [...G.chat].reverse().find((x) => x.kind === 'orders');
+  if (m?.li) { m.li.innerHTML = msgHTML(m); G.shown = JSON.stringify(summary(G.C, G.s, G.draft)); }
+  showChips();
+}
+function answerCard(c, i) {
+  if (G.draft.cards[c.id] !== undefined || G.busy) return;
+  G.touched = true;
+  G.draft.cards[c.id] = i;
+  // the card may move your armies: orders it made impossible are given again by your council
+  const keep = { ...G.draft.orders };
+  const fresh = proposal(G.C, G.s, G.aims, G.draft.cards);
+  const ps = withCards(G.C, G.s, G.draft.cards);
+  for (const [id, o] of Object.entries(keep)) if (!ps.armies[id] || (o?.to && !reach(G.C, ps, id)[o.to])) keep[id] = fresh.orders[id];
+  G.draft = normalize(G.C, G.s, { ...G.draft, orders: { ...fresh.orders, ...keep } }, {}).draft;
+  refreshPre();
+  refreshCards();
+  refreshOrders();
   draw();
 }
-
-// ---------- popovers ----------
-function place(pop, e) {
-  const w = pop.offsetWidth || 300, h = pop.offsetHeight || 200;
-  const x = Math.min(innerWidth - w - 12, Math.max(12, (e?.clientX ?? innerWidth / 2) + 14)), y = Math.min(innerHeight - h - 12, Math.max(12, (e?.clientY ?? innerHeight / 2) - 20));
-  pop.style.left = `${x}px`;
-  pop.style.top = `${y}px`;
-}
-function closePop() { $('#pop').hidden = true; }
-function planPop(a, pid, odds, e) {
-  const C = G.C, pre = G.pre, f = odds.facts, foe = pre.armies[odds.foes[0]], mine = plansFor(C, false);
-  const best = mine.map((p) => [p, fitOf(f, p)]).sort((x, y) => y[1] - x[1])[0][0];
-  const temper = foe.temper ?? temperOf(C, pre, foe.side);
-  const pop = $('#pop');
-  pop.innerHTML = `<button class="x" aria-label="Close">×</button><h3>Battle at ${esc(C.prov[pid].name)}</h3>
-    <div class="facts">You: ${fmtMen(f.men)}${f.horse >= 0.3 ? ', many horsemen' : f.horse >= 0.18 ? ', some horse' : ', few horse'} · Them: ${fmtMen(f.foeMen)} under ${esc(foe.gen ?? C.sides[foe.side].name)} (${esc(temper)})${f.foeHorse >= 0.3 ? ', strong in horse' : ''}<br>Ground: ${esc(f.terrain)}${f.lake ? ' by a lake' : ''}${f.narrows ? ', a narrow pass' : ''} · ${esc(f.season)} · odds without a plan ${odds.ratio >= 1 ? `${odds.ratio.toFixed(1)} to 1 for you` : `1 to ${(1 / odds.ratio).toFixed(1)} against you`}</div>
-    <div class="plans">${mine.map((p) => `<button data-plan="${p}"><b>${esc(PLANS[p].name)}${p === best ? ` <small>· ${esc(C.advisor?.name ?? 'your advisor')} favours this</small>` : ''}</b><small>${esc(PLANS[p].hint)}. As at ${esc(PLANS[p].example)}.</small></button>`).join('')}
-      <button data-plan=""><b>Let ${esc(a.gen ?? 'the general')} decide</b><small>He picks by his skill and temper.</small></button></div>`;
-  pop.hidden = false;
-  place(pop, e);
-  pop.querySelector('.x').onclick = closePop;
-  pop.querySelectorAll('[data-plan]').forEach((b) => b.addEventListener('click', () => {
-    G.draft.orders[a.id].plan = b.dataset.plan || null;
-    closePop();
-    draw();
-  }));
-}
-function siegePop(a, pid, odds, e) {
-  const C = G.C, pop = $('#pop');
-  pop.innerHTML = `<button class="x" aria-label="Close">×</button><h3>The walls of ${esc(C.prov[pid].name)}</h3>
-    <div class="facts">Walls ${G.pre.prov[pid].walls} · garrison ${fmtMen(odds.garrison)}. ${odds.fed ? 'The city is fed from the sea by its fleet: it cannot be starved out until that fleet is gone.' : `A siege takes about ${odds.turns} turn${odds.turns > 1 ? 's' : ''}`}; a storm is quick but bloody, and fails if the walls hold.</div>
-    <div class="plans"><button data-s="0"><b>Lay siege</b><small>${odds.fed ? 'It will not starve while its ships come and go.' : `Starve them out: about ${odds.turns} turn${odds.turns > 1 ? 's' : ''}.`}</small></button>
-    <button data-s="1"><b>Storm the walls</b><small>Your strength against the walls: ${odds.ratio >= 1 ? `${odds.ratio.toFixed(1)} to 1` : `1 to ${(1 / odds.ratio).toFixed(1)}`}. ${odds.ratio >= 1.3 ? 'It should succeed.' : odds.ratio >= 1 ? 'A gamble.' : 'It would likely fail.'}</small></button></div>`;
-  pop.hidden = false;
-  place(pop, e);
-  pop.querySelector('.x').onclick = closePop;
-  pop.querySelectorAll('[data-s]').forEach((b) => b.addEventListener('click', () => { G.draft.orders[a.id].storm = b.dataset.s === '1'; closePop(); draw(); }));
-}
-function infoPop(pid, e) {
-  const C = G.C, s = G.watch ? G.s : G.pre ?? G.s, P = C.prov[pid], st = s.prov[pid], pop = $('#pop');
-  const here = armiesAt(s, pid);
-  pop.innerHTML = `<button class="x" aria-label="Close">×</button><h3>${esc(P.name)}</h3>
-    <dl><dt>Held by</dt><dd>${st.owner ? sideChip(C, st.owner) : 'no one'}</dd>
-    <dt>Ground</dt><dd>${esc(P.terrain)}${P.lake ? ', a lake shore' : ''}${P.narrows ? ', a narrow pass' : ''}</dd>
-    ${st.walls ? `<dt>Walls</dt><dd>${'▮'.repeat(st.walls)} · garrison ${fmtMen(st.garrison)}${st.siege ? ` · besieged (${st.siege}/${st.walls})` : ''}</dd>` : ''}
-    <dt>Wealth</dt><dd>${'●'.repeat(P.wealth) || '–'}</dd>
-    ${here.map((a) => `<dt>Army</dt><dd>${sideChip(C, a.side)} ${fmtMen(a.men)}${a.gen ? ` under ${esc(a.gen)}` : ''}${a.side !== C.you ? ` <small>(${esc(a.temper ?? temperOf(C, s, a.side))})</small>` : ''}</dd>`).join('')}</dl>`;
-  pop.hidden = false;
-  place(pop, e);
-  pop.querySelector('.x').onclick = closePop;
-}
-
-// ---------- the cards ----------
 function fxText(C, fx = {}) {
   const out = [];
   if (fx.chance !== undefined) return `a gamble: about ${Math.round(fx.chance * 10) * 10}% to go your way`;
@@ -358,80 +284,173 @@ function fxText(C, fx = {}) {
   for (const [side, d] of Object.entries(fx.sides ?? {})) if (d.will) out.push(`${C.sides[side].short ?? C.sides[side].name} will ${d.will > 0 ? '+' : ''}${d.will}`);
   if (fx.give) for (const [p, to] of Array.isArray(fx.give[0]) ? fx.give : [fx.give]) out.push(`${C.prov[p]?.name} goes to ${C.sides[to]?.short ?? C.sides[to]?.name}`);
   if (fx.move) out.push('your army moves');
-  if (fx.spawn) out.push('an army appears');
-  if (fx.rel) for (const [a, b, r] of Array.isArray(fx.rel[0]) ? fx.rel : [fx.rel]) out.push(`${C.sides[a]?.short ?? C.sides[a]?.name} ${r === 'ally' ? 'allies with' : r === 'war' ? 'goes to war with' : 'makes peace with'} ${C.sides[b]?.short ?? C.sides[b]?.name}`);
+  if (fx.spawn) out.push('an army takes the field');
   return out.join(' · ');
 }
-function openCard(c, { reveal = false } = {}) {
-  if (!c) return;
-  const C = G.C, chosen = G.draft.cards[c.id], art = artOf(c.art);
-  const advise = c.options[c.advise ?? 0]?.label;
-  const showHistory = reveal || chosen !== undefined;
-  openSheet(`<button class="x" data-close aria-label="Close">×</button>
-    ${art ? `<img class="art" src="${art}" alt="">` : ''}
-    <h2>${esc(c.title)}</h2><p class="sub">${esc(turnLabel(C, G.s.turn))}</p>
-    <p>${esc(c.text)}</p>
-    <div class="opts">${c.options.map((o, i) => `<button class="opt${chosen === i ? ' chosen' : ''}" data-opt="${i}"><b>${esc(o.label)}</b>${o.hint ? `<small>${esc(o.hint)}</small>` : ''}${fxText(C, o.fx) ? `<span class="fx">${esc(fxText(C, o.fx))}</span>` : ''}</button>`).join('')}</div>
-    ${!c.peace ? `<p class="advice">${esc(C.advisor?.name ?? 'Your advisor')} would choose: <b>${esc(advise)}</b>${chosen === undefined ? '. If you do not decide, he will.' : ''}</p>` : ''}
-    ${showHistory && c.history ? `<div class="history"><h4>What history did</h4><p>${esc(c.history)}${c.pick !== undefined ? ` <b>(${esc(c.options[c.pick].label)})</b>` : ''}</p></div><div class="share"><button class="btn main" data-close>Continue</button></div>` : ''}`);
-  sheet.querySelectorAll('[data-opt]').forEach((b) => b.addEventListener('click', () => {
-    G.draft.cards[c.id] = +b.dataset.opt;
-    refreshPre();
-    draw();
-    if (c.peace || !c.history) { sheet.close(); return nextCard(); }
-    openCard(c, { reveal: true });
-    sheet.querySelector('[data-close].btn')?.addEventListener('click', () => setTimeout(nextCard, 50));
+
+// Your words to the council.
+async function say(text) {
+  text = text.trim();
+  if (!text || G.busy || G.watch) return;
+  G.touched = true;
+  chat({ kind: 'msg', who: 'you', text });
+  $('#say-text').value = '';
+  autosize();
+  const C = G.C, s = G.s;
+  G.thinking = speaker(courtOf(C, s)[0]?.id).name;
+  showChips();
+  let r;
+  if (!G.run.local) {
+    try { r = await api.council(G.run, s.turn, text, G.draft, G.chat.filter((m) => m.kind === 'msg').slice(-8).map((m) => ({ who: m.who, name: m.who === 'you' ? 'COMMANDER' : speaker(m.who).name, text: m.text }))); }
+    catch (err) { if (err.status === 410) return oldRun(C); r = null; }
+  }
+  r ??= interpret(C, s, G.draft, text);
+  G.thinking = false;
+  const before = JSON.stringify(G.draft.cards);
+  G.draft = r.draft;
+  G.aims = { ...G.aims, ...(r.draft.aims ?? {}) };
+  for (const x of r.replies ?? []) chat({ kind: 'msg', who: x.who, text: x.text, by: r.by });
+  if (JSON.stringify(G.draft.cards) !== before) { refreshCards(); refreshPre(); }
+  postOrders('The orders now stand:');
+  draw();
+  showChips();
+  if (r.end) endTurn();
+}
+function showChips() {
+  const box = $('#chips');
+  if (!G.s || G.s.status !== 'running' || G.watch) { box.innerHTML = ''; return; }
+  if (G.thinking) { box.innerHTML = `<span class="thinking">${esc(typeof G.thinking === 'string' ? G.thinking : 'Your council')} is thinking…</span>`; return; }
+  box.innerHTML = suggestions(G.C, G.s, G.draft).map((t) => `<button class="chip" type="button">${esc(t)}</button>`).join('');
+  box.querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => {
+    const c = cardsDue(G.C, G.s).find((x) => x.options.some((o) => o.label === b.textContent) && G.draft.cards[x.id] === undefined);
+    if (c) return answerCard(c, c.options.findIndex((o) => o.label === b.textContent));
+    say(b.textContent);
   }));
 }
-function nextCard() {
-  const next = cardsDue(G.C, G.s).find((x) => G.draft.cards[x.id] === undefined);
-  if (next) setTimeout(() => openCard(next), 250);
+function autosize() { const t = $('#say-text'); t.style.height = 'auto'; t.style.height = `${Math.min(120, t.scrollHeight)}px`; }
+
+function draw() {
+  if (!G.s) return;
+  const view = G.watch ? G.s : G.pre ?? G.s;
+  G.map.paint(view, { sel: G.watch ? null : G.sel, orders: G.watch ? {} : G.draft?.orders ?? {}, you: G.C.you });
+  renderHud(view);
+}
+function renderHud(s) {
+  const C = G.C, you = C.you, st = s.sides[you], g = goalState(C, s), net = Math.round(incomeOf(C, s, you) - upkeepOf(C, s, you));
+  const foe = C.goal.foe ?? Object.keys(C.sides).find((x) => x !== you && atWar(s, you, x));
+  const hero = heroOf(s);
+  $('#hud').innerHTML = `<div class="face">${face({ ...C.hero, name: hero?.gen ?? C.hero.name }, C.sides[you].color, 56, 'hud')}</div>
+    <div><h1>${esc(hero?.gen ?? C.hero.name)}</h1>
+      <div class="date">${esc(turnLabel(C, s.turn))} · season ${Math.min(s.turn + 1, C.turns.length)} of ${C.turns.length}</div>
+      <div class="meters">
+        <span title="Gold, and what it gains or loses each season after paying the armies">Gold <b>${Math.round(st.gold)}</b> <small>${net >= 0 ? '+' : ''}${net}</small></span>
+        <span title="All your soldiers">Men <b>${fmtMen(menOf(s, you))}</b></span>
+        <span title="Your side's will to fight: at 0 you are recalled">Will <b>${Math.round(st.will)}</b>${meter(st.will, st.will > 40 ? '#4f7a3a' : '#a3361f')}</span>
+        ${foe ? `<span title="${esc(g.text)}">${esc(C.sides[foe].short ?? C.sides[foe].name)} <b>${Math.round(s.sides[foe].will)}</b>${meter(s.sides[foe].will, C.sides[foe].color)}</span>` : ''}
+        <span class="goalmeter" title="${esc(g.text)}">Goal ${meter(g.progress * 100, '#27466e')}</span>
+      </div>
+    </div>`;
 }
 
-// ---------- the end of a turn ----------
+// ---------- the map: taps help you speak ----------
+function onArmy(id, e) {
+  const s = G.pre ?? G.s, a = s.armies[id];
+  if (!a) return;
+  if (!G.watch && a.side === G.C.you && G.s.status === 'running') {
+    G.sel = G.sel === id ? null : id;
+    closePop();
+    draw();
+    if (G.sel) { prefill(a.hero ? 'We ' : `${(a.gen ?? 'Army').split(' ')[0]}, `); toast('Tap a lit place on the map to send this army there, or say what it should do.'); }
+    return;
+  }
+  infoPop(a.at, e);
+}
+function onProvince(pid, e) {
+  if (G.sel && !G.watch) { const r = reach(G.C, G.pre ?? G.s, G.sel); if (r[pid]) return onTarget(pid, e); }
+  infoPop(pid, e);
+}
+function onTarget(pid) {
+  const s = G.pre ?? G.s, a = s.armies[G.sel];
+  if (!a) return;
+  const o = oddsOf(G.C, s, a.id, pid), P = G.C.prov[pid].name, who = a.hero ? 'We' : `${(a.gen ?? 'Army').split(' ')[0]},`;
+  prefill(o.kind === 'battle' ? `${who} attack at ${P}` : o.kind === 'siege' ? `${who} besiege ${P}` : `${who} march to ${P}`);
+  G.sel = null;
+  draw();
+}
+function prefill(text) { const t = $('#say-text'); t.value = text; autosize(); t.focus(); t.setSelectionRange(text.length, text.length); }
+
+// ---------- popovers ----------
+function closePop() { $('#pop').hidden = true; }
+function infoPop(pid, e) {
+  const C = G.C, s = G.watch ? G.s : G.pre ?? G.s, P = C.prov[pid], st = s.prov[pid], pop = $('#pop');
+  const here = Object.values(s.armies).filter((a) => a.at === pid);
+  pop.innerHTML = `<button class="x" aria-label="Close">×</button><h3>${esc(P.name)}</h3>
+    <dl><dt>Held by</dt><dd>${st.owner ? `<b style="color:${C.sides[st.owner].color}">${esc(C.sides[st.owner].name)}</b>, led by ${esc(leaderOf(C, s, st.owner))}` : 'no one'}</dd>
+    <dt>Ground</dt><dd>${esc(P.terrain)}${P.lake ? ', a lake shore' : ''}${P.narrows ? ', a narrow pass' : ''}${P.port ? ', a port' : ''}</dd>
+    ${st.walls ? `<dt>Walls</dt><dd>${'▮'.repeat(st.walls)} · garrison ${fmtMen(st.garrison)}${st.siege ? ` · besieged (${st.siege} of ${st.walls})` : ''}</dd>` : ''}
+    <dt>Wealth</dt><dd>${'●'.repeat(P.wealth) || '–'}</dd>
+    ${here.map((a) => `<dt>Army</dt><dd><b style="color:${C.sides[a.side].color}">${esc(a.gen ?? C.sides[a.side].name)}</b> · ${fmtMen(a.men)} · ${esc(C.sides[a.side].short ?? C.sides[a.side].name)}</dd>`).join('')}</dl>
+    <div class="share"><button class="btn" data-war>The war room</button>${!G.watch && G.s.status === 'running' ? `<button class="btn" data-ask>Ask about ${esc(P.name)}</button>` : ''}</div>`;
+  pop.hidden = false;
+  const w = pop.offsetWidth || 300, h = pop.offsetHeight || 220;
+  pop.style.left = `${Math.min(innerWidth - w - 12, Math.max(12, (e?.clientX ?? innerWidth / 2) + 14))}px`;
+  pop.style.top = `${Math.min(innerHeight - h - 12, Math.max(12, (e?.clientY ?? innerHeight / 2) - 20))}px`;
+  pop.querySelector('.x').onclick = closePop;
+  pop.querySelector('[data-war]').onclick = () => { closePop(); openWarRoom(); };
+  pop.querySelector('[data-ask]')?.addEventListener('click', () => { closePop(); prefill(`What do we know of ${P.name}?`); });
+}
+function openWarRoom() {
+  const C = G.C, s = G.watch ? G.s : G.pre ?? G.s;
+  const snaps = G.watch ? G.snaps.slice(0, (G.view ?? G.snaps.length - 1) + 1) : [...G.snaps];
+  openSheet(`<button class="x" data-close aria-label="Close">×</button>${warRoom(C, s, snaps, { face, esc, label: turnLabel(C, s.turn) })}`, { wide: true });
+}
+
+// ---------- the end of a season ----------
 async function endTurn() {
-  if (G.busy || G.s.status !== 'running') return;
+  if (G.busy || G.s.status !== 'running' || G.watch) return;
   G.busy = true;
   closePop();
   G.sel = null;
-  renderTurn();
+  $('#end-turn').disabled = true;
+  $('#end-turn').textContent = 'The season unfolds…';
   const C = G.C, before = G.s;
-  const inputs = { orders: G.draft.orders, raise: G.draft.raise, cards: G.draft.cards, peace: Object.fromEntries(Object.entries(G.draft.peace).filter(([, v]) => v)) };
+  const inputs = { orders: G.draft.orders, raise: G.draft.raise, cards: G.draft.cards, peace: Object.fromEntries(Object.entries(G.draft.peace ?? {}).filter(([, v]) => v)) };
   let final = inputs, chk = null;
   if (!G.run.local) {
     try {
-      const res = await api.turn(G.run, before.turn, inputs);
+      const res = await api.turn(G.run, before.turn, inputs, G.aims);
       final = res.inputs;
       chk = res.chk;
     } catch (err) {
-      if (err.status === 409 && err.body?.turns) { // the server is ahead of this page: catch up from its record
-        G.busy = false;
-        return openRun(G.run.id);
-      }
       G.busy = false;
-      renderTurn();
-      return toast(err.status ? `The turn was not accepted: ${err.message}` : 'The server cannot be reached. Try again in a moment.');
+      $('#end-turn').disabled = false;
+      $('#end-turn').textContent = 'End the season';
+      if (err.status === 410) return oldRun(C);
+      if (err.status === 409 && err.body?.turns) return openRun(G.run.id); // the server is ahead of this page
+      return toast(err.status ? `The season could not end: ${err.message}` : 'The server cannot be reached. Try again in a moment.');
     }
   }
   const r = resolve(before, C, final);
-  if (chk && checksum(r.state) !== chk) console.warn('this replay strays from the server: reloading');
+  if (chk && checksum(r.state) !== chk) { console.warn('this replay strays from the server: reloading'); G.busy = false; return openRun(G.run.id); }
   G.turns.push(final);
   G.events.push(r.events);
   G.s = r.state;
   G.pre = r.state;
-  if (G.run.local) { G.run.turns = G.turns; G.run.at = Date.now(); saveRun(G.run); }
-  else saveRun({ ...G.run, at: Date.now(), turn: G.s.turn });
+  G.snaps.push(snapOf(C, r.state));
+  for (const [id, aim] of Object.entries(G.aims)) if (!r.state.armies[id] || r.state.prov[aim]?.owner === C.you) delete G.aims[id];
+  if (G.run.local) Object.assign(G.run, { turns: G.turns });
+  saveRun({ ...G.run, at: Date.now(), turn: G.s.turn, aims: G.aims });
   draw();
   G.map.clash(r.events);
-  await sleep(1400);
   G.busy = false;
-  recap(before, r, () => {
-    if (G.s.status !== 'running') return scroll();
-    newTurn();
-  });
+  $('#end-turn').disabled = false;
+  $('#end-turn').textContent = 'End the season';
+  dispatch(r.events, r.state, before.turn);
+  if (G.s.status !== 'running') { showChips(); return setTimeout(scroll, 900); }
+  newTurn();
 }
 
-const GOOD = new Set(['victory']), BAD = new Set(['defeat', 'hero', 'unpaid']);
+const GOOD = new Set(['victory', 'submits']), BAD = new Set(['defeat', 'hero', 'unpaid']);
 function news(C, s, e) {
   const you = C.you, mine = (x) => x === you || friends(s, you, x);
   let cls = '';
@@ -439,30 +458,28 @@ function news(C, s, e) {
   else if (['capture', 'starved', 'storm'].includes(e.type)) cls = mine(e.sides?.[0]) ? 'good' : mine(e.sides?.[1]) ? 'bad' : '';
   else if (GOOD.has(e.type)) cls = 'good';
   else if (BAD.has(e.type)) cls = 'bad';
-  const icon = { battle: '⚔', capture: '⚑', starved: '⚑', storm: '⚑', siege: '◎', repulsed: '✕', refused: '↩', war: '⚔', peace: '☮', alliance: '∞', raised: '+', attrition: '❄', story: '❧', history: '❧', card: '✎', victory: '★', defeat: '✝', yield: '☮', storm2: '≈' }[e.type] ?? '·';
   let more = '';
   if (e.type === 'battle' && e.plans) {
-    const side = e.sides?.[0] === you || friends(s, you, e.sides?.[0]) ? 'a' : e.sides?.[1] === you || friends(s, you, e.sides?.[1]) ? 'd' : null;
+    const side = mine(e.sides?.[0]) ? 'a' : mine(e.sides?.[1]) ? 'd' : null;
     if (side) {
       const p = e.plans[side], q = e.plans[side === 'a' ? 'd' : 'a'], lost = e.lost[side === 'a' ? 0 : 1], killed = e.lost[side === 'a' ? 1 : 0];
       const how = p.fit >= 0.5 ? 'it suited the ground and the armies' : p.fit >= 0 ? 'it served' : 'it did not suit the ground or the armies';
-      more = `<small>Your plan: ${esc(PLANS[p.id]?.name ?? p.id)}${p.by === 'general' ? ' (your general’s choice)' : ''}, and ${how}. Theirs: ${esc(PLANS[q.id]?.name ?? q.id)}. You lost ${fmtMen(lost)}, they lost ${fmtMen(killed)}.</small>`;
+      more = `<small>Our plan: ${esc(PLANS[p.id]?.name ?? p.id)}${p.by === 'general' ? ' (the general’s choice)' : ''}; ${how}. Theirs: ${esc(PLANS[q.id]?.name ?? q.id)}. We lost ${fmtMen(lost)}, they lost ${fmtMen(killed)}.</small>`;
     }
   }
-  return `<li class="${cls}"><span class="i">${icon}</span><span>${esc(e.text)}${more}</span></li>`;
+  return `<li class="${cls}"><span>${esc(e.text)}${more}</span></li>`;
 }
-function recap(before, r, then) {
-  const C = G.C, s = r.state, t = before.turn;
-  // the news that matters, once: "opens its gates" says enough without "takes" after it
-  const fell = new Set(r.events.filter((e) => ['starved', 'storm'].includes(e.type)).map((e) => e.at));
-  const shown = r.events.filter((e) => (!e.minor || (e.sides ?? []).includes(C.you)) && !(e.type === 'capture' && fell.has(e.at))).slice(0, 12);
-  const said = Object.entries(s.said ?? {}).filter(([side]) => C.sides[side]);
-  const art = artOf(r.events.find((e) => e.type === 'battle')?.decisive ? 'battle' : r.events.some((e) => e.type === 'capture' && e.capital) ? 'siege' : null);
-  openSheet(`${art ? `<img class="art" src="${art}" alt="">` : ''}<h2>${esc(turnLabel(C, t))}</h2>
-    ${shown.length ? `<ul class="news">${shown.map((e) => news(C, s, e)).join('')}</ul>` : '<p class="sub">A quiet season: the armies march and watch each other.</p>'}
-    ${said.map(([side, line]) => `<p class="said" style="--c:${C.sides[side].color}">${sideChip(C, side)}: “${esc(line)}”</p>`).join('')}
-    ${C.turns[t].history ? `<div class="history"><h4>Meanwhile, in history</h4><p>${esc(C.turns[t].history)}</p></div>` : ''}
-    <div class="share"><button class="btn main" data-close>${s.status !== 'running' ? 'See how it ended' : 'Continue'}</button></div>`, { onClose: then });
+// The season's dispatches, into the conversation: what happened, what the enemy declared, and what history did.
+function dispatch(events, s, t, { quiet = false } = {}) {
+  const C = G.C;
+  const fell = new Set(events.filter((e) => ['starved', 'storm'].includes(e.type)).map((e) => e.at));
+  const shown = events.filter((e) => e.type !== 'card' && (!e.minor || (e.sides ?? []).includes(C.you)) && !(e.type === 'capture' && fell.has(e.at))).slice(0, 12);
+  chat({ kind: 'dispatch', title: `Dispatches: ${turnLabel(C, t)}`, items: shown.length ? shown.map((e) => news(C, s, e)).join('') : '<li>A quiet season: the armies march and watch each other.</li>' });
+  for (const [side, line] of Object.entries(s.said ?? {})) if (C.sides[side]) chat({ kind: 'msg', who: `side:${side}`, text: line });
+  if (C.turns[t]?.history) chat({ kind: 'history', text: C.turns[t].history });
+  if (quiet) return;
+  const big = events.find((e) => ['victory', 'defeat'].includes(e.type)) ?? events.find((e) => e.type === 'battle' && e.decisive && (e.sides ?? []).includes(C.you)) ?? events.find((e) => e.type === 'capture' && e.capital);
+  if (big) toast(big.text, 5000);
 }
 
 // ---------- the scroll: how the war ended, beside history ----------
@@ -481,20 +498,22 @@ async function scroll() {
   const rows = C.turns.slice(0, Math.max(G.events.length, 1)).map((tt, i) => `<div class="d">${esc(tt.label)}</div><div>${esc(topEvent(C, G.events[i] ?? []))}</div><div class="hist">${esc(tt.history)}</div>`).join('');
   openSheet(`<button class="x" data-close aria-label="Close">×</button>
     <div class="scroll-head">${face(C.hero, C.sides[C.you].color, 84, 'scroll')}<h2>${esc(C.title)}</h2>${stars(v.stars)}<div class="verdict">${esc(VERDICT[v.as])}</div><p>${esc(s.end?.why ?? '')}</p></div>
-    <div class="stats"><span><b>${st.won}</b>battles won</span><span><b>${st.lost}</b>battles lost</span><span><b>${st.taken}</b>cities taken</span><span><b>${fmtMen(st.dead)}</b>of your men fell</span><span><b>${(s.end?.turn ?? s.turn) + 1}</b>turns</span></div>
+    <div class="stats"><span><b>${st.won}</b>battles won</span><span><b>${st.lost}</b>battles lost</span><span><b>${st.taken}</b>cities taken</span><span><b>${fmtMen(st.dead)}</b>of your men fell</span><span><b>${(s.end?.turn ?? s.turn) + 1}</b>seasons</span></div>
     <div class="history"><h4>How it really ended</h4><p>${esc(C.history.text)}</p></div>
     <div class="history"><h4>The historian’s judgement</h4><p id="summary" class="thinking">${G.rec?.summary ? esc(G.rec.summary) : G.run.local ? esc(localSummary(C, s)) : 'The historian is writing…'}</p></div>
     <details open><summary><b>Your war, beside history’s</b></summary><div class="timeline"><div class="h">When</div><div class="h">Your war</div><div class="h">History</div>${rows}</div></details>
+    <div class="share"><button class="btn" data-war>The war room</button></div>
     ${link ? `<div class="share"><input readonly value="${esc(link)}" aria-label="The link to this campaign"><button class="btn" data-copy>Copy the link</button></div>` : '<p class="fine">This campaign was played without the server, so it has no link to share and no NFT.</p>'}
     ${link && !G.watch ? `<div class="nft" id="nft"><img src="/nft/${esc(G.rec?.token ?? '')}.svg" alt="" hidden><div><b>Keep this scroll as an NFT</b><p class="sub">A token on Base Sepolia (a test network: no money value), with your verdict and this summary. The game pays the fees.</p><div id="nft-box"></div></div></div>` : ''}
     <div class="share">${!G.watch ? `<a class="btn main" href="?c=${C.id}">Play it again</a>` : ''}${next ? `<a class="btn" href="?c=${next.id}">Next: ${esc(next.title)}</a>` : ''}<a class="btn" href="/campaign/">All campaigns</a></div>`, {});
   sheet.querySelector('[data-copy]')?.addEventListener('click', () => { navigator.clipboard?.writeText(link); toast('The link is copied.'); });
+  sheet.querySelector('[data-war]')?.addEventListener('click', openWarRoom);
   if (link && !G.watch) nftBox();
   if (!G.run.local && !G.rec?.summary) waitForSummary();
 }
 function localSummary(C, s) {
   const v = s.verdict?.as ?? 'as';
-  return `${C.hero.name} ${s.status === 'won' ? 'achieved what history did not allow' : 'fought on'}: ${s.stats.won} battles won, ${s.stats.lost} lost, ${s.stats.taken} cities taken. ${v === 'better' ? 'A better ending than history’s.' : v === 'as' ? 'History would recognise this war.' : 'History went better than this.'}`;
+  return `${C.hero.name} ${s.status === 'won' ? 'achieved the goal' : 'fought on to the end'}: ${s.stats.won} battles won, ${s.stats.lost} lost, ${s.stats.taken} cities taken. ${v === 'better' ? 'A better ending than history’s.' : v === 'as' ? 'History would recognise this war.' : 'History went better than this.'}`;
 }
 async function waitForSummary() {
   for (let i = 0; i < 40 && sheet.open; i++) {
@@ -542,7 +561,8 @@ function nftBox() {
 function watchMode(rec) {
   const C = G.C;
   G.watch = true;
-  $('#turn').hidden = true;
+  $('#court').hidden = true;
+  $('#game').classList.add('watching-run');
   const bar = document.createElement('div');
   bar.className = 'replay panel';
   bar.id = 'replay';
@@ -552,24 +572,19 @@ function watchMode(rec) {
   $('#game').append(chip);
   const setChip = () => { chip.innerHTML = `${G.rec?.status === 'running' ? '<i class="dot"></i> Live' : 'Replay'} · ${esc(G.rec?.name ?? 'Someone')} as ${esc(C.hero.name)}`; };
   setChip();
-  const at = (n) => {
-    let s = newCampaign(C, G.run.seed);
-    for (let i = 0; i < n; i++) s = resolve(s, C, G.turns[i]).state;
-    return s;
-  };
+  const at = (n) => { let s = newCampaign(C, G.run.seed); for (let i = 0; i < n; i++) s = resolve(s, C, G.turns[i]).state; return s; };
   const show = (n) => {
     G.view = Math.max(0, Math.min(G.turns.length, n));
     G.s = at(G.view);
     draw();
     if (G.view > 0) G.map.clash(G.events[G.view - 1] ?? []);
-    bar.innerHTML = `<button class="round" data-b aria-label="Back">‹</button><button class="round" data-p aria-label="Play">${G.playing ? '❚❚' : '▶'}</button><button class="round" data-f aria-label="Forward">›</button><input type="range" min="0" max="${G.turns.length}" value="${G.view}" aria-label="Turn"><small>${esc(turnLabel(C, G.view))}</small>${G.s.status !== 'running' ? '<button class="btn" data-end>The scroll</button>' : ''}`;
+    bar.innerHTML = `<button class="round" data-b aria-label="Back">‹</button><button class="round" data-p aria-label="Play">${G.playing ? '❚❚' : '▶'}</button><button class="round" data-f aria-label="Forward">›</button><input type="range" min="0" max="${G.turns.length}" value="${G.view}" aria-label="Season"><small>${esc(turnLabel(C, G.view))}</small>${G.s.status !== 'running' ? '<button class="btn" data-end>The scroll</button>' : ''}`;
     bar.querySelector('[data-b]').onclick = () => { G.playing = false; show(G.view - 1); };
     bar.querySelector('[data-f]').onclick = () => { G.playing = false; show(G.view + 1); };
     bar.querySelector('[data-p]').onclick = () => { G.playing = !G.playing; if (G.playing && G.view >= G.turns.length) show(0); play(); show(G.view); };
     bar.querySelector('input').oninput = (e) => { G.playing = false; show(+e.target.value); };
     bar.querySelector('[data-end]')?.addEventListener('click', () => scroll());
-    const last = G.events[G.view - 1] ?? [];
-    const top = last.filter((e) => !e.minor).slice(0, 2).map((e) => e.text).join(' · ');
+    const top = (G.events[G.view - 1] ?? []).filter((e) => !e.minor).slice(0, 2).map((e) => e.text).join(' · ');
     if (top) toast(top, 2600);
   };
   const play = async () => {
@@ -579,7 +594,6 @@ function watchMode(rec) {
   G.playing = G.turns.length > 0 && rec?.status !== 'running';
   show(G.playing ? 0 : G.turns.length);
   if (G.playing) play();
-  // live: new turns as they are played
   if (rec?.status === 'running') {
     const connect = () => {
       const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/run/${encodeURIComponent(G.run.id)}/live`);
@@ -589,12 +603,12 @@ function watchMode(rec) {
           const s = at(G.turns.length), r = resolve(s, C, d.inputs);
           G.turns.push(d.inputs);
           G.events.push(r.events);
+          G.snaps.push(snapOf(C, r.state));
           if (G.view === G.turns.length - 1) show(G.turns.length); else show(G.view);
         }
         if (d.t === 'end') { G.rec = { ...(G.rec ?? {}), ...d.run, status: 'over' }; setChip(); }
       };
       ws.onclose = () => { if (G.rec?.status === 'running') setTimeout(connect, 5000); };
-      G.ws = ws;
     };
     connect();
   }
@@ -606,19 +620,28 @@ function setBare(on) {
   $('#game').classList.toggle('bare', on);
   $('#hide-btn').setAttribute('aria-pressed', String(on));
   $('#show-btn').hidden = !on;
-  if (!on && !G.watch) renderTurn();
+  if (on) closePop();
 }
 $('#hide-btn').addEventListener('click', () => setBare(!G.bare));
 $('#show-btn').addEventListener('click', () => setBare(false));
 $('#brief-btn').addEventListener('click', () => G.C && briefing(G.C, { inGame: true }));
+$('#war-btn').addEventListener('click', () => G.C && openWarRoom());
 $('#zin').addEventListener('click', () => G.map?.zoomAt(1.5));
 $('#zout').addEventListener('click', () => G.map?.zoomAt(1 / 1.5));
+$('#end-turn').addEventListener('click', endTurn);
+$('#say').addEventListener('submit', (e) => { e.preventDefault(); say($('#say-text').value); });
+$('#say-text').addEventListener('input', autosize);
+$('#say-text').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); say($('#say-text').value); } });
+$('#court-toggle').addEventListener('click', () => $('#court').classList.toggle('open'));
 addEventListener('keydown', (e) => {
-  if (e.target.closest('input, textarea, select')) return;
+  if (e.key === 'Escape' && e.target.closest('textarea')) { e.target.blur(); return; }
+  if (e.target.closest('input, textarea')) return;
   if (e.key === 'h' || e.key === 'H') setBare(!G.bare);
+  if (e.key === 'w' || e.key === 'W') G.C && openWarRoom();
   if (e.key === 'Escape') { closePop(); if (G.sel) { G.sel = null; draw(); } }
-  if (e.key === 'Enter' && e.ctrlKey && !G.watch) endTurn();
 });
+addEventListener('error', (e) => { console.error(e.error ?? e.message); toast('Something went wrong on this page. Reload to carry on: your campaign is saved.', 7000); });
+addEventListener('unhandledrejection', (e) => { console.error(e.reason); });
 
 // ---------- where to begin ----------
 const params = new URLSearchParams(location.search);

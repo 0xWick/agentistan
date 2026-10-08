@@ -50,6 +50,9 @@ a { color: var(--lapis); }
 .capital use { color: var(--ink); }
 
 .army { transition: transform var(--step, 0.9s) ease-in-out, opacity 0.5s; cursor: pointer; }
+#map.zooming .army { transition: opacity 0.5s; }
+.player #back, .player #fwd { width: 36px; height: 36px; flex: none; display: grid; place-items: center; padding: 0; }
+.player #back svg, .player #fwd svg { width: 18px; height: 18px; }
 .army .pole { stroke: #2a1c0e; stroke-width: 2.4; }
 .army .cloth { stroke: #2a1c0e; stroke-width: 1.4; }
 .army text { font: 700 15px var(--kufi); fill: #fbf3dd; paint-order: stroke; stroke: #2a1c0e; stroke-width: 3.5px; text-anchor: middle; }
@@ -161,7 +164,7 @@ dialog.forge::backdrop { background: rgba(43, 33, 22, 0.45); }
   .feed { right: 10px; left: 10px; top: auto; bottom: 86px; width: auto; max-height: 92px; padding: 6px; }
   .feed h2 { display: none; }
   .feed li:not(:first-child) { display: none; }
-  .player { bottom: 10px; gap: 8px; padding: 6px 10px; grid-template-columns: auto auto 1fr auto; }
+  .player { bottom: 10px; gap: 8px; padding: 6px 10px; grid-template-columns: auto auto auto 1fr; }
   .speed button { padding: 3px 6px; }
   .yr { font-size: 20px; min-width: 46px; }
   .card { left: 10px !important; right: 10px; top: auto !important; bottom: 86px; width: auto; }
@@ -311,11 +314,11 @@ textarea, input, .plan-result { -webkit-user-select: text; user-select: text; }
 @media (max-width: 760px) { .ask { left: 10px; right: 10px; top: 64px; width: auto; max-height: calc(100dvh - 170px); } }
 
 .zoom { position: fixed; right: 16px; bottom: 92px; display: grid; gap: 8px; }
-.player { grid-template-columns: auto auto 1fr auto auto; width: min(820px, calc(100vw - 32px)); }
+.player { grid-template-columns: auto auto auto 1fr auto; width: min(820px, calc(100vw - 32px)); }
 .tool svg, .key svg, .forge li svg, .round svg { display: block; }
 @media (max-width: 760px) {
   .zoom { right: 10px; bottom: 190px; }
-  .player { grid-template-columns: auto auto 1fr auto; }
+  .player { grid-template-columns: auto auto auto 1fr; }
   .player .yr { display: none; }
   .track .tick { display: none; }
 }

@@ -7,6 +7,7 @@ export default {
   you: 'greeks',
   hero: { name: 'Themistocles', title: 'statesman and general of Athens', look: 'hellenic' },
   advisor: { name: 'Aristides', title: 'called the Just', look: 'hellenic' },
+  court: [{ id: 'aristides', name: 'Aristides', title: 'called the Just', look: 'hellenic' }, { id: 'xanthippus', name: 'Xanthippus', title: 'general of Athens', look: 'hellenic', from: 2 }],
   hook: 'Save Greece from the greatest empire on earth, at Marathon, Thermopylae and Salamis.',
   art: 'war',
   brief: [
@@ -39,8 +40,8 @@ export default {
     'Pausanias takes Byzantion. Athens founds the Delian League to carry on the war, and its own empire begins.',
   ],
   sides: {
-    greeks: { name: 'The Greeks', short: 'Greeks', color: '#27466e', leader: 'Themistocles of Athens, with Sparta and the allied cities', capital: 'attica', gold: 160, will: 70, quality: 1.25, horse: 0.04, fleet: 1, levy: 6000, income: 15, tech: ['hoplites'], weariness: 0.6, persona: 'Athens, Sparta and the free Greek cities: quarrelsome allies, proud of their hoplites.' },
-    persia: { name: 'The Persian Empire', short: 'Persia', color: '#8c5a2b', leader: 'King Darius, then King Xerxes', capital: 'sardis', gold: 400, will: 80, quality: 0.7, horse: 0.3, fleet: 3, levy: 15000, income: 60, raiseFrom: 6, ai: 'bold', persona: 'The Great King of Persia: ruler of the world from the Aegean to the Indus, who means to punish Athens for burning Sardis.' },
+    greeks: { name: 'The Greeks', short: 'Greeks', heirs: ['Aristides'], color: '#27466e', leader: 'Themistocles of Athens, with Sparta and the allied cities', capital: 'attica', gold: 160, will: 70, quality: 1.25, horse: 0.04, fleet: 1, levy: 6000, income: 15, tech: ['hoplites'], weariness: 0.6, persona: 'Athens, Sparta and the free Greek cities: quarrelsome allies, proud of their hoplites.' },
+    persia: { name: 'The Persian Empire', short: 'Persia', heirs: ['Mardonius'], color: '#8c5a2b', leader: 'King Darius', capital: 'sardis', gold: 400, will: 80, quality: 0.7, horse: 0.3, fleet: 3, levy: 15000, income: 60, raiseFrom: 6, ai: 'bold', persona: 'The Great King of Persia: ruler of the world from the Aegean to the Indus, who means to punish Athens for burning Sardis.' },
     thebes: { name: 'Thebes', color: '#4f6b3a', leader: 'the oligarchs of Thebes', capital: 'boeotia', gold: 40, will: 50, quality: 1.05, horse: 0.15, levy: 4000, tech: ['hoplites'], ai: 'cautious', persona: 'The oligarchs of Thebes: rivals of Athens, ready to side with Persia.' },
     thessaly: { name: 'Thessaly', color: '#7a6a45', leader: 'the Aleuad lords', capital: 'thessaly', gold: 40, will: 45, quality: 0.9, horse: 0.45, levy: 4000, ai: 'cautious', persona: 'The horse lords of Thessaly, who will bow to whoever comes south with the bigger army.' },
     macedon: { name: 'Macedon', color: '#6b4a8c', leader: 'King Alexander I', capital: 'macedon', gold: 40, will: 40, quality: 0.9, horse: 0.3, levy: 3000, ai: 'cautious', persona: 'Alexander I of Macedon, Persia’s vassal, a secret friend of the Greeks.' },
@@ -178,7 +179,8 @@ export default {
   events: [
     { id: 'runners', at: 1, fx: { spawn: ['greeks', 'megara', 2000, 'the Spartan vanguard', 3, { id: 'vanguard' }] }, text: 'Two thousand Spartans arrive from the south, after their festival', sides: ['greeks'] },
     { id: 'withdraw', at: 2, side: 'persia', fx: { then: (s) => { for (const a of Object.values(s.armies)) if (a.side === 'persia') { a.at = 'sardis'; a.from = 'sardis'; a.stay = true; } } }, text: 'The Persian fleet carries what is left of Datis’s army home to Asia', sides: ['persia'] },
-    { id: 'darius', at: 2, side: 'persia', fx: { will: 5 }, text: 'King Darius dies; his son Xerxes swears to finish what his father began', sides: ['persia'] },
+    { id: 'miltiades', at: 2, if: (q) => q.living('Miltiades'), side: 'greeks', fx: { kill: 'Miltiades', succeed: { Miltiades: ['Xanthippus', 3] } }, text: 'Miltiades, the victor of Marathon, dies of a wound taken at Paros, in disgrace; Xanthippus takes his command', sides: ['greeks'] },
+    { id: 'darius', at: 2, side: 'persia', fx: { will: 5, kill: 'King Darius', leader: 'King Xerxes' }, text: 'King Darius dies; his son Xerxes swears to finish what his father began', sides: ['persia'] },
     {
       id: 'xerxes', at: 5, side: 'persia', sides: ['persia', 'thebes', 'thessaly'],
       text: 'Xerxes crosses the Hellespont with the greatest army ever seen, and Thessaly and Thebes submit to him',
@@ -188,7 +190,7 @@ export default {
         free: ['thebans', 'artaphernes', 'datis'], fleet: 3, will: 10,
       },
     },
-    { id: 'ephialtes', at: 6, if: (q) => q.flag('pass') && q.at('greeks', 'thermopylae'), fx: { remove: 'leonidas', will: 8 }, text: 'Ephialtes shows the Persians a path round Thermopylae: Leonidas and his 300 die where they stand, and Greece will never forget them', sides: ['greeks', 'persia'] },
+    { id: 'ephialtes', at: 6, if: (q) => q.flag('pass') && q.at('greeks', 'thermopylae'), fx: { remove: 'leonidas', kill: 'King Leonidas', will: 8 }, text: 'Ephialtes shows the Persians a path round Thermopylae: Leonidas and his 300 die where they stand, and Greece will never forget them', sides: ['greeks', 'persia'] },
     { id: 'burned', if: (q) => q.owns('persia', 'attica') || q.owns('thebes', 'attica'), fx: { flag: 'burned', then: (s, q) => { if (q.flag('evacuate')) s.sides.greeks.will = Math.min(100, s.sides.greeks.will + 18); } }, text: 'The Persians burn Athens and the temples of the Acropolis', sides: ['greeks'] },
     {
       id: 'home', at: 7, if: (q) => q.flag('salamis'), side: 'persia', sides: ['persia'],

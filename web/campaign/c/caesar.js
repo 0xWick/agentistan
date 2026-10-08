@@ -7,6 +7,7 @@ export default {
   you: 'rome',
   hero: { name: 'Julius Caesar', title: 'proconsul of Gaul', look: 'roman' },
   advisor: { name: 'Titus Labienus', title: 'your best legate', look: 'roman' },
+  court: [{ id: 'labienus', name: 'Titus Labienus', title: 'your best legate', look: 'roman' }, { id: 'antony', name: 'Mark Antony', title: 'your quaestor', look: 'roman', from: 6 }],
   hook: 'Win Gaul, and the glory to rule Rome.',
   art: 'war',
   brief: [
@@ -43,7 +44,7 @@ export default {
     'Recalled by a hostile Senate, Caesar crosses the Rubicon with one legion in January 49 BC: civil war.',
   ],
   sides: {
-    rome: { name: 'Caesar’s legions', short: 'Rome', color: '#a3361f', leader: 'Julius Caesar', capital: 'cisalpina', gold: 120, will: 70, quality: 1.4, horse: 0.1, fleet: 0, levy: 10000, income: 30, weariness: 0.6, persona: 'Julius Caesar: quick, bold and merciless, writing his own history as he goes.' },
+    rome: { name: 'Caesar’s legions', short: 'Rome', heirs: ['Titus Labienus'], color: '#a3361f', leader: 'Julius Caesar', capital: 'cisalpina', gold: 120, will: 70, quality: 1.4, horse: 0.1, fleet: 0, levy: 10000, income: 30, weariness: 0.6, persona: 'Julius Caesar: quick, bold and merciless, writing his own history as he goes.' },
     aedui: { name: 'The Aedui', color: '#4f7a3a', leader: 'Diviciacus', capital: 'aedui', gold: 60, will: 50, quality: 0.85, horse: 0.25, levy: 4000, ai: 'cautious', submits: true, persona: 'The Aedui, “brothers of the Roman people”, who use Rome against their rivals.' },
     helvetii: { name: 'The Helvetii', color: '#8c6b3f', leader: 'Orgetorix’s people', capital: 'helvetii', gold: 40, will: 60, quality: 0.85, horse: 0.15, levy: 0, ai: 'steady', submits: true, persona: 'The Helvetii, a whole people on the move, looking for new land in the west.' },
     germans: { name: 'Ariovistus’s Germans', short: 'Germans', color: '#5d4a6a', leader: 'King Ariovistus', capital: 'germania', gold: 40, will: 60, quality: 0.95, horse: 0.3, levy: 4000, ai: 'bold', persona: 'Ariovistus, a Suebian king invited into Gaul who now rules it like a conqueror.' },
@@ -199,7 +200,7 @@ export default {
       fx: { flag: 'revolt', rel: [['gauls', 'rome', 'war'], ['aedui', 'rome', 'war'], ['aedui', 'gauls', 'ally']], free: ['arverni', 'diviciacus'], spawn: ['gauls', 'arverni', 50000, 'Vercingetorix', 5, { id: 'vercingetorix', temper: 'cunning' }], will: 25 },
     },
     { id: 'shut', at: 7, if: (q) => !!q.army('vercingetorix'), side: 'gauls', fx: { then: (s) => { const v = s.armies.vercingetorix; v.at = 'alesia'; v.from = 'alesia'; v.stay = true; s.prov.alesia.owner = 'gauls'; } }, text: 'Vercingetorix shuts himself and his army up in the hill town of Alesia', sides: ['gauls'] },
-    { id: 'surrender', from: 7, if: (q) => q.flag('revolt') && q.war('gauls', 'rome') && (q.owns('rome', 'alesia') || !q.army('vercingetorix')), side: 'gauls', fx: { will: -60, remove: 'vercingetorix' }, text: 'Vercingetorix rides out of Alesia in his finest armour and lays down his arms at Caesar’s feet; the great revolt is over', sides: ['gauls', 'rome'] },
+    { id: 'surrender', from: 7, if: (q) => q.flag('revolt') && q.war('gauls', 'rome') && (q.owns('rome', 'alesia') || !q.army('vercingetorix')), side: 'gauls', fx: { will: -60, remove: 'vercingetorix', leader: 'the last free chiefs of Gaul' }, text: 'Vercingetorix rides out of Alesia in his finest armour and lays down his arms at Caesar’s feet; the great revolt is over', sides: ['gauls', 'rome'] },
     { id: 'relief', at: 7, if: (q) => !!q.army('vercingetorix'), side: 'gauls', fx: { spawn: ['gauls', 'sequani', 60000, 'the relief army', 3, { id: 'relief', target: 'alesia', temper: 'bold' }] }, text: 'A great relief army gathers from every tribe of Gaul to save Vercingetorix', sides: ['gauls'] },
   ],
 };

@@ -5,7 +5,7 @@
 // A turn: the cards → the AI's plans → orders → marching → battles → sieges → money → attrition → will to fight →
 // history's own moves → the goal. Inputs for a turn: { orders: { army: { to, plan, storm } }, raise: { army: men },
 // cards: { card: option }, peace: { side: 'offer' | 'accept' | 'refuse' }, ai: { side: { stance, target, peace, say } } }.
-export const ENGINE = 1;
+export const ENGINE = 2; // bump when a change would make an old record replay differently: older runs are then closed
 
 // ---------- randomness: a seeded stream per (seed, turn, step) ----------
 function seedOf(str) {
@@ -68,7 +68,7 @@ export function prepare(C, graph) {
 export function newCampaign(C0, seed = 1) {
   const C = READY.get(C0) ?? C0;
   const s = {
-    v: ENGINE, cid: C.id, seed, turn: 0, status: 'running', end: null,
+    v: ENGINE, cid: C.id, seed, turn: 0, status: 'running', end: null, dead: [],
     sides: {}, prov: {}, armies: {}, rel: {}, flags: {}, cards: {}, done: {}, offers: {}, plans: {}, said: {},
     stats: { won: 0, great: 0, lost: 0, taken: 0, fallen: 0, killed: 0, dead: 0, start: 0, peak: 0 }, log: [], next: 1,
   };
@@ -96,6 +96,41 @@ export const armiesAt = (s, at) => Object.values(s.armies).filter((a) => a.at ==
 export const menOf = (s, side) => armiesOf(s, side).reduce((t, a) => t + a.men, 0);
 export const owned = (s, side) => Object.keys(s.prov).filter((id) => s.prov[id].owner === side);
 export const heroOf = (s) => Object.values(s.armies).find((a) => a.hero);
+// ---------- the people of the war: who leads each side now, who is dead, who sits in your council ----------
+export const leaderOf = (C, s, side) => s.sides[side]?.leader ?? C.sides[side]?.leader ?? C.sides[side]?.name;
+export const isDead = (s, name) => !!name && (s.dead ?? []).includes(name);
+// Your council this season: the advisers history gives you at this time, if they are still alive, and the
+// generals of your armies.
+export function courtOf(C, s) {
+  const list = (C.court ?? (C.advisor ? [C.advisor] : [])).filter((p) => (p.from === undefined || s.turn >= p.from) && (p.until === undefined || s.turn <= p.until) && !isDead(s, p.name));
+  const gens = armiesOf(s, C.you).filter((a) => a.gen && !a.hero && !isDead(s, a.gen)) // the commander is the player: they do not advise themselves.sort((a, b) => b.men - a.men)
+    .map((a) => ({ id: `army:${a.id}`, name: a.gen, title: `commanding ${fmtMen(a.men)} at ${C.prov[a.at].name}`, look: C.hero.look, army: a.id }));
+  return [...list.map((p) => ({ id: p.id ?? p.name, ...p })), ...gens.filter((g) => !list.some((p) => p.name === g.name))];
+}
+// Only people die: “the Argives” or “New levies” are not anyone.
+const GENERIC = /^(the|an?|new)\b|\b(levies|chiefs|garrison|officers|men|warriors|army|militia|tribes|lords|besiegers|host|legions?|satraps|captains|survivors|column)\b/i;
+export const isPerson = (n) => !!n && !GENERIC.test(n);
+// “King Darius III” and “Darius III”, “Liu Biao, governor of Jing” and “Liu Biao”: the same man.
+const bare = (n) => String(n ?? '').replace(/^(King|Queen|Emperor|Consul|General)\s+/i, '').split(/,| of | and /)[0].trim();
+export const sameMan = (a, b) => !!a && !!b && bare(a) === bare(b);
+// A death: the dead leave the story; their armies pass to a successor (or to the army's own officers), and a side
+// they led passes to its heir.
+function kill(C, s, name, successor, emit = () => {}) {
+  if (!name || isDead(s, name)) return;
+  s.dead.push(name);
+  const [next, skill] = Array.isArray(successor) ? successor : [successor, null];
+  for (const a of Object.values(s.armies)) {
+    if (a.gen !== name) continue;
+    a.gen = next ?? `the officers of ${C.sides[a.side].short ?? C.sides[a.side].name}`;
+    if (skill) a.skill = skill;
+  }
+  for (const [id, st] of Object.entries(s.sides)) {
+    if (!sameMan(leaderOf(C, s, id), name) || / and /.test(leaderOf(C, s, id))) continue;
+    const heir = next ?? (C.sides[id].heirs ?? []).find((h) => !isDead(s, h));
+    st.leader = heir ?? `the captains of ${C.sides[id].short ?? C.sides[id].name}`;
+    if (!successor) emit({ type: 'story', text: `With ${name} dead, ${st.leader} ${heir ? 'leads' : 'lead'} ${C.sides[id].name}`, sides: [id] });
+  }
+}
 export const turnOf = (C, s) => C.turns[Math.min(s.turn, C.turns.length - 1)];
 const living = (s) => Object.keys(s.sides).filter((id) => s.sides[id].alive);
 const enemiesOf = (s, side) => living(s).filter((o) => atWar(s, side, o));
@@ -261,6 +296,8 @@ export function applyFx(C, s, fx, side = C.you, emit = () => {}) {
   if (fx.gold) s.sides[side].gold = Math.max(0, s.sides[side].gold + fx.gold);
   if (fx.will) s.sides[side].will = clamp(s.sides[side].will + fx.will, 0, 100);
   if (fx.ai && TEMPERS[fx.ai]) s.sides[side].ai = fx.ai;
+  if (fx.leader) s.sides[side].leader = fx.leader;
+  for (const name of [].concat(fx.kill ?? [])) kill(C, s, name, fx.succeed?.[name], emit);
   if (fx.target !== undefined) s.sides[side].target = fx.target;
   if (fx.fleet !== undefined) s.sides[side].fleet = Math.max(0, (typeof fx.fleet === 'number' && fx.fleet < 0 ? s.sides[side].fleet + fx.fleet : fx.fleet));
   if (fx.men) {
@@ -319,6 +356,7 @@ export function q(C, s) {
     neighbors: (p) => C.prov[p]?.neighbors ?? [],
     lost: () => s.stats.lost,
     hero: () => heroOf(s),
+    living: (name) => !isDead(s, name),
     armies: (side) => armiesOf(s, side),
   };
 }
@@ -456,8 +494,9 @@ function aiRaise(C, s, side) {
 }
 
 // The cards of this turn, answered: the first step of a turn, and what the page shows before the turn ends.
-export function answer(C, s, inputs, emit = () => {}) {
+export function answer(C, s, inputs, emit = () => {}, onlyAnswered = false) {
   for (const c of cardsDue(C, s)) {
+    if (onlyAnswered && inputs.cards?.[c.id] === undefined) continue; // a preview shows only what the commander chose
     const pick = inputs.cards?.[c.id] ?? c.advise ?? 0, o = c.options[pick] ?? c.options[0];
     if (c.peace) {
       if (pick === 0) makePeace(C, s, c.peace, emit);
@@ -474,7 +513,7 @@ export function answer(C, s, inputs, emit = () => {}) {
 }
 export function withCards(C0, s0, cards) {
   const C = READY.get(C0) ?? C0, s = clone(s0);
-  answer(C, s, { cards: Object.fromEntries(Object.entries(cards ?? {}).filter(([, v]) => v !== undefined)) });
+  answer(C, s, { cards: Object.fromEntries(Object.entries(cards ?? {}).filter(([, v]) => v !== undefined)) }, () => {}, true);
   return s;
 }
 
@@ -726,13 +765,18 @@ function battleAt(C, s, at, orders, start, rng, emit) {
   });
   // a commander whose army is destroyed may still escape with his bodyguard, to the nearest friendly ground
   for (const a of gone) {
-    if (!a.hero) continue;
+    if (!a.hero) { // a general without his army: taken or killed, or he gets away
+      if (!isPerson(a.gen)) continue;
+      if (rng() < 0.5) emit({ type: 'escape', text: `${a.gen} gets away from the rout with a handful of horsemen`, at, sides: [a.side], minor: true });
+      else { kill(C, s, a.gen, null, emit); emit({ type: 'fallen', text: `${a.gen} dies with his army at ${C.prov[at].name}`, at, sides: [a.side] }); }
+      continue;
+    }
     const safe = Object.keys(s.prov).filter((p) => (s.prov[p].owner === a.side || friends(s, a.side, s.prov[p].owner)) && !armiesAt(s, p).some((o) => atWar(s, a.side, o.side)))
       .map((p) => [p, wayTo(C, s, a.side, at, p)?.length ?? 99]).sort((x, y) => x[1] - y[1])[0];
     if (safe && safe[1] < 99 && rng() < 0.85) {
       s.armies[a.id] = { ...a, at: safe[0], from: at, men: 3000, morale: 30 };
       emit({ type: 'escape', text: `${a.gen} escapes the rout with a few hundred horsemen and reaches ${C.prov[safe[0]].name}`, at: safe[0], sides: [a.side] });
-    } else emit({ type: 'hero', text: `${a.gen} is lost with his army`, at, sides: [a.side] });
+    } else { emit({ type: 'hero', text: `${a.gen} is lost with his army`, at, sides: [a.side] }); kill(C, s, a.gen, null, emit); }
   }
 }
 
