@@ -5,7 +5,7 @@
 // A turn: the cards → the AI's plans → orders → marching → battles → sieges → money → attrition → will to fight →
 // history's own moves → the goal. Inputs for a turn: { orders: { army: { to, plan, storm } }, raise: { army: men },
 // cards: { card: option }, peace: { side: 'offer' | 'accept' | 'refuse' }, ai: { side: { stance, target, peace, say } } }.
-export const ENGINE = 2; // bump when a change would make an old record replay differently: older runs are then closed
+export const ENGINE = 3; // bump when a change would make an old record replay differently: older runs are then closed
 
 // ---------- randomness: a seeded stream per (seed, turn, step) ----------
 function seedOf(str) {
@@ -417,7 +417,7 @@ function aiOrders(C, s, side, plan, rng) {
     if (besieged && (wayTo(C, s, side, a.at, home)?.length ?? 99) <= 5) return void (orders[a.id] = { to: stepToward(C, s, a, home) ?? null });
     // the capital is never left bare while an enemy is near: the nearest army goes home
     if (threat && home && s.prov[home].owner === side && !armiesAt(s, home).some((o) => o.side === side) && a.id === nearestTo(C, s, list, home)) return void (orders[a.id] = { to: a.at === home ? null : stepToward(C, s, a, home) });
-    const big = [...foes].sort((x, y) => (y.hero ? 1 : 0) - (x.hero ? 1 : 0) || y.men - x.men)[0];
+    const big = [...foes].sort((x, y) => (y.hero && y.men >= 5000 ? 1 : 0) - (x.hero && x.men >= 5000 ? 1 : 0) || y.men - x.men)[0]; // the hero, while he leads an army
     const shadow = plan.stance === 'delay' && big && a.id === nearestTo(C, s, list.filter((x) => !x.stay), big.at);
     if (plan.stance === 'delay' && !shadow) { // the rest keep away from the great enemy and fight the war elsewhere
       const away = opts.filter((p) => !(big && (p === big.at || C.prov[big.at].neighbors.includes(p))));
@@ -533,7 +533,7 @@ export function resolve(s0, C0, inputs = {}) {
   // the player's own offer of peace
   for (const [side, how] of Object.entries(inputs.peace ?? {})) {
     if (how !== 'offer' || !atWar(s, C.you, side) || C.sides[side].noPeace) continue;
-    const yes = s.sides[side].will < 40 || (s.sides[side].will < 55 && menOf(s, side) < menOf(s, C.you) * 0.6);
+    const at = C.sides[side].peaceAt ?? 40, yes = s.sides[side].will < at || (s.sides[side].will < at + 15 && menOf(s, side) < menOf(s, C.you) * 0.6);
     if (yes) makePeace(C, s, side, emit);
     else emit({ type: 'peace.refused', text: `${C.sides[side].name} refuses your offer of peace`, sides: [side] });
   }
@@ -547,7 +547,7 @@ export function resolve(s0, C0, inputs = {}) {
     s.plans[side] = plan;
     if (ai?.say) s.said[side] = String(ai.say).slice(0, 200);
     Object.assign(orders, aiOrders(C, s, side, plan, rng(`ai:${side}`)));
-    if (plan.peace && !C.sides[side].noPeace && atWar(s, side, C.you) && !s.offers[side] && s.sides[side].will < 45) s.offers[side] = { turn: s.turn + 1, to: C.you };
+    if (plan.peace && !C.sides[side].noPeace && atWar(s, side, C.you) && !s.offers[side] && s.sides[side].will < (C.sides[side].peaceAt ?? 40) + 5) s.offers[side] = { turn: s.turn + 1, to: C.you };
     const r = aiRaise(C, s, side);
     if (r) {
       const there = armiesAt(s, r.at).find((a) => a.side === side);
@@ -620,7 +620,7 @@ export function resolve(s0, C0, inputs = {}) {
     }
     if (C.sides[side].noPeace) continue; // some never treat: the Great King did not, while he lived
     if (submits(C, s, side, emit)) continue;
-    if (side !== C.you && atWar(s, side, C.you) && s.sides[side].will < 25 && !s.offers[side]) s.offers[side] = { turn: s.turn + 1, to: C.you };
+    if (side !== C.you && atWar(s, side, C.you) && s.sides[side].will < Math.min(25, C.sides[side].peaceAt ?? 25) && !s.offers[side]) s.offers[side] = { turn: s.turn + 1, to: C.you };
     if (side !== C.you && atWar(s, side, C.you) && s.sides[side].will <= 0) { emit({ type: 'yield', text: `${C.sides[side].name} can fight no more and yields`, sides: [side] }); makePeace(C, s, side, emit); }
   }
 
@@ -771,8 +771,9 @@ function battleAt(C, s, at, orders, start, rng, emit) {
       else { kill(C, s, a.gen, null, emit); emit({ type: 'fallen', text: `${a.gen} dies with his army at ${C.prov[at].name}`, at, sides: [a.side] }); }
       continue;
     }
+    const hunted = (p) => Object.values(s.armies).some((o) => atWar(s, a.side, o.side) && reach(C, s, o.id)[p]); // where no enemy can reach this season, if he can
     const safe = Object.keys(s.prov).filter((p) => (s.prov[p].owner === a.side || friends(s, a.side, s.prov[p].owner)) && !armiesAt(s, p).some((o) => atWar(s, a.side, o.side)))
-      .map((p) => [p, wayTo(C, s, a.side, at, p)?.length ?? 99]).sort((x, y) => x[1] - y[1])[0];
+      .map((p) => [p, wayTo(C, s, a.side, at, p)?.length ?? 99]).filter(([, d]) => d < 99).sort((x, y) => hunted(x[0]) - hunted(y[0]) || x[1] - y[1])[0];
     if (safe && safe[1] < 99 && rng() < 0.85) {
       s.armies[a.id] = { ...a, at: safe[0], from: at, men: 3000, morale: 30 };
       emit({ type: 'escape', text: `${a.gen} escapes the rout with a few hundred horsemen and reaches ${C.prov[safe[0]].name}`, at: safe[0], sides: [a.side] });
@@ -872,7 +873,8 @@ function attrition(C, s, a, emit) {
 }
 // A beaten people that submits gives hostages and becomes a client of the player.
 function submits(C, s, side, emit) {
-  if (!C.sides[side].submits || side === C.you || !atWar(s, side, C.you) || s.sides[side].will >= 30) return false;
+  const beaten = !armiesOf(s, side).some((a) => a.men >= 3000); // a people with no army left gives in, whatever its pride
+  if (!C.sides[side].submits || side === C.you || !atWar(s, side, C.you) || (s.sides[side].will >= 30 && !beaten)) return false;
   setRel(s, side, C.you, 'ally', emit, C);
   emit({ type: 'submits', text: `${C.sides[side].name} submit${/s$/.test(C.sides[side].name) ? '' : 's'} to ${C.sides[C.you].short ?? C.sides[C.you].name} and give hostages`, sides: [side, C.you] });
   for (const a of armiesOf(s, side)) a.stay = true;
@@ -883,7 +885,15 @@ function makePeace(C, s, side, emit) {
   if (!atWar(s, side, C.you)) return;
   setRel(s, side, C.you, 'peace', emit, C);
   delete s.offers[side];
-  if (C.goal.kind === 'peace' && C.goal.foe === side) finish(C, s, 'win', C.goal.won ?? `${C.sides[side].name} makes peace on your terms`);
+  // at peace, its armies leave your lands and your friends': home to their capital, or they disband
+  const home = C.sides[side].capital && s.prov[C.sides[side].capital]?.owner === side ? C.sides[side].capital : null;
+  for (const a of armiesOf(s, side)) {
+    const o = s.prov[a.at].owner;
+    if (o !== C.you && !friends(s, C.you, o)) continue;
+    if (home) Object.assign(a, { from: a.at, at: home });
+    else delete s.armies[a.id];
+  }
+  if ((C.goal.kind === 'peace' || C.goal.kind === 'drive') && C.goal.foe === side) finish(C, s, 'win', C.goal.won ?? `${C.sides[side].name} makes peace on your terms`);
 }
 
 // ---------- the goal, and the verdict against history ----------
@@ -904,7 +914,7 @@ export function goalState(C, s) {
       return { met: !s.sides[g.foe].alive || left === 0 || (g.capital !== false && capital && s.prov[capital]?.owner === you), progress: clamp(1 - left / Math.max(1, start), 0, 1), text: `${C.sides[g.foe].name} holds ${left} of its ${start} provinces${capital ? `; its capital is ${C.prov[capital].name}` : ''}` };
     }
     case 'hold': case 'drive': {
-      const foeIn = g.kind === 'drive' ? Object.values(s.armies).filter((a) => a.side === g.foe && g.provs.includes(a.at)).length : 0;
+      const foeIn = g.kind === 'drive' ? Object.values(s.armies).filter((a) => a.side === g.foe && g.provs.includes(a.at) && a.men >= (g.min ?? 5000)).length : 0;
       const have = g.provs.filter((p) => s.prov[p]?.owner === you || friends(s, you, s.prov[p]?.owner)).length;
       const met = have >= (g.count ?? g.provs.length) && foeIn === 0;
       return { met, progress: have / g.provs.length * (foeIn ? 0.6 : 1), text: g.kind === 'drive' ? `${foeIn ? `${foeIn} enemy armies still stand in the land` : 'No enemy army in the land'}; you and your allies hold ${have} of ${g.provs.length}` : `You hold ${have} of ${g.provs.length}` };

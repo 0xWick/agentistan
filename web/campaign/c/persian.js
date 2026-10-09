@@ -41,7 +41,7 @@ export default {
   ],
   sides: {
     greeks: { name: 'The Greeks', short: 'Greeks', heirs: ['Aristides'], color: '#27466e', leader: 'Themistocles of Athens, with Sparta and the allied cities', capital: 'attica', gold: 160, will: 70, quality: 1.25, horse: 0.04, fleet: 1, levy: 6000, income: 15, tech: ['hoplites'], weariness: 0.6, persona: 'Athens, Sparta and the free Greek cities: quarrelsome allies, proud of their hoplites.' },
-    persia: { name: 'The Persian Empire', short: 'Persia', heirs: ['Mardonius'], color: '#8c5a2b', leader: 'King Darius', capital: 'sardis', gold: 400, will: 80, quality: 0.7, horse: 0.3, fleet: 3, levy: 15000, income: 60, raiseFrom: 6, ai: 'bold', persona: 'The Great King of Persia: ruler of the world from the Aegean to the Indus, who means to punish Athens for burning Sardis.' },
+    persia: { name: 'The Persian Empire', short: 'Persia', heirs: ['Mardonius'], color: '#8c5a2b', leader: 'King Darius', capital: 'sardis', gold: 400, will: 80, quality: 0.7, horse: 0.3, fleet: 3, levy: 15000, income: 60, raiseFrom: 6, ai: 'bold', noPeace: true, persona: 'The Great King of Persia: ruler of the world from the Aegean to the Indus, who means to punish Athens for burning Sardis.' },
     thebes: { name: 'Thebes', color: '#4f6b3a', leader: 'the oligarchs of Thebes', capital: 'boeotia', gold: 40, will: 50, quality: 1.05, horse: 0.15, levy: 4000, tech: ['hoplites'], ai: 'cautious', persona: 'The oligarchs of Thebes: rivals of Athens, ready to side with Persia.' },
     thessaly: { name: 'Thessaly', color: '#7a6a45', leader: 'the Aleuad lords', capital: 'thessaly', gold: 40, will: 45, quality: 0.9, horse: 0.45, levy: 4000, ai: 'cautious', persona: 'The horse lords of Thessaly, who will bow to whoever comes south with the bigger army.' },
     macedon: { name: 'Macedon', color: '#6b4a8c', leader: 'King Alexander I', capital: 'macedon', gold: 40, will: 40, quality: 0.9, horse: 0.3, levy: 3000, ai: 'cautious', persona: 'Alexander I of Macedon, Persia’s vassal, a secret friend of the Greeks.' },
@@ -185,13 +185,13 @@ export default {
       id: 'xerxes', at: 5, side: 'persia', sides: ['persia', 'thebes', 'thessaly'],
       text: 'Xerxes crosses the Hellespont with the greatest army ever seen, and Thessaly and Thebes submit to him',
       fx: {
-        spawn: [['persia', 'macedon', 150000, 'Xerxes', 3, { id: 'xerxes', target: 'attica' }], ['persia', 'potidaea', 25000, 'Mardonius', 4, { id: 'mardonius', target: 'attica' }]],
+        spawn: [['persia', 'thessaly', 150000, 'Xerxes', 3, { id: 'xerxes', target: 'attica' }], ['persia', 'potidaea', 25000, 'Mardonius', 4, { id: 'mardonius', target: 'attica' }]],
         rel: [['thebes', 'persia', 'ally'], ['thessaly', 'persia', 'ally'], ['thebes', 'greeks', 'war']],
         free: ['thebans', 'artaphernes', 'datis'], fleet: 3, will: 10,
       },
     },
     { id: 'ephialtes', at: 6, if: (q) => q.flag('pass') && q.at('greeks', 'thermopylae'), fx: { remove: 'leonidas', kill: 'King Leonidas', will: 8 }, text: 'Ephialtes shows the Persians a path round Thermopylae: Leonidas and his 300 die where they stand, and Greece will never forget them', sides: ['greeks', 'persia'] },
-    { id: 'burned', if: (q) => q.owns('persia', 'attica') || q.owns('thebes', 'attica'), fx: { flag: 'burned', then: (s, q) => { if (q.flag('evacuate')) s.sides.greeks.will = Math.min(100, s.sides.greeks.will + 18); } }, text: 'The Persians burn Athens and the temples of the Acropolis', sides: ['greeks'] },
+    { id: 'burned', if: (q) => q.owns('persia', 'attica') || q.owns('thebes', 'attica') || (q.flag('evacuate') && q.near('persia', 'attica')), fx: { flag: 'burned', then: (s, q) => { if (q.flag('evacuate')) s.sides.greeks.will = Math.min(100, s.sides.greeks.will + 18); } }, text: 'The Persians burn Athens and the temples of the Acropolis', sides: ['greeks'] },
     {
       id: 'home', at: 7, if: (q) => q.flag('salamis'), side: 'persia', sides: ['persia'],
       text: 'Xerxes goes home to Asia with most of his army, leaving Mardonius and his best troops to finish the war',

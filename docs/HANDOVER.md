@@ -220,17 +220,30 @@ Metadata and picture are at `/nft/<token>.json` and `/nft/<token>.svg`. Testnet 
 
 ## 8. Known rough edges
 
-- **Balance**, measured on 10 Oct 2026 with `--smart` over 30 runs; the same on the commit before this round, so not a new regression:
+- **Balance**, after the pass of 10 Oct 2026 (rules version 3), with `--smart` over 30 runs:
 
-  | Campaign | Result |
-  |---|---|
-  | Persian | 1 win in 30 (the Persians are still in Greece at the end) |
-  | Sparta | 13 Athens surrenders; 15 Sparta itself falls |
-  | Alexander | 6 wins; Alexander dies in 18 |
-  | Hannibal | 22 Rome sues for peace (too easy, since history says Rome never broke) |
-  | Maccabees | 23 wins |
-  | Caesar | 0 wins (time runs out) |
-  | Three Kingdoms | 30 "as history" |
+  | Campaign | History | Result | |
+  |---|---|---|---|
+  | Persian | won | 21 wins (as history), 9 lost | on target; "better" means defending Athens instead of abandoning it |
+  | Sparta | won | 23 wins, 7 time ran out | on target |
+  | Alexander | won | 24 wins (4 better), 6 time ran out, no deaths | on target |
+  | Hannibal | lost | 11 wins, 17 as history, 2 worse; Hannibal dies in about 5 | on target, a shade generous |
+  | Maccabees | won | 26 wins | on target |
+  | Caesar | won | 0 wins (time runs out) | **open**: the simulated player cannot reach and break Alesia in the 3 seasons after the revolt |
+  | Three Kingdoms | lost | 0 wins, 26 as history | **open**: the simulated Cao Cao never crosses the Yangtze |
+
+  Caesar and Three Kingdoms need a human playtest first: the gap may be the simulated player (`smartOrders` in
+  `sim.mjs`) rather than the wars. What changed this round:
+  - the engine: at peace, the other side's armies leave your lands; a "drive them out" goal is met by peace, and
+    ignores routed bands under 5,000 (`goal.min`); a side treats below `peaceAt` (default 40; Rome 15); a client
+    people submits when its will is under 30 or it has no army left; a routed hero escapes to friendly ground no
+    enemy can reach this season, and the AI hunts a hero only while he leads an army;
+  - the wars: Persia never treats and Xerxes starts in Thessaly, and an abandoned Athens burns when the Persians come
+    near; Persian levies are weaker against Alexander (0.55), whose upkeep is lighter; Demosthenes holds Pylos;
+    Rome has 4 walls against Hannibal; Caesar raises more men;
+  - the simulated player keeps enough at home to hold the capital, counts the enemies who can join a battle,
+    defends with the plan that fits, keeps a war of defence on its own ground, and takes the peace its goal asks for.
+    `follow.mjs` follows one army through a war; `sim.mjs --hero` follows the hero.
 
   Targets:
   - wars history won should be won often by a competent player;
@@ -239,13 +252,17 @@ Metadata and picture are at `/nft/<token>.json` and `/nft/<token>.svg`. Testnet 
   - the hero should rarely die.
 - **The AI council's sentences** can still misstate a detail. The order list is authoritative. If it matters, give the council more of the 120b budget or tighten the prompt in `council()`.
 - **On phones**, the campaign map is small at the starting zoom, and army tokens crowd where many armies meet. You can zoom, but a better fit or grouping of tokens would help.
-- **Portraits** are generated faces, not paintings, except a few (`hero.art`).
+- **Pictures** are being repainted to be true to their time: old-master oil portraits, academic history paintings,
+  and 1910s photographs for 1914 (`tools/art.mjs`, then `python tools/art.py`). The free Workers AI allowance paints
+  about 50 a day, so the set fills in over several days; re-run the same commands each day and it paints only what is
+  missing. Check every new picture for halos, crosses, script or symbols on flags, and delete it (raw and webp) to
+  repaint it. A campaign face is painted when `web/art/people/<slug of the name>.webp` exists, otherwise drawn.
 - **Old campaigns** (rules version 1) are closed by design. Players see a friendly message.
 
 ## 9. What to do next, in order
 
-1. **The balance pass** over the 7 campaigns, with the targets above. Persian and Caesar first.
-2. **The remaining 18 campaigns,** in this order:
+1. **Caesar and Three Kingdoms:** play them by hand, then tune (see section 8). The other five are on target.
+2. **The remaining 18 campaigns** (they show on the menu as "Coming soon", from `SOON` in `web/campaign/app.js`), in this order:
    - attila
    - caliphate (Khalid)
    - hastings

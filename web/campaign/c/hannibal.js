@@ -45,7 +45,7 @@ export default {
   ],
   sides: {
     carthage: { name: 'Carthage', heirs: ['Hasdrubal Barca', 'Mago Barca'], color: '#6b2d7b', leader: 'Hannibal Barca', capital: 'carthage', gold: 160, will: 70, weariness: 0.5, quality: 1.1, horse: 0.25, fleet: 0, levy: 12000, persona: 'Hannibal Barca, sworn as a boy to be Rome’s enemy.' },
-    rome: { name: 'Rome', color: '#a3361f', leader: 'the Senate and its consuls', capital: 'rome', gold: 220, will: 96, quality: 1.0, horse: 0.1, fleet: 3, levy: 22000, income: 20, weariness: 0.35, ai: 'bold', persona: 'The Roman Senate: proud and stubborn. It never asks for peace after a defeat; it raises new legions instead. Its consuls change every year and want glory.' },
+    rome: { name: 'Rome', color: '#a3361f', leader: 'the Senate and its consuls', capital: 'rome', gold: 220, will: 96, quality: 1.0, horse: 0.1, fleet: 3, levy: 22000, income: 20, weariness: 0.35, ai: 'bold', peaceAt: 15, persona: 'The Roman Senate: proud and stubborn. It never asks for peace after a defeat; it raises new legions instead. Its consuls change every year and want glory.' },
     gauls: { name: 'The Gauls of the Po', short: 'Gauls', color: '#2b7d7a', leader: 'the chiefs of the Insubres and the Boii', capital: 'insubres', gold: 40, will: 60, quality: 0.85, horse: 0.25, levy: 5000, ai: 'rash', persona: 'Celtic chiefs: brave, quarrelsome, eager for plunder, quick to lose heart when the war goes badly.' },
     syracuse: { name: 'Syracuse', color: '#b3852c', leader: 'Hiero II', capital: 'syracuse', gold: 80, will: 55, quality: 0.95, horse: 0.15, fleet: 1, levy: 4000, ai: 'cautious', persona: 'The Greek city of Syracuse: rich and proud of its walls; old King Hiero is Rome’s loyal friend.' },
     numidia: { name: 'Numidia', color: '#8c6b3f', leader: 'Syphax', capital: 'numidia', gold: 50, will: 60, quality: 0.9, horse: 0.6, levy: 5000, ai: 'cunning', persona: 'Numidian princes: the finest horsemen of Africa, who side with whoever is winning.' },
@@ -76,7 +76,7 @@ export default {
     ['arretium', 'Arretium', 43.46, 11.88, 'rome', 1, 2],
     ['trasimene', 'Lake Trasimene', 43.13, 12.1, 'rome', 0, 1, { lake: true, terrain: 'hills' }],
     ['picenum', 'Asculum', 42.85, 13.58, 'rome', 0, 1],
-    ['rome', 'Rome', 41.89, 12.49, 'rome', 3, 6, { garrison: 45000 }],
+    ['rome', 'Rome', 41.89, 12.49, 'rome', 4, 6, { garrison: 45000 }],
     ['capua', 'Capua', 41.08, 14.25, 'rome', 2, 4],
     ['samnium', 'Beneventum', 41.13, 14.78, 'rome', 1, 1],
     ['cannae', 'Cannae', 41.3, 16.13, 'rome', 0, 2, { terrain: 'plains' }],

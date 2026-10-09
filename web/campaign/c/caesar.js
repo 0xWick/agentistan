@@ -44,7 +44,7 @@ export default {
     'Recalled by a hostile Senate, Caesar crosses the Rubicon with one legion in January 49 BC: civil war.',
   ],
   sides: {
-    rome: { name: 'Caesar’s legions', short: 'Rome', heirs: ['Titus Labienus'], color: '#a3361f', leader: 'Julius Caesar', capital: 'cisalpina', gold: 120, will: 70, quality: 1.4, horse: 0.1, fleet: 0, levy: 10000, income: 30, weariness: 0.6, persona: 'Julius Caesar: quick, bold and merciless, writing his own history as he goes.' },
+    rome: { name: 'Caesar’s legions', short: 'Rome', heirs: ['Titus Labienus'], color: '#a3361f', leader: 'Julius Caesar', capital: 'cisalpina', gold: 120, will: 70, quality: 1.4, horse: 0.1, fleet: 0, levy: 16000, income: 45, weariness: 0.6, persona: 'Julius Caesar: quick, bold and merciless, writing his own history as he goes.' },
     aedui: { name: 'The Aedui', color: '#4f7a3a', leader: 'Diviciacus', capital: 'aedui', gold: 60, will: 50, quality: 0.85, horse: 0.25, levy: 4000, ai: 'cautious', submits: true, persona: 'The Aedui, “brothers of the Roman people”, who use Rome against their rivals.' },
     helvetii: { name: 'The Helvetii', color: '#8c6b3f', leader: 'Orgetorix’s people', capital: 'helvetii', gold: 40, will: 60, quality: 0.85, horse: 0.15, levy: 0, ai: 'steady', submits: true, persona: 'The Helvetii, a whole people on the move, looking for new land in the west.' },
     germans: { name: 'Ariovistus’s Germans', short: 'Germans', color: '#5d4a6a', leader: 'King Ariovistus', capital: 'germania', gold: 40, will: 60, quality: 0.95, horse: 0.3, levy: 4000, ai: 'bold', persona: 'Ariovistus, a Suebian king invited into Gaul who now rules it like a conqueror.' },
