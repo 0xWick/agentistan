@@ -15,6 +15,8 @@ How the tech is used:
 
 Design: [docs/campaigns-design.md](docs/campaigns-design.md) (campaigns and Watch) and [docs/world-design.md](docs/world-design.md) (the 1200 world's engine).
 
+Picking up the work: [docs/HANDOVER.md](docs/HANDOVER.md) (state, decisions, how everything fits, what to do next).
+
 ## Nobody's Playing (the classic war)
 
 The project began as **Nobody's Playing** ([nobodysplaying.umarkhatana.com](https://nobodysplaying.umarkhatana.com)): a war between two AI generals, run by business automations, real market data, real weather and a public ledger. It still runs at its own address (and at [/classic/](https://agentistan.umarkhatana.com/classic/)); the rest of this section describes it.
