@@ -741,7 +741,9 @@ body.bare .title, body.bare .tools, body.bare .glance, body.bare .feed, body.bar
   .glance { top: auto; bottom: 84px; left: 10px; width: 200px; padding: 6px 8px; }
   .glance-note, .glance h2 { display: none; }
   .glance li:nth-child(n + 4) { display: none; }
-  .plan-link { bottom: auto; top: 112px; left: 10px; font-size: 12px; }
+  .plan-link { bottom: auto; top: 136px; left: 10px; font-size: 12px; }
+  .title { max-width: calc(100vw - 220px); } /* beside the four tool buttons, never under them */
+  .title .fa { display: none; }
   .headline { bottom: 150px; }
   .intro { top: 62px; }
   .glance li button { font-size: 14px; grid-template-columns: 16px 1fr 40px 28px; }
