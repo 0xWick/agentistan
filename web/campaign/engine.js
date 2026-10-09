@@ -103,7 +103,7 @@ export const isDead = (s, name) => !!name && (s.dead ?? []).includes(name);
 // generals of your armies.
 export function courtOf(C, s) {
   const list = (C.court ?? (C.advisor ? [C.advisor] : [])).filter((p) => (p.from === undefined || s.turn >= p.from) && (p.until === undefined || s.turn <= p.until) && !isDead(s, p.name));
-  const gens = armiesOf(s, C.you).filter((a) => a.gen && !a.hero && !isDead(s, a.gen)) // the commander is the player: they do not advise themselves.sort((a, b) => b.men - a.men)
+  const gens = armiesOf(s, C.you).filter((a) => a.gen && !a.hero && !isDead(s, a.gen)).sort((a, b) => b.men - a.men) // the commander is the player: they do not advise themselves
     .map((a) => ({ id: `army:${a.id}`, name: a.gen, title: `commanding ${fmtMen(a.men)} at ${C.prov[a.at].name}`, look: C.hero.look, army: a.id }));
   return [...list.map((p) => ({ id: p.id ?? p.name, ...p })), ...gens.filter((g) => !list.some((p) => p.name === g.name))];
 }
@@ -209,7 +209,7 @@ export const PLANS = {
   blitz: { name: 'Armour breaks through', hint: 'Tanks and aircraft punch a hole and race behind the lines: for the attacker on open ground', example: 'Sedan 1940', for: 'attack' },
   depth: { name: 'Defence in depth', hint: 'Give ground in belts of mines and guns, then counter-attack the flanks: for defenders with room to fall back', example: 'Kursk', for: 'defend' },
 };
-const ERA_PLANS = {
+export const ERA_PLANS = {
   ancient: ['charge', 'phalanx', 'hold', 'narrows', 'envelop', 'feint', 'ambush', 'refuse'],
   medieval: ['charge', 'hold', 'feint', 'envelop', 'ambush', 'refuse', 'archers'],
   gunpowder: ['charge', 'hold', 'envelop', 'ambush', 'refuse', 'guns'],

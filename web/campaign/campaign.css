@@ -47,7 +47,7 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 700; letter-spacing: 
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
 .camp { position: relative; display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 14px 14px 12px; border-radius: 10px; border: 1px solid #b89a63; background: #f5ead0; box-shadow: 0 3px 10px var(--shadow); transition: transform 0.15s, box-shadow 0.15s; text-decoration: none; color: var(--ink); }
 .camp:hover { transform: translateY(-2px); box-shadow: 0 8px 18px var(--shadow); }
-.camp .yr { font: 600 13px var(--kufi); color: var(--sepia); letter-spacing: 0.05em; word-spacing: 0.16em; }
+.camp .yr { min-height: 24px; font: 600 13px var(--kufi); color: var(--sepia); letter-spacing: 0.05em; word-spacing: 0.16em; }
 .camp h3 { font-size: 19px; line-height: 1.15; }
 .camp .as { font-style: italic; color: var(--ink-soft); }
 .camp .hook { font-size: 15px; }
@@ -57,7 +57,9 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 700; letter-spacing: 
 .camp .badge.on { background: var(--vermilion); color: #fff6e6; }
 .stars { color: var(--gold); letter-spacing: 2px; font-size: 15px; }
 .stars .off { color: rgba(140, 107, 63, 0.35); }
-.camp.soon { opacity: 0.55; pointer-events: none; }
+.camp.soon { background: #efe3c4; border-style: dashed; box-shadow: none; cursor: default; }
+.camp.soon:hover { transform: none; box-shadow: none; }
+.camp.soon .who, .camp.soon .hook { opacity: 0.72; }
 .live-runs { max-width: 1080px; margin: 0 auto; padding: 12px 14px; }
 .live-runs h2 { font-size: 16px; color: var(--vermilion); margin-bottom: 8px; }
 .live-runs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }

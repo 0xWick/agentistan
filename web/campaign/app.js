@@ -7,7 +7,7 @@ import { newCampaign, resolve, cardsDue, withCards, PLANS, armiesOf, menOf, hero
 import { proposal, interpret, summary, suggestions, normalize } from './court.js';
 import { makeMap } from './map.js';
 import { history as pastOf, snapOf, warRoom } from './warroom.js';
-import { portrait } from '../silk/portrait.js';
+import { portrait, slug } from '../silk/portrait.js';
 import { makeWallet, myWallet, exportKey } from './wallet.js';
 
 const $ = (q) => document.querySelector(q);
@@ -37,12 +37,14 @@ const api = {
   runs: () => fetch('/api/runs').then((r) => (r.ok ? r.json() : { live: [], recent: [] })).catch(() => ({ live: [], recent: [] })),
   claim: (run, body) => post(`/api/run/${run.id}/claim`, { token: run.token, ...body }),
 };
-const ART = new Set();
-fetch('/art/manifest.json').then((r) => r.json()).then((m) => (m.events ?? []).forEach((k) => ART.add(k))).catch(() => {});
-const artOf = (k) => (k && ART.has(k) ? `/art/events/${k}.webp` : null);
+const ART = new Set(), PAINTED = new Set();
+const arts = fetch('/art/manifest.json').then((r) => r.json()).then((m) => { (m.events ?? []).forEach((k) => ART.add(k)); (m.people ?? []).forEach((k) => PAINTED.add(k)); }).catch(() => {});
+// A card's picture, from its own age: the Mediterranean of antiquity, or Han China (never the knights of 1200).
+const artOf = (k, C = G.C) => { const key = `${C.hero.look === 'han' ? 'han' : C.age ?? 'ancient'}_${k}`; return k && ART.has(key) ? `/art/events/${key}.webp` : null; };
 
 // ---------- small pieces of markup ----------
-const face = (who, color, size = 64, uid = '') => (who.art ? `<img class="painted" src="/art/people/${encodeURIComponent(who.art)}.webp" alt="" width="${size}" height="${size}">` : portrait({ id: who.name, name: who.name, culture: who.look ?? 'roman', female: !!who.female, role: 'general', title: who.title ?? '' }, { color, age: who.age ?? 40, size, uid }));
+// A face: the person's portrait in oils if one was painted (by the slug of their name), else one drawn for them.
+const face = (who, color, size = 64, uid = '', art = who.art ?? slug(who.name)) => (PAINTED.has(art) ? `<img class="painted" src="/art/people/${encodeURIComponent(art)}.webp" alt="" width="${size}" height="${size}">` : portrait({ id: who.name, name: who.name, culture: who.look ?? 'roman', female: !!who.female, role: 'general', title: who.title ?? '' }, { color, age: who.age ?? 40, size, uid }));
 const stars = (n) => `<span class="stars">${'★'.repeat(n)}<span class="off">${'★'.repeat(3 - n)}</span></span>`;
 const meter = (v, col) => `<span class="meter"><i style="width:${Math.max(0, Math.min(100, v))}%;background:${col}"></i></span>`;
 const turnLabel = (C, t) => C.turns[Math.min(t, C.turns.length - 1)].label;
@@ -65,14 +67,41 @@ function openSheet(html, { onClose, wide = false } = {}) {
 sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
 
 // ---------- the menu ----------
+// The wars still to be written, in their places on the menu: [era, title, years, hero, colour, hook].
+const SOON = [
+  ['The ancient world', 'The Scourge of God', '447–452', { name: 'Attila', title: 'King of the Huns', look: 'steppe' }, '#7a4a2a', 'Rome pays you gold to stay away. Take it, and come anyway, until Aetius waits for you on the Catalaunian Plains.'],
+  ['The middle ages', 'The Desert Conquests', '633–636', { name: 'Khalid ibn al-Walid', title: 'general of the Rashidun Caliphate', look: 'arab' }, '#2f6b4a', 'Rome and Persia have fought each other to exhaustion. Out of Arabia comes an army small enough to cross the desert, and fast enough to beat them both.'],
+  ['The middle ages', 'The Norman Conquest', '1066', { name: 'William of Normandy', title: 'Duke of Normandy', look: 'frankish' }, '#8a2a16', 'Three men claim the English crown. Wait for the wind, cross the Channel, and meet Harold, fresh from his own victory in the north.'],
+  ['The middle ages', 'The First Crusade', '1096–1099', { name: 'Godfrey of Bouillon', title: 'Duke of Lower Lorraine', look: 'frankish' }, '#6a5032', 'Three thousand miles from home, an army with no king: across Anatolia, through the long siege of Antioch, to the walls of Jerusalem.'],
+  ['The middle ages', 'Hattin and Jerusalem', '1187–1192', { name: 'Saladin', title: 'Sultan of Egypt and Syria', look: 'kurd' }, '#b3852c', 'Draw the army of Jerusalem out into the summer heat, take the city, and then hold it against Richard the Lionheart.'],
+  ['The middle ages', 'The Great Khan', '1211–1221', { name: 'Genghis Khan', title: 'Khan of the Mongols', look: 'mongol' }, '#27466e', 'The Jin behind their walls, then the Shah of Khwarazm, who killed your envoys: the steppe against the two richest empires of Asia.'],
+  ['The middle ages', 'Agincourt', '1415', { name: 'Henry V', title: 'King of England', look: 'english' }, '#a3261f', 'A siege that cost you a third of your army, a march to Calais in the rain, and the nobility of France across the road.'],
+  ['The middle ages', 'The Wagon Forts', '1419–1434', { name: 'Jan Žižka', title: 'Hussite commander', look: 'westslav' }, '#5d5a48', 'Farmers with wagons chained into forts, and handguns, against the knights of five crusades sent by the Emperor.'],
+  ['The middle ages', 'The Walls of Constantinople', '1453', { name: 'Mehmed II', title: 'Sultan of the Ottomans', look: 'turk', age: 21 }, '#8a2a16', 'The walls of Theodosius have stood a thousand years. You are twenty-one, with the largest cannon ever cast and a fleet that must cross a hill.'],
+  ['The age of gunpowder', 'The Fall of Granada', '1482–1492', { name: 'Isabella of Castile', title: 'Queen of Castile', look: 'iberian', female: true }, '#a3261f', 'The last emirate of al-Andalus, in its mountains and walled towns: ten years of sieges, while two kings of Granada fight each other.'],
+  ['The age of gunpowder', 'Panipat', '1526', { name: 'Babur', title: 'King of Kabul', look: 'turk' }, '#2f6b4a', 'Twelve thousand men, with guns and carts lashed together, against the Sultan of Delhi’s hundred thousand and his war elephants.'],
+  ['The age of gunpowder', 'A King Without Paris', '1589–1598', { name: 'Henry of Navarre', title: 'King of France and Navarre', look: 'frankish' }, '#27466e', 'The crown is yours by law, but Paris and half of France will not have you. Win at Ivry, starve Paris, and end the wars of religion.'],
+  ['The age of gunpowder', 'The Lion of the North', '1630–1632', { name: 'Gustavus Adolphus', title: 'King of Sweden', look: 'norse' }, '#b3852c', 'Land in Germany with a small, new kind of army in the middle of the Thirty Years’ War: Breitenfeld, the Rhine, and Lützen in the fog.'],
+  ['The age of revolution', 'Austerlitz', '1805', { name: 'Napoleon', title: 'Emperor of the French', look: 'french_m' }, '#27466e', 'Austria and Russia march on you while Britain holds the sea. Turn the army round from the Channel and catch them on the Danube.'],
+  ['The world wars', 'The Guns of August', '1914', { name: 'Wilhelm II', title: 'German Emperor', look: 'german_m', age: 55 }, '#5d5a48', 'Two fronts, one plan: beat France in six weeks by way of Belgium, then turn on Russia. Home, they say, before the leaves fall.'],
+  ['The world wars', 'Hitler’s Fury', '1939–1945', { name: 'Adolf Hitler', title: 'Chancellor and dictator of Germany', look: 'german_m', age: 50 }, '#3a3a3a', 'Poland, France, then the gamble on Russia: a war against most of the world, and every choice that lost it.'],
+  ['The world wars', 'Their Finest Hour', '1940–1941', { name: 'Winston Churchill', title: 'Prime Minister of Britain', look: 'british', age: 65 }, '#7a6a45', 'France has fallen and Britain stands alone. Hold the air, keep the sea lanes open, and win time until others join the war.'],
+  ['The world wars', 'Moscow to Berlin', '1941–1945', { name: 'Georgy Zhukov', title: 'Marshal of the Soviet Union', look: 'russian_m', age: 45 }, '#8a2a16', 'The Germans are at the gates of Moscow. Hold them, turn the tide at Stalingrad and Kursk, and finish the war in Berlin.'],
+];
 function showMenu() {
   $('#menu').hidden = false;
   $('#game').hidden = true;
   document.title = 'Campaigns · Agentistan';
   const best = store.get(BEST, {}), going = Object.values(myRuns()).filter((r) => !r.done && (r.v ?? 1) === ENGINE);
   const eras = [];
-  for (const C of CAMPAIGNS) { const e = eras.find((x) => x[0] === C.era); e ? e[1].push(C) : eras.push([C.era, [C]]); }
+  for (const C of [...CAMPAIGNS, ...SOON]) { const era = C.era ?? C[0], e = eras.find((x) => x[0] === era); e ? e[1].push(C) : eras.push([era, [C]]); }
   $('#eras').innerHTML = eras.map(([era, list]) => `<section class="era"><h2>${esc(era)}</h2><div class="cards">${list.map((C) => {
+    if (Array.isArray(C)) {
+      const [, title, years, hero, color, hook] = C;
+      return `<div class="camp soon" aria-disabled="true"><span class="badge">Coming soon</span><span class="yr">${esc(years)}</span>
+      <div class="who">${face(hero, color, 46, `s${title.length}${years}`)}<div><h3>${esc(title)}</h3><span class="as">as ${esc(hero.name)}</span></div></div>
+      <p class="hook">${esc(hook)}</p></div>`;
+    }
     const run = going.filter((r) => r.cid === C.id).sort((a, b) => (b.at ?? 0) - (a.at ?? 0))[0];
     return `<a class="camp" href="${run ? `?run=${run.id}` : `?c=${C.id}`}">
       ${run ? '<span class="badge on">Continue</span>' : best[C.id] ? `<span class="badge">${stars(best[C.id])}</span>` : ''}
@@ -96,14 +125,14 @@ function briefing(C, { inGame = false } = {}) {
   const sides = Object.entries(C.sides).filter(([id]) => C.armies.some((a) => a[0] === id) || C.provinces.some((p) => p[4] === id));
   const menAt = (id) => C.armies.filter((a) => a[0] === id).reduce((t, a) => t + a[2], 0);
   const going = Object.values(myRuns()).filter((r) => r.cid === C.id && !r.done && (r.v ?? 1) === ENGINE).sort((a, b) => (b.at ?? 0) - (a.at ?? 0))[0];
-  const art = artOf(C.art ?? 'war'), adv = (C.court ?? [C.advisor]).filter(Boolean)[0];
+  const art = ART.has(`c_${C.id}`) ? `/art/events/c_${C.id}.webp` : artOf(C.art ?? 'war', C), adv = (C.court ?? [C.advisor]).filter(Boolean)[0];
   openSheet(`<button class="x" data-close aria-label="Close">×</button>
     ${art ? `<img class="art" src="${art}" alt="">` : ''}
     <div class="brief-head">${face(C.hero, C.sides[C.you].color, 76, 'brief')}<div><h2>${esc(C.title)}</h2><p class="sub">${esc(C.years)} · you are <b>${esc(C.hero.name)}</b>, ${esc(C.hero.title)}</p></div></div>
     ${C.brief.map((p) => `<p>${esc(p)}</p>`).join('')}
     <div class="goal"><b>Your goal:</b> ${esc(C.goal.text)}. You have ${C.turns.length} seasons, from ${esc(C.turns[0].label)} to ${esc(C.turns.at(-1).label)}.</div>
     <div class="forces">${sides.map(([id, d]) => `<div style="--c:${d.color}"><b>${esc(d.name)}</b>${esc(d.leader ?? '')}<br><small>${fmtMen(menAt(id))} men${id === C.you ? ' · you' : ''}</small></div>`).join('')}</div>
-    <div class="howto"><b>How to play.</b> You command through your council${adv ? `, ${esc(adv.name)} first among them` : ''}. Speak to them in plain words, as a commander would: <i>“Hasdrubal, hold Spain. We march on Capua, and if Varro comes, we envelop him.”</i> They answer, and turn your words into orders you see on the map. Ask them anything: where the enemy is, what a siege would cost. The great decisions come as cards in the conversation; afterwards you learn what the real ${esc(C.hero.name.split(' ')[0])} chose. When you are ready, end the season: everyone moves at once, and the dispatches tell you what happened, and what happened in history.</div>
+    <div class="howto"><b>How to play.</b> You command through your council${adv ? `, ${esc(adv.name)} first among them` : ''}. Speak to them in plain words, as a commander would: <i>“Hasdrubal, hold Spain. We march on Capua, and if Varro comes, we envelop him.”</i> They answer, and turn your words into orders you see on the map. Ask them anything: where the enemy is, what a siege would cost. The great decisions come as cards in the conversation; afterwards you learn what the real ${esc(C.hero.name.split(' ')[0])} chose. When you are ready, end the season: everyone moves at once, and the dispatches tell you what happened, and what happened in history. <a href="/rules/#council" target="_blank" rel="noopener">Every rule of war, in the book</a>.</div>
     <div class="share">${inGame ? '<button class="btn main" data-close>To the council</button>' : `${going ? `<a class="btn main" href="?run=${going.id}">Continue your campaign</a><button class="btn" data-begin>Start again</button>` : '<button class="btn main" data-begin>Begin the campaign</button>'}<a class="btn" href="/campaign/">All campaigns</a>`}</div>`, { onClose: () => { if (!inGame && !G.C) history.replaceState(null, '', '/campaign/'); } });
   sheet.querySelector('[data-begin]')?.addEventListener('click', () => { sheet.close(); startRun(C); });
 }
@@ -201,7 +230,7 @@ function refreshPre() { G.pre = withCards(G.C, G.s, G.draft.cards); }
 // The things that can speak in your council: advisers, your generals, envoys, the dispatches.
 function speaker(id) {
   const C = G.C, s = G.pre ?? G.s;
-  if (id === 'you') return { name: heroOf(s)?.gen ?? C.hero.name, title: 'you', look: C.hero.look, art: C.hero.art, color: C.sides[C.you].color };
+  if (id === 'you') return { name: heroOf(s)?.gen ?? C.hero.name, title: 'you', look: C.hero.look, color: C.sides[C.you].color };
   const p = courtOf(C, s).find((x) => x.id === id) ?? courtOf(C, G.s).find((x) => x.id === id);
   if (p) return { ...p, color: C.sides[C.you].color };
   if (id?.startsWith('side:')) { const side = id.slice(5); return { name: `Envoy of ${C.sides[side].name}`, title: `for ${leaderOf(C, s, side)}`, look: C.sides[side].look ?? C.hero.look, color: C.sides[side].color }; }
@@ -648,6 +677,7 @@ addEventListener('unhandledrejection', (e) => { console.error(e.reason); });
 
 // ---------- where to begin ----------
 const params = new URLSearchParams(location.search);
+await arts;
 if (params.get('run')) openRun(params.get('run'));
 else if (params.get('c') && CAMPAIGN[params.get('c')]) briefing(CAMPAIGN[params.get('c')]);
 else showMenu();

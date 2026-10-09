@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How it works · Agentistan</title>
+  <meta name="description" content="The book of Agentistan: how the world of 1200 goes on by itself, what every sign on the map means, how to command a campaign through your council, how battles, sieges and the will to fight are decided, and how to play together.">
+  <meta property="og:title" content="How Agentistan works">
+  <meta property="og:description" content="A world played by AI, and history’s wars to play yourself: every sign on the map, every rule of war, and how to do better than history.">
+  <meta property="og:image" content="https://agentistan.umarkhatana.com/world/og.jpg">
+  <meta name="theme-color" content="#2b2116">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 3h20v14c0 6-5 10-10 12C11 27 6 23 6 17z' fill='%2327466e' stroke='%23b3852c' stroke-width='2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #ecdfbf; --paper-2: #e3d0a3; --paper-3: #d6bf8c; --ink: #3a2816; --ink-soft: #6a5032; --sepia: #8c6b3f;
+      --lapis: #27466e; --vermilion: #a3361f; --gold: #b3852c; --turquoise: #2b7d7a; --green: #4f7a3a; --shadow: rgba(58, 40, 22, 0.28);
+      --display: 'Aref Ruqaa', 'Amiri', Georgia, serif; --body: 'Amiri', Georgia, serif; --kufi: 'Reem Kufi', 'Amiri', sans-serif;
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; color: var(--ink); font: 19px/1.55 var(--body); background: radial-gradient(ellipse at 50% 0%, #f3e7c8 0%, var(--paper) 40%, var(--paper-2) 100%) fixed, var(--paper); }
+    a { color: var(--lapis); }
+    svg.i { width: 1.15em; height: 1.15em; vertical-align: -0.2em; }
+    .top { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px 16px; flex-wrap: wrap; justify-content: center; padding: 8px 16px; background: rgba(43, 33, 22, 0.94); font: 600 14px var(--kufi); letter-spacing: 0.05em; word-spacing: 0.16em; }
+    .top a { color: #f3e7c8; text-decoration: none; }
+    .top a:hover { color: #f3d27a; }
+    main { max-width: 900px; margin: 0 auto; padding: 0 16px 64px; }
+    header.book { text-align: center; padding: 42px 0 10px; }
+    header.book .fa { font: 400 26px var(--display); color: var(--sepia); margin: 0; }
+    h1 { font: 700 clamp(40px, 7vw, 64px)/1.05 var(--display); color: var(--vermilion); margin: 4px 0 6px; }
+    header.book .sub { font-style: italic; font-size: 21px; color: var(--ink-soft); margin: 0 auto; max-width: 640px; }
+    .rule { height: 14px; margin: 26px auto; max-width: 420px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 14'%3E%3Cpath d='M0 7h180M240 7h180' stroke='%23b3852c' stroke-width='1.5'/%3E%3Cpath d='M210 1l6 6-6 6-6-6z' fill='%23a3361f'/%3E%3Ccircle cx='190' cy='7' r='2' fill='%23b3852c'/%3E%3Ccircle cx='230' cy='7' r='2' fill='%23b3852c'/%3E%3C/svg%3E") center / contain no-repeat; }
+    .contents { columns: 2 260px; column-gap: 32px; padding: 18px 22px; border: 1px solid #b89a63; border-radius: 10px; background: rgba(245, 234, 208, 0.7); font-size: 17px; }
+    .contents h2 { column-span: all; font: 700 15px var(--kufi); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sepia); margin: 0 0 8px; }
+    .contents ol { margin: 0; padding-left: 0; list-style: none; }
+    .contents li { break-inside: avoid; padding: 2px 0; }
+    .contents li b { display: inline-block; min-width: 2.6em; font: 600 13px var(--kufi); color: var(--vermilion); }
+    section.ch { margin-top: 54px; scroll-margin-top: 56px; }
+    .ch > .num { display: block; text-align: center; font: 600 13px var(--kufi); letter-spacing: 0.22em; text-transform: uppercase; color: var(--sepia); }
+    .ch > h2 { text-align: center; font: 700 clamp(28px, 4.4vw, 38px)/1.15 var(--display); color: var(--lapis); margin: 2px 0 14px; }
+    .ch > .open { font-size: 21px; font-style: italic; color: var(--ink-soft); }
+    .ch > .open::first-letter { float: left; font: 700 64px/0.8 var(--display); color: var(--vermilion); margin: 8px 8px 0 0; font-style: normal; }
+    h3 { font: 700 23px var(--display); color: var(--ink); margin: 26px 0 6px; }
+    figure.plate { margin: 18px 0; }
+    figure.plate img { width: 100%; aspect-ratio: 768 / 340; object-fit: cover; display: block; border-radius: 6px; border: 1px solid #8c6b3f; box-shadow: 0 6px 18px var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.3); background: var(--paper-3); }
+    figure.plate figcaption { font-size: 15px; font-style: italic; color: var(--ink-soft); text-align: center; margin-top: 6px; }
+    .halves { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 20px 0; }
+    .half { padding: 18px; border-radius: 10px; border: 1px solid #b89a63; background: #f5ead0; box-shadow: 0 3px 10px var(--shadow); }
+    .half h3 { margin: 0 0 4px; display: flex; gap: 8px; align-items: center; color: var(--lapis); }
+    .half h3 svg { width: 26px; height: 26px; color: var(--vermilion); }
+    .half ul { margin: 8px 0 12px; padding-left: 20px; font-size: 17px; }
+    .half .go { display: inline-block; font: 600 14px var(--kufi); letter-spacing: 0.06em; padding: 6px 14px; border-radius: 99px; background: var(--lapis); color: #f8efda; text-decoration: none; word-spacing: 0.16em; }
+    .legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin: 16px 0; }
+    .sign { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 8px; background: rgba(245, 234, 208, 0.8); border: 1px solid rgba(140, 107, 63, 0.4); }
+    .sign .pic { width: 64px; height: 56px; display: grid; place-items: center; border-radius: 6px; background: #ecdcb4; box-shadow: inset 0 0 0 1px rgba(140, 107, 63, 0.3); overflow: hidden; }
+    .sign .pic > svg { width: 100%; height: 100%; }
+    .sign b { display: block; font: 600 15px var(--kufi); letter-spacing: 0.03em; word-spacing: 0.16em; color: var(--ink); }
+    .sign span { display: block; font-size: 16px; line-height: 1.35; color: var(--ink-soft); }
+    .group { font: 600 13px var(--kufi); letter-spacing: 0.16em; text-transform: uppercase; color: var(--sepia); margin: 22px 0 -4px; }
+    .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 16px 0; counter-reset: step; }
+    .flow span { counter-increment: step; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; background: #f5ead0; border: 1px solid #b89a63; font: 600 14px var(--kufi); word-spacing: 0.16em; }
+    .flow span::before { content: counter(step); display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--vermilion); color: #fff6e6; font-size: 12px; }
+    .flow span.you::before { background: var(--lapis); }
+    .flow i { color: var(--sepia); font-style: normal; }
+    .formula { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin: 16px 0; }
+    .formula .f { flex: 1 1 82px; padding: 10px; border-radius: 8px; background: #f5ead0; border: 1px solid #b89a63; text-align: center; }
+    .formula .f b { display: block; font: 700 18px var(--display); color: var(--lapis); }
+    .formula .f small { display: block; font-size: 14px; line-height: 1.3; color: var(--ink-soft); }
+    .formula .x { align-self: center; font: 700 22px var(--kufi); color: var(--vermilion); }
+    table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 16px; background: rgba(245, 234, 208, 0.75); border: 1px solid #b89a63; }
+    th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid rgba(140, 107, 63, 0.3); }
+    th { font: 600 13px var(--kufi); letter-spacing: 0.08em; text-transform: uppercase; color: var(--sepia); background: rgba(214, 191, 140, 0.45); }
+    td b { font-family: var(--display); font-size: 17px; color: var(--lapis); }
+    td small { color: var(--ink-soft); font-style: italic; }
+    .tag { display: inline-block; margin: 1px 2px; padding: 0 7px; border-radius: 99px; font: 600 11.5px/1.6 var(--kufi); background: rgba(39, 70, 110, 0.12); color: var(--lapis); white-space: nowrap; word-spacing: 0.16em; }
+    .tag.red { background: rgba(163, 54, 31, 0.12); color: var(--vermilion); }
+    .scroll-wide { overflow-x: auto; }
+    .meterbox { margin: 18px 0; }
+    .meter { position: relative; height: 22px; border-radius: 99px; background: linear-gradient(90deg, #a3361f 0 25%, #b3852c 25% 60%, #4f7a3a 60%); box-shadow: inset 0 0 0 1.5px rgba(42, 28, 14, 0.6); }
+    .meter .pin { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--ink); }
+    .meter .pin span { position: absolute; top: 34px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 600 12.5px var(--kufi); color: var(--ink); word-spacing: 0.16em; }
+    .meterbox .ticks { display: flex; justify-content: space-between; font: 600 12px var(--kufi); color: var(--sepia); margin-top: 34px; }
+    .stars3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 16px 0; }
+    .stars3 div { padding: 12px; border-radius: 8px; background: #f5ead0; border: 1px solid #b89a63; text-align: center; }
+    .stars3 .st { color: var(--gold); font-size: 24px; letter-spacing: 3px; }
+    .stars3 .st i { color: rgba(140, 107, 63, 0.35); font-style: normal; }
+    .stars3 b { display: block; font: 700 19px var(--display); color: var(--lapis); }
+    .stars3 small { font-size: 15px; color: var(--ink-soft); }
+    .say { margin: 14px 0; padding: 14px 16px; border-left: 4px solid var(--gold); background: rgba(245, 234, 208, 0.85); border-radius: 0 8px 8px 0; }
+    .say p { margin: 4px 0; }
+    .say .you { font-style: italic; }
+    .say .you::before { content: 'You: '; font: 600 13px var(--kufi); font-style: normal; color: var(--lapis); letter-spacing: 0.06em; }
+    .say .them::before { content: attr(data-who) ': '; font: 600 13px var(--kufi); color: var(--vermilion); letter-spacing: 0.06em; word-spacing: 0.16em; }
+    .council { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0; }
+    .council figure { margin: 0; text-align: center; width: 92px; }
+    .council img { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); box-shadow: 0 3px 8px var(--shadow); background: var(--paper-3); }
+    .council figcaption { font: 600 12.5px/1.25 var(--kufi); color: var(--ink-soft); word-spacing: 0.16em; }
+    .counsel { counter-reset: tip; list-style: none; padding: 0; display: grid; gap: 10px; }
+    .counsel li { counter-increment: tip; position: relative; padding: 10px 14px 10px 54px; border-radius: 8px; background: rgba(245, 234, 208, 0.85); border: 1px solid rgba(140, 107, 63, 0.4); }
+    .counsel li::before { content: counter(tip, upper-roman); position: absolute; left: 12px; top: 10px; width: 32px; text-align: center; font: 700 18px var(--display); color: var(--vermilion); }
+    .counsel b { color: var(--lapis); }
+    .keys kbd { display: inline-block; min-width: 1.7em; padding: 0 6px; border-radius: 5px; border: 1px solid #8c6b3f; border-bottom-width: 3px; background: #fbf3dd; font: 600 13px/1.6 var(--kufi); text-align: center; }
+    .bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 99px; background: rgba(43, 33, 22, 0.92); color: #f3e7c8; margin: 16px 0; flex-wrap: wrap; }
+    .bar .b { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #f3e7c8; color: var(--ink); flex: none; }
+    .bar .b.big { width: 42px; height: 42px; background: #f3d27a; }
+    .bar .b svg { width: 18px; height: 18px; }
+    .bar .tr { position: relative; flex: 1 1 160px; height: 6px; border-radius: 3px; background: rgba(243, 231, 200, 0.3); }
+    .bar .tr::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 64%; border-radius: 3px; background: #b3852c; }
+    .bar .tr i { position: absolute; top: -5px; width: 4px; height: 16px; border-radius: 2px; background: #a3361f; }
+    .bar .tr em { position: absolute; left: 64%; top: -7px; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: #f3d27a; box-shadow: 0 0 0 3px rgba(243, 210, 122, 0.35); }
+    .bar .yr { font: 700 16px var(--kufi); }
+    .bar-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px 16px; font-size: 16px; }
+    .note { font-size: 16px; color: var(--ink-soft); font-style: italic; }
+    .colophon { margin-top: 60px; text-align: center; font-size: 16px; color: var(--ink-soft); }
+    .colophon .go { display: inline-block; margin: 6px; font: 600 15px var(--kufi); letter-spacing: 0.06em; padding: 8px 18px; border-radius: 99px; background: var(--vermilion); color: #fff6e6; text-decoration: none; word-spacing: 0.16em; }
+    .colophon .go.alt { background: var(--lapis); }
+    /* the campaign map's own marks, as they look in a war */
+    .tk { display: flex; flex-direction: column; align-items: center; }
+    .tk .flag { width: 30px; height: 22px; border-radius: 3px 3px 10px 10px; background: var(--c); border: 1.5px solid #2a1c0e; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35); }
+    .tk.mine .flag { outline: 2px solid rgba(255, 244, 200, 0.95); outline-offset: 1px; }
+    .tk.hero .flag { border-color: #c9a03c; border-width: 2.5px; }
+    .tk b { margin-top: -17px; font: 700 12px/1 var(--kufi); color: #fbf3dd; text-shadow: 0 0 2px #2a1c0e, 0 0 3px #2a1c0e; }
+    .tk small { margin-top: 7px; padding: 0 5px; border-radius: 6px; background: rgba(251, 243, 221, 0.95); font: 600 10.5px/1.3 var(--kufi); color: var(--ink); white-space: nowrap; }
+    .tk.hero small::before { content: '★ '; color: var(--gold); }
+    .badge { display: inline-block; min-width: 52px; text-align: center; padding: 2px 7px; border-radius: 99px; font: 700 11.5px/1.2 var(--kufi); white-space: nowrap; background: #fbf3dd; border: 1.5px solid var(--ink); word-spacing: 0.16em; }
+    .badge.good { background: #e1edd4; border-color: var(--green); color: #2f5a22; }
+    .badge.even { background: #f6ebc9; border-color: var(--gold); color: #6b4d12; }
+    .badge.bad { background: #f3d9cf; border-color: var(--vermilion); color: #8a2a16; }
+    .city { position: relative; width: 60px; height: 44px; }
+    .city .dot { position: absolute; left: 26.5px; top: 24px; width: 7px; height: 7px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 1.5px #f3e7c8; }
+    .city.besieged .dot { background: var(--vermilion); box-shadow: 0 0 0 2px #f3e7c8, 0 0 0 4px var(--vermilion); }
+    .city .nm { position: absolute; left: 50%; top: 31px; transform: translateX(-50%); white-space: nowrap; font: 600 11px/1 var(--body); }
+    .city .ic { position: absolute; left: 21px; top: 3px; width: 18px; height: 18px; }
+    .burst { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle, #c2541f 0 55%, rgba(194, 84, 31, 0.25) 56%); }
+    .burst svg { width: 20px; height: 20px; }
+    @media (max-width: 560px) {
+      body { font-size: 17.5px; }
+      .ch > .open { font-size: 19px; }
+      .sign { grid-template-columns: 54px 1fr; }
+      .sign .pic { width: 54px; height: 50px; }
+      th, td { padding: 6px; font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs id="sprite">
+      <pattern id="w-snow" width="22" height="22" patternUnits="userSpaceOnUse"><rect width="22" height="22" fill="#d9e3e6"/><circle cx="5" cy="6" r="2.2" fill="#fff"/><circle cx="16" cy="15" r="1.6" fill="#fff"/><circle cx="12" cy="3" r="1" fill="#fff"/></pattern>
+      <pattern id="w-rains" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(18)"><path d="M3 0v9M11 6v9" stroke="#3d6b8c" stroke-width="1.6" stroke-linecap="round"/></pattern>
+      <pattern id="w-heat" width="26" height="14" patternUnits="userSpaceOnUse"><path d="M0 7q3.25-5 6.5 0t6.5 0 6.5 0 6.5 0" fill="none" stroke="#c2541f" stroke-width="1.4"/></pattern>
+    </defs>
+  </svg>
+
+  <nav class="top" aria-label="Agentistan">
+    <a href="/">The living world</a><a href="/campaign/">Campaigns</a><a href="#signs">Signs of the map</a><a href="#council">The council</a><a href="#battle">Battle</a><a href="#together">Playing together</a>
+  </nav>
+
+  <main>
+    <header class="book">
+      <p class="fa" lang="fa">کتاب ایجنتستان</p>
+      <h1>The Book of Agentistan</h1>
+      <p class="sub">wherein is set down how the world goes on by itself, what every sign upon its maps signifies, and how a commander may fight the wars of history again, and do better than history did</p>
+    </header>
+    <div class="rule"></div>
+
+    <nav class="contents" aria-label="Contents">
+      <h2>The chapters of this book</h2>
+      <ol>
+        <li><b>I</b><a href="#halves">Of the two halves of the world</a></li>
+        <li><b>II</b><a href="#watch">Of the Watch, and how the world goes on</a></li>
+        <li><b>III</b><a href="#signs">Of the signs upon the map of the world</a></li>
+        <li><b>IV</b><a href="#time">Of moving through time</a></li>
+        <li><b>V</b><a href="#chronicler">Of the panels, and the chronicler</a></li>
+        <li><b>VI</b><a href="#campaigns">Of the campaigns, and choosing a war</a></li>
+        <li><b>VII</b><a href="#council">Of the council, and commanding in plain words</a></li>
+        <li><b>VIII</b><a href="#warsigns">Of the signs upon a campaign map</a></li>
+        <li><b>IX</b><a href="#season">Of the season, and its order</a></li>
+        <li><b>X</b><a href="#march">Of marching, ground and sea</a></li>
+        <li><b>XI</b><a href="#battle">Of battle, and the plans of great captains</a></li>
+        <li><b>XII</b><a href="#siege">Of sieges and storms</a></li>
+        <li><b>XIII</b><a href="#will">Of gold, hunger and the will to fight</a></li>
+        <li><b>XIV</b><a href="#end">Of the end, and the judgement of history</a></li>
+        <li><b>XV</b><a href="#together">Of playing together</a></li>
+        <li><b>XVI</b><a href="#counsel">Counsel for commanders</a></li>
+      </ol>
+    </nav>
+
+    <!-- I -->
+    <section class="ch" id="halves">
+      <span class="num">Chapter the First</span>
+      <h2>Of the two halves of the world</h2>
+      <p class="open">Know, reader, that Agentistan is made of two halves. In the first, the Old World of the year 1200 goes on by itself, and no hand but the machine’s is on it. In the second, the great wars of history wait to be fought again, and you take the part of the one who fought them.</p>
+      <div class="halves">
+        <div class="half">
+          <h3><svg viewBox="0 0 24 24"><use href="#i-eye"/></svg>The Watch</h3>
+          <p>The living world of 1200: 117 real realms and their rulers, from Castile to the Song, played entirely by AI and the rules.</p>
+          <ul><li>A month passes every two hours, so a year passes in a day.</li><li>Nobody plays it, and everyone sees the same history.</li><li>Scroll back through everything that has happened.</li></ul>
+          <a class="go" href="/">Watch the world</a>
+        </div>
+        <div class="half">
+          <h3><svg viewBox="0 0 24 24"><use href="#i-swords"/></svg>The Campaigns</h3>
+          <p>Short historical wars, in the order they happened. You play the person who fought each one, with the goal they had.</p>
+          <ul><li>The AI plays every other side.</li><li>You command by speaking to your council in plain words.</li><li>At the end you are judged against what really happened.</li></ul>
+          <a class="go" href="/campaign/">Choose a war</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- II -->
+    <section class="ch" id="watch">
+      <span class="num">Chapter the Second</span>
+      <h2>Of the Watch, and how the world goes on</h2>
+      <p class="open">In the year 1200 the world was wide and full of kings. Temujin had not yet been named Genghis Khan, the Khwarazmshah ruled from the Caspian to the Hindu Kush, and Venice was dreaming of Constantinople. From that moment the Watch lets the world go on, and history need not go the way it went.</p>
+      <figure class="plate"><img src="/art/events/golden.webp" alt="A city of 1200 in its golden age" loading="lazy"><figcaption>A city in its golden age, around the year 1200.</figcaption></figure>
+      <p>Each realm has a ruler, an heir, a treasury, armies, and provinces with walls, wealth and loyalty. Every month the rules play out what follows from that. Armies march and fight battles that can last for months, towns starve under siege, harvests fail, plague spreads along the roads, rulers die and heirs quarrel. Provinces with little loyalty revolt and can found new kingdoms.</p>
+      <p>The AI acts as the realms’ statesmen. Each month it sets the course of a group of kingdoms: the great powers often, the small ones in turn, so every realm gets its plan regularly. It chooses whom to fight, whom to marry, whom to make peace with, and where to build. The rules then carry the plan out, and they alone decide what happens. That is why every visitor sees the same world.</p>
+      <p class="note">There is no religion in the Watch. Its realms are judged by what they do, not by what they believe.</p>
+    </section>
+
+    <!-- III -->
+    <section class="ch" id="signs">
+      <span class="num">Chapter the Third</span>
+      <h2>Of the signs upon the map of the world</h2>
+      <p class="open">The map is drawn as the old cartographers drew it, in ink and colour on parchment. Every sign on it has a meaning, and you can click any of them for its story.</p>
+
+      <p class="group">Realms and their seats</p>
+      <div class="legend">
+        <div class="sign"><div class="pic"><svg viewBox="0 0 64 56"><rect width="64" height="56" fill="#cdbb8a"/><path d="M0 0h30l4 20-6 36H0z" fill="#27466e" fill-opacity=".34"/><path d="M30 0l4 20-6 36" fill="none" stroke="rgba(48,30,14,.82)" stroke-width="2.4"/><path d="M44 0v56" stroke="rgba(58,40,22,.32)" stroke-dasharray="1 5"/></svg></div><div><b>A realm and its border</b><span>Each realm’s lands are washed in its colour. A heavy line is a border between realms; a dotted line divides provinces of the same realm.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 64 56"><text x="32" y="26" text-anchor="middle" font-family="Aref Ruqaa, serif" font-size="10" font-weight="700" fill="#3a2816">KHWARAZM</text><text x="32" y="44" text-anchor="middle" font-family="Aref Ruqaa, serif" font-size="13" fill="#6a5032">خوارزم</text></svg></div><div><b>A realm’s name</b><span>Written across its lands, larger for greater realms, in English and in the script its own chroniclers used.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:40px;height:40px;color:#27466e"><use href="#i-palace"/></svg></div><div><b>A capital</b><span>The seat of a realm, crowned, in the realm’s colour. If it falls, the realm moves its capital and loses heart.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:34px;height:34px;color:#3d2c1a"><use href="#i-citadel"/></svg></div><div><b>A citadel</b><span>A city with great walls (three or more). It takes a long siege or a costly storm to take.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:24px;height:24px;color:#5a4630"><use href="#i-tower"/></svg></div><div><b>A walled town</b><span>Lesser walls. Shown only when you zoom in.</span></div></div>
+      </div>
+
+      <p class="group">Armies and war</p>
+      <div class="legend">
+        <div class="sign"><div class="pic"><svg viewBox="-26 -50 52 82"><line x1="0" y1="-12" x2="0" y2="-46" stroke="#2a1c0e" stroke-width="2.4"/><path d="M0 -45h24l-5 6 5 6H0z" fill="#27466e" stroke="#2a1c0e" stroke-width="1.4"/><circle r="2.6" cy="-47" fill="#b3852c"/><circle r="13" fill="#27466e" stroke="#b3852c" stroke-width="3"/><use href="#i-crown" x="-9" y="-9" width="18" height="18" style="color:#fbf3dd"/><text y="30" text-anchor="middle" font-family="Reem Kufi, sans-serif" font-weight="700" font-size="15" fill="#fbf3dd" stroke="#2a1c0e" stroke-width="3.5" paint-order="stroke">24k</text></svg></div><div><b>An army</b><span>A standard in its realm’s colour over a medallion that shows who leads it, with its men beneath (24k is 24,000).</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 72 24" style="width:60px"><g style="color:#3a2816"><use href="#i-crown" x="0" y="0" width="22" height="22"/><use href="#i-circlet" x="25" y="0" width="22" height="22"/><use href="#i-helmet" x="50" y="0" width="22" height="22"/></g></svg></div><div><b>Who leads it</b><span>A crown for the ruler himself, a circlet for the heir, a helmet for a general. A gold ring marks royal command.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 64 56"><path d="M8 46Q30 10 50 18" fill="none" stroke="#a3361f" stroke-width="3.2" stroke-dasharray="9 6" stroke-linecap="round"/><path d="M57 21 46 24l4-11z" fill="#a3361f"/></svg></div><div><b>A march</b><span>A dashed arrow from where an army stands to where it is going this month.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="-46 -100 92 160"><circle cx="0" cy="-14" r="40" fill="rgba(163,54,31,.08)" stroke="#a3361f" stroke-width="3" stroke-dasharray="6 5"/><circle cx="-22" cy="-66" r="10" fill="#27466e" stroke="#2a1c0e" stroke-width="1.6"/><circle cx="22" cy="-66" r="10" fill="#6b2d7b" stroke="#2a1c0e" stroke-width="1.6"/><use href="#i-swords" x="-16" y="-82" width="32" height="32" style="color:#a3361f"/><text y="50" text-anchor="middle" font-family="Reem Kufi, sans-serif" font-weight="700" font-size="16" fill="#a3361f" stroke="#ecdcb4" stroke-width="3" paint-order="stroke">month 2</text></svg></div><div><b>A battle</b><span>Crossed swords between the two sides’ colours. A great battle can last several months; “facing off” means the armies are still waiting.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="-34 -34 68 84"><circle r="24" fill="none" stroke="#6b2d7b" stroke-width="3" stroke-dasharray="4 5"/><circle r="5" fill="#3a2816"/><text y="42" text-anchor="middle" font-family="Reem Kufi, sans-serif" font-weight="700" font-size="15" fill="#3a2816" stroke="#ecdcb4" stroke-width="3" paint-order="stroke">3</text></svg></div><div><b>A siege</b><span>A turning ring in the besieger’s colour around a city, with the months it can still hold out.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 -18 52 50"><circle cx="26" cy="4" r="11" fill="#27466e" stroke="#3a2816" stroke-width="1.2"/><use href="#i-swords" x="18" y="-4" width="16" height="16" style="color:#fff8e8"/><text x="26" y="28" text-anchor="middle" font-family="Reem Kufi, sans-serif" font-weight="600" font-size="11" fill="#6a5032">1203</text></svg></div><div><b>A battlefield</b><span>Where a battle was fought in the last ten years, in the victor’s colour, fading with the years. Click it for the story.</span></div></div>
+      </div>
+
+      <p class="group">The land’s troubles</p>
+      <div class="legend">
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#4f6b3a"><use href="#i-skull"/></svg></div><div><b>Plague</b><span>Sickness in the province. It kills, spreads to neighbours, and weakens armies that pass through.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#9a7a2a"><use href="#i-wheat"/></svg></div><div><b>Famine</b><span>The harvest has failed. Less money, less loyalty, hungry armies.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#4a3626"><use href="#i-flame"/></svg></div><div><b>Ravaged</b><span>Armies have burned and plundered here. The province yields little until it recovers.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#c2541f"><use href="#i-flame"/></svg></div><div><b>Unrest</b><span>Loyalty is dangerously low. A revolt may come, and a revolt can found a new realm.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#6a5032"><use href="#i-hammer"/></svg></div><div><b>Building</b><span>Walls, a caravanserai or a canal are being built. Shown when you zoom in.</span></div></div>
+      </div>
+
+      <p class="group">The seasons</p>
+      <div class="legend">
+        <div class="sign"><div class="pic"><svg viewBox="0 0 64 56"><rect width="64" height="56" fill="url(#w-snow)"/></svg></div><div><b>Snow</b><span>Winter over the cold lands. The northern passes close and armies keep to winter quarters.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 64 56"><rect width="64" height="56" fill="#dfe6e2"/><rect width="64" height="56" fill="url(#w-rains)"/></svg></div><div><b>Monsoon</b><span>Summer rains over India and the south. All campaigns there halt until the rains end.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 64 56"><rect width="64" height="56" fill="#efdcb0"/><rect width="64" height="56" fill="url(#w-heat)"/></svg></div><div><b>Heat</b><span>Summer over the deserts. Armies crossing them suffer.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#27466e"><use href="#i-wheat"/></svg></div><div><b>The season’s badge</b><span>Under the date: winter, spring, summer or autumn. Autumn, with full granaries, is the campaigning season.</span></div></div>
+      </div>
+
+      <p class="group">Events as they happen</p>
+      <p>When something happens it flashes on the map at its place, with its sign. The chronicle keeps the ones that matter:</p>
+      <div class="legend" id="kinds"></div>
+    </section>
+
+    <!-- IV -->
+    <section class="ch" id="time">
+      <span class="num">Chapter the Fourth</span>
+      <h2>Of moving through time</h2>
+      <p class="open">When you arrive, the last year replays quickly up to the present, and then the world goes on live. Because the whole history is kept, you can go back to any month that has been lived and watch it again.</p>
+      <div class="bar" aria-hidden="true">
+        <span class="b"><svg viewBox="0 0 24 24"><use href="#i-prev"/></svg></span>
+        <span class="b big"><svg viewBox="0 0 24 24"><use href="#i-pause"/></svg></span>
+        <span class="b"><svg viewBox="0 0 24 24"><use href="#i-next"/></svg></span>
+        <span class="tr"><i style="left:12%"></i><i style="left:31%"></i><i style="left:47%"></i><i style="left:58%"></i><em></em></span>
+        <span class="yr">1203</span>
+      </div>
+      <div class="bar-notes keys">
+        <p><kbd>←</kbd> <kbd>→</kbd> or the arrows: a month back or forward. Hold <kbd>Shift</kbd> for a year.</p>
+        <p>The large button plays or pauses the story.</p>
+        <p><b>The timeline:</b> click, drag, or scroll over it with the mouse wheel to move through time. Red marks are great moments; click one to go there.</p>
+        <p><b>Live:</b> the chip under the date shows when you are at the present. Click it to skip the catching up.</p>
+        <p><kbd>H</kbd> or the eye: hide every panel for the full map.</p>
+        <p><b>Zoom</b> with the wheel, a pinch, or the + and − buttons. Drag to pan. Signs keep their size at any zoom.</p>
+      </div>
+    </section>
+
+    <!-- V -->
+    <section class="ch" id="chronicler">
+      <span class="num">Chapter the Fifth</span>
+      <h2>Of the panels, and the chronicler</h2>
+      <p class="open">Nothing on the page interrupts the story. Great events arrive as a headline you may open or let pass, and every panel can be put away.</p>
+      <div class="legend">
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#27466e"><use href="#i-star"/></svg></div><div><b>At a glance</b><span>The great powers ranked by land, with their ruler, soldiers and gold, and the wars being fought.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#a3361f"><use href="#i-scroll"/></svg></div><div><b>The chronicle</b><span>What matters, one line each, as it happens. Click any name for its card.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#b3852c"><use href="#i-crown"/></svg></div><div><b>The headline</b><span>A great event, such as a coronation, a fallen capital or a horde, with its painting. Open it for the whole story.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#3a2816"><use href="#i-people"/></svg></div><div><b>Cards</b><span>Click any realm, person, army, battle or city for its card: who rules, who is heir, their wars, armies and lands.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#6a5032"><use href="#i-book"/></svg></div><div><b>The world</b><span>A dashboard of the whole world at this moment: powers, wars, people and the shape of the age.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#2b7d7a"><use href="#i-quill"/></svg></div><div><b>Ask the chronicler</b><span>Ask anything about the world at the moment on the timeline: “Who rules Samarkand?” The answer comes from the chronicles alone.</span></div></div>
+      </div>
+    </section>
+
+    <!-- VI -->
+    <section class="ch" id="campaigns">
+      <span class="num">Chapter the Sixth</span>
+      <h2>Of the campaigns, and choosing a war</h2>
+      <p class="open">The wars are set out in the order they were fought, from the Persian Wars onward. Each one is a few years of a real war, on its own map, with its real cast and the goal its commander really had.</p>
+      <figure class="plate"><img src="/art/events/c_hannibal.webp" alt="Hannibal’s army crossing the Alps" loading="lazy"><figcaption>Hannibal’s army in the Alps, 218 BC.</figcaption></figure>
+      <p>Choose a war from the <a href="/campaign/">campaigns</a> menu. Its <b>briefing</b> tells you who you are, what you must do, the forces of every side, and how many <b>seasons</b> you have, usually a turn for each season of the war. Wars marked <i>Coming soon</i> are still being written.</p>
+      <p>Your campaign is saved in your browser and on the server, so you can close the page and come back to it. A war you have begun waits for you on the menu as <i>Continue</i>, and the stars of your best result stay on its card.</p>
+    </section>
+
+    <!-- VII -->
+    <section class="ch" id="council">
+      <span class="num">Chapter the Seventh</span>
+      <h2>Of the council, and commanding in plain words</h2>
+      <p class="open">A commander of old did not fill in forms. He spoke, and his officers turned his words into marches. So it is here. There are no menus of orders: you speak to your council, and they answer you in character.</p>
+      <div class="council">
+        <figure><img src="/art/people/themistocles.webp" alt="" loading="lazy" onerror="this.parentNode.remove()"><figcaption>Themistocles</figcaption></figure>
+        <figure><img src="/art/people/hannibal-barca.webp" alt="" loading="lazy" onerror="this.parentNode.remove()"><figcaption>Hannibal</figcaption></figure>
+        <figure><img src="/art/people/maharbal.webp" alt="" loading="lazy" onerror="this.parentNode.remove()"><figcaption>Maharbal, his horse</figcaption></figure>
+        <figure><img src="/art/people/julius-caesar.webp" alt="" loading="lazy" onerror="this.parentNode.remove()"><figcaption>Caesar</figcaption></figure>
+        <figure><img src="/art/people/cao-cao.webp" alt="" loading="lazy" onerror="this.parentNode.remove()"><figcaption>Cao Cao</figcaption></figure>
+      </div>
+      <div class="say">
+        <p class="you">Hasdrubal, hold Spain. We march on Capua, and if Varro comes, we envelop him.</p>
+        <p class="them" data-who="Maharbal">It shall be so. Hasdrubal keeps Spain. The army marches on Capua in two stages; if Varro gives battle on open ground, we let the centre bend and close the horse on his flanks.</p>
+      </div>
+      <h3>What the council does with your words</h3>
+      <ul>
+        <li><b>Your words are the orders.</b> Whatever you say plainly (“march on Capua”, “hold Spain”, “storm the walls”, “raise ten thousand men”) is carried out exactly as you said it. The council only fills in what you left open.</li>
+        <li><b>The orders are shown on the map</b> as arrows and badges, and listed in the council’s answer. That list is what will happen when the season ends.</li>
+        <li><b>Ask anything.</b> “Where is the enemy?”, “What are my odds at Cannae?”, “What would a siege of Rome cost?” Questions of fact are answered from the war’s own data, never invented.</li>
+        <li><b>Speak to anyone at the table</b>: your advisers, the generals of your armies, or an enemy’s envoy, to offer, accept or refuse peace.</li>
+        <li><b>Only the living sit in council.</b> The people are real, and the dead never act, lead or speak.</li>
+        <li><b>Short of ideas?</b> The suggestions under the box offer three things you might say next, and the quill fills in a full order for you.</li>
+      </ul>
+      <h3>The great decisions</h3>
+      <p>At the turning points of the war, a decision arrives as a card inside the conversation: an alliance offered, a city that asks for terms, a mutiny brewing. Your adviser says what they would choose. Choose an answer, or say in your own words what you will do. Afterwards you learn what the real commander chose.</p>
+      <p class="note">The council speaks with the AI, which has a small budget of answers each season (about eight). When it runs out, or the AI is busy, the rules answer instead. They understand the same plain orders, so you can always play.</p>
+    </section>
+
+    <!-- VIII -->
+    <section class="ch" id="warsigns">
+      <span class="num">Chapter the Eighth</span>
+      <h2>Of the signs upon a campaign map</h2>
+      <p class="open">The campaign map is drawn crisp at any zoom. The land, coasts and rivers are vectors, and on top of them the cities and armies keep their size on screen however far you zoom.</p>
+      <p class="group">Cities</p>
+      <div class="legend">
+        <div class="sign"><div class="pic"><div class="city"><i class="dot"></i><span class="nm">Capua</span></div></div><div><b>A city</b><span>Every province has one. Larger names are richer cities, worth more gold and more will when taken.</span></div></div>
+        <div class="sign"><div class="pic"><div class="city"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 18 4.5 7 9 11.5 12 4l3 7.5L19.5 7 21 18zM3 19.6h18v1.8H3z" fill="#c9a03c" stroke="#3a2816"/></svg></span><i class="dot"></i><span class="nm">Rome</span></div></div><div><b>A capital</b><span>A side’s seat. Losing it costs a great deal of will, and for you it is often the end of the war.</span></div></div>
+        <div class="sign"><div class="pic"><div class="city"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 21V9L5 7V3h3v2h2V3h4v2h2V3h3v4l-2 2v12z" fill="#3a2816"/></svg></span><i class="dot"></i><span class="nm">Tarentum</span></div></div><div><b>Walls</b><span>A walled city must be besieged or stormed. Open land is taken just by standing on it.</span></div></div>
+        <div class="sign"><div class="pic"><div class="city besieged"><i class="dot"></i><span class="nm">Saguntum</span></div></div><div><b>Under siege</b><span>A red ring around the city dot.</span></div></div>
+      </div>
+      <p class="group">Ground</p>
+      <div class="legend">
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 14" style="width:40px"><path d="M1 13 7 4l3 4 3-6 6 11" fill="none" stroke="#6a5032" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div><b>Mountains</b><span>Two steps to enter, three in winter, when they also kill. Defenders fight 30% stronger here.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 12" style="width:40px"><path d="M1 11c3-6 7-6 10 0M10 11c3-5 7-5 11 0" fill="none" stroke="#7a6040" stroke-width="1.5"/></svg></div><div><b>Hills</b><span>One step. Defenders +15%. The place to hold the high ground.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 14" style="width:40px"><path d="M6 13V9M4 9l2-7 2 7zM14 13V9M12 9l2-7 2 7z" fill="#4f6b3a" stroke="#3d5530" stroke-width=".8"/></svg></div><div><b>Forest</b><span>One step. Defenders +15%. Good for an ambush.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 10" style="width:40px"><path d="M2 8h20M5 5h14M8 2v6M16 2v6" stroke="#5d7f86" stroke-width="1.3"/></svg></div><div><b>Marsh</b><span>Two steps. Defenders +20%, and every season there costs men.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 10" style="width:40px"><path d="M1 8c4-4 7-4 11 0s7 4 11 0" fill="none" stroke="#b08a4a" stroke-width="1.4"/></svg></div><div><b>Desert</b><span>One step, but summer there costs men. Open ground for horse.</span></div></div>
+      </div>
+      <p class="group">Armies and orders</p>
+      <div class="legend">
+        <div class="sign"><div class="pic"><div class="tk mine hero" style="--c:#6b2d7b"><span class="flag"></span><b>40k</b><small>Barca</small></div></div><div><b>Your army, with you in it</b><span>A flag in its side’s colour with its men. A light outline marks your own armies, a gold edge and a star the one you lead.</span></div></div>
+        <div class="sign"><div class="pic"><div class="tk" style="--c:#a3261f"><span class="flag"></span><b>48k</b><small>Varro</small></div></div><div><b>Another side’s army</b><span>With its general’s name. Click it to see its men and its general’s temper.</span></div></div>
+        <div class="sign"><div class="pic"><span class="badge">go</span></div><div><b>Within reach</b><span>Choose one of your armies and the places it can reach this season light up. “go” means you can march there.</span></div></div>
+        <div class="sign"><div class="pic"><span class="badge good">take</span></div><div><b>Take</b><span>Enemy land with no walls and no army: yours by marching in.</span></div></div>
+        <div class="sign"><div class="pic" style="display:flex;flex-direction:column;gap:3px"><span class="badge good">⚔ 1.6:1</span><span class="badge bad">⚔ 1:1.4</span></div><div><b>The odds of a battle</b><span>Your strength against theirs, before luck. Green is good (1.2:1 or better), gold is even, red is bad.</span></div></div>
+        <div class="sign"><div class="pic" style="display:flex;flex-direction:column;gap:3px"><span class="badge even">siege 3</span><span class="badge bad">fed by sea</span></div><div><b>A siege</b><span>How many seasons the walls will hold. “Fed by sea” means a port that cannot be starved while its fleet rules the sea.</span></div></div>
+        <div class="sign"><div class="pic"><span class="burst"><svg viewBox="0 0 24 24"><path d="M4 4l11 11M20 4 9 15M7 13l4 4M17 13l-4 4M5 19l3-3M19 19l-3-3" fill="none" stroke="#fbf3dd" stroke-width="2.4" stroke-linecap="round"/></svg></span></div><div><b>A battle this season</b><span>Where blood was shed. Click it for the dispatch.</span></div></div>
+      </div>
+      <p>The <b>war room</b> (the button, or <span class="keys"><kbd>W</kbd></span>) is the whole war on one page: every side’s men, gold, lands and will to fight, who is at war with whom, your council, and how the war has gone season by season. <span class="keys"><kbd>H</kbd></span> hides every panel for the full map.</p>
+    </section>
+
+    <!-- IX -->
+    <section class="ch" id="season">
+      <span class="num">Chapter the Ninth</span>
+      <h2>Of the season, and its order</h2>
+      <p class="open">Each turn is a season. You give your orders at leisure, for there is no clock. When you end the season, every side moves at once, and the dispatches tell you what came of it, and what happened at that moment in history.</p>
+      <div class="flow">
+        <span class="you">You speak, the council answers</span><i>→</i><span class="you">The cards are answered</span><i>→</i><span class="you">End the season</span><i>→</i>
+        <span>The other sides’ plans</span><i>→</i><span>Every army marches</span><i>→</i><span>Battles</span><i>→</i><span>Sieges and captures</span><i>→</i>
+        <span>Gold and upkeep</span><i>→</i><span>Hunger and cold</span><i>→</i><span>The will to fight</span><i>→</i><span>History’s own moves</span><i>→</i><span>Is the goal met?</span>
+      </div>
+      <p>The other sides are played by the AI at the turning points of the war, and by the rules otherwise. Each enemy general has a <b>temper</b> that decides how great the odds must be before he attacks, and which plans he favours:</p>
+      <div class="scroll-wide"><table id="tempers"><thead><tr><th>Temper</th><th>Attacks at odds of</th><th>Favours</th></tr></thead><tbody></tbody></table></div>
+      <p><b>History’s own moves</b> come regardless: a new consul is elected, an ally changes sides, reinforcements land. They are the war’s fixed points, and you can play around them.</p>
+    </section>
+
+    <!-- X -->
+    <section class="ch" id="march">
+      <span class="num">Chapter the Tenth</span>
+      <h2>Of marching, ground and sea</h2>
+      <p class="open">An army marches two steps in a season. Easy country costs one step a province, and hard country two.</p>
+      <div class="scroll-wide"><table>
+        <thead><tr><th>Ground</th><th>Steps to enter</th><th>Defender’s ground</th><th>Losses each season away from home</th></tr></thead>
+        <tbody>
+          <tr><td><b>Plains, river, steppe, desert</b></td><td>1</td><td>— (river +10%)</td><td>3% foraging in enemy land; +6% in the desert in summer, +5% on the steppe in winter</td></tr>
+          <tr><td><b>Hills, forest</b></td><td>1</td><td>+15%</td><td>3%</td></tr>
+          <tr><td><b>Marsh</b></td><td>2</td><td>+20%</td><td>3% + 3% always</td></tr>
+          <tr><td><b>Mountains</b></td><td>2, or 3 in winter</td><td>+30%</td><td>3%; +12% in winter</td></tr>
+          <tr><td><b>Your own or allied land</b></td><td>—</td><td>—</td><td>None, and the men recover their spirits</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li><b>An enemy army stops your march</b>: you fight where you meet it.</li>
+        <li><b>Crossing the sea takes the whole season</b>, and needs a fleet (or open sea lanes). You land, and march on the next season.</li>
+        <li><b>Neutral land is closed</b> unless you go to war with its master.</li>
+        <li><b>New troops</b> are raised at your capital, or failing it at your richest city, if you have the gold. They start untried.</li>
+      </ul>
+    </section>
+
+    <!-- XI -->
+    <section class="ch" id="battle">
+      <span class="num">Chapter the Eleventh</span>
+      <h2>Of battle, and the plans of great captains</h2>
+      <p class="open">Numbers matter, but they are not everything. Hannibal won at Cannae with fewer men, because his plan fitted the ground and Varro was rash. So it is here: a battle is decided by the strength of each side, and by how well its plan fits the field and the foe.</p>
+      <figure class="plate"><img src="/art/events/ancient_battle.webp" alt="Two armies of antiquity clashing" loading="lazy"><figcaption>Two armies of antiquity meet on a dusty plain.</figcaption></figure>
+      <h3>The strength of an army</h3>
+      <div class="formula">
+        <div class="f"><b>Men</b><small>the soldiers present</small></div><span class="x">×</span>
+        <div class="f"><b>Quality</b><small>legionaries are not levies</small></div><span class="x">×</span>
+        <div class="f"><b>General</b><small>+8% for each point of skill above the middling</small></div><span class="x">×</span>
+        <div class="f"><b>Spirits</b><small>morale, raised by victory and rest</small></div><span class="x">×</span>
+        <div class="f"><b>Plan</b><small>up to +30% if it fits, −22% if it does not</small></div><span class="x">×</span>
+        <div class="f"><b>Ground</b><small>for the defender: up to +30%</small></div><span class="x">×</span>
+        <div class="f"><b>Fortune</b><small>between 85% and 115%</small></div>
+      </div>
+      <p>The stronger side wins. The loser loses a quarter to three quarters of his men, the winner far fewer. A decisive victory lifts the victors’ spirits and will, shakes the beaten side, and may make nearby towns open their gates. A beaten army falls back towards home, or is destroyed if it has nowhere to go. A commander whose army is destroyed may still escape with his bodyguard.</p>
+      <h3>The plans</h3>
+      <p>When you march on an enemy army, or one marches on you, your council offers the plans that suit the age, and says which fits and why. If you choose none, your general chooses. Some plans <b>undo</b> others: a charge into an envelopment, a feigned retreat or a held hill breaks itself.</p>
+      <div class="scroll-wide"><table id="plans"><thead><tr><th>Plan</th><th>When it fits</th><th>Undone by</th><th>Ages</th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <!-- XII -->
+    <section class="ch" id="siege">
+      <span class="num">Chapter the Twelfth</span>
+      <h2>Of sieges and storms</h2>
+      <p class="open">Walls were the great patience of the ancient world. A city with walls falls in one of two ways: hunger, slowly, or a storm, at once and at a price.</p>
+      <figure class="plate"><img src="/art/events/ancient_siege.webp" alt="An ancient city under siege" loading="lazy"><figcaption>Siege towers and catapults before the walls.</figcaption></figure>
+      <ul>
+        <li><b>A siege</b> takes as many seasons as the city has walls (one to four), and at least one. An army four times the garrison’s size presses twice as fast.</li>
+        <li><b>A storm</b> (say “storm the walls”) is a battle against the garrison, which fights at 1.5 times its strength plus 0.6 for every level of wall. Win, and the city is yours this season. Fail, and you lose many men, though the garrison is thinned.</li>
+        <li><b>A port fed from the sea</b> cannot be starved while its masters’ fleet is at least as strong as yours. Storm it, or sink its fleet.</li>
+        <li><b>A city taken pays</b> its plunder, and its royal treasury the first time it falls. A capital taken costs its old masters 22 points of will and gives you 12.</li>
+        <li>A city with no walls, or a garrison under 500, is taken just by standing in it.</li>
+      </ul>
+    </section>
+
+    <!-- XIII -->
+    <section class="ch" id="will">
+      <span class="num">Chapter the Thirteenth</span>
+      <h2>Of gold, hunger and the will to fight</h2>
+      <p class="open">Wars are not won only on the field. Rome lost battle after battle to Hannibal and never sued for peace; Athens had ships and gold and lost all the same. Every side has a will to fight, and when it is gone, the war is over.</p>
+      <div class="meterbox">
+        <div class="meter"><span class="pin" style="left:0"><span>0: yields</span></span><span class="pin" style="left:25%"><span>25: sues for peace</span></span><span class="pin" style="left:70%"><span>70: a usual start</span></span></div>
+        <div class="ticks"><span></span><span>Will to fight, 0 to 100</span><span>100</span></div>
+      </div>
+      <ul>
+        <li><b>Will falls</b> with every season of war (more for weary peoples), with defeats, lost cities (a capital most of all) and unpaid soldiers. It rises with victories and cities taken.</li>
+        <li><b>An enemy below 25 offers peace.</b> At 0 it yields. Some never treat at all, such as the Great King while he lives.</li>
+        <li><b>If your own will reaches 0</b>, you are recalled, and the war is lost.</li>
+        <li><b>Gold</b>: your lands pay income each season and your armies cost upkeep. If the treasury runs dry, unpaid soldiers desert and the people lose heart.</li>
+        <li><b>A beaten people may submit</b>, give hostages, and become your client.</li>
+      </ul>
+    </section>
+
+    <!-- XIV -->
+    <section class="ch" id="end">
+      <span class="num">Chapter the Fourteenth</span>
+      <h2>Of the end, and the judgement of history</h2>
+      <p class="open">Every war ends: when the goal is met, when the seasons run out, when your hero falls, when your capital is lost, or when your people will fight no more. Then the war is set beside history, and judged.</p>
+      <div class="stars3">
+        <div><span class="st">★★★</span><b>Better than history</b><small>A war history won, won sooner; or a war history lost, won.</small></div>
+        <div><span class="st">★★<i>★</i></span><b>As history</b><small>Won as it was won; or lost no sooner than it was.</small></div>
+        <div><span class="st">★<i>★★</i></span><b>Worse than history</b><small>A victory thrown away, or a defeat that came early.</small></div>
+      </div>
+      <p>The end brings your <b>scroll</b>: your war season by season beside the real one, the verdict, and soon after a summary written by the AI historian, in a neutral voice, of what you did differently and what came of it.</p>
+    </section>
+
+    <!-- XV -->
+    <section class="ch" id="together">
+      <span class="num">Chapter the Fifteenth</span>
+      <h2>Of playing together</h2>
+      <p class="open">Agentistan is played alone but watched together. There is no head-to-head play yet. Instead, everyone shares one living world, and every war fought in it can be watched, replayed and kept.</p>
+      <div class="legend">
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#27466e"><use href="#i-eye"/></svg></div><div><b>One world for everyone</b><span>The Watch is the same history for every visitor, live, with the past to scroll back through.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#a3361f"><use href="#i-swords"/></svg></div><div><b>Watch a war live</b><span>The campaigns menu shows the wars being played now. Open one and each season arrives as its commander ends it.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#6a5032"><use href="#i-play"/></svg></div><div><b>Replays</b><span>Every finished war can be replayed from its record and shared by its link. The same start and the same orders always give the same war.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#2b7d7a"><use href="#i-seal"/></svg></div><div><b>Honest by design</b><span>The server replays every season before it records it, so no war in the lists was won by tampering.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#b3852c"><use href="#i-scroll"/></svg></div><div><b>Your scroll, kept for ever</b><span>A finished war can be claimed as a scroll, a token on the Base Sepolia test network. The game makes you a wallet in your browser (or takes your own address) and pays every fee.</span></div></div>
+        <div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:30px;height:30px;color:#a3361f"><use href="#i-banner"/></svg></div><div><b>The herald</b><span>Great moments and finished wars are announced by the herald, an automation that tells the community what is happening.</span></div></div>
+      </div>
+      <p>Give yourself a name when you begin, and it goes with your war into the lists, the replays and the scroll.</p>
+    </section>
+
+    <!-- XVI -->
+    <section class="ch" id="counsel">
+      <span class="num">Chapter the Sixteenth</span>
+      <h2>Counsel for commanders</h2>
+      <p class="open">Here, at the last, is the advice the old captains would have given, set down plainly for those who mean to do better than history.</p>
+      <ol class="counsel">
+        <li><b>Read the goal, and count the seasons.</b> The briefing says what you must do and by when. Work backwards from the last season.</li>
+        <li><b>Ask before you march.</b> “What are my odds at Capua?” The council answers from the war’s data, and it costs you nothing.</li>
+        <li><b>Look at the badge before you fight.</b> Green odds win more often than not, gold is a gamble, and red needs a plan that fits very well, or a retreat.</li>
+        <li><b>Make them fight on your ground.</b> A defender in the mountains is 30% stronger. Let them climb to you.</li>
+        <li><b>Fit the plan to the foe.</b> Rash and bold generals walk into envelopments and chase feigned retreats. Cautious ones will not, so do not wait for them to blunder.</li>
+        <li><b>Never charge into a trap.</b> A frontal charge is undone by an envelopment, a feigned retreat, a held hill, a phalanx and archers behind stakes.</li>
+        <li><b>Mind the seasons.</b> Do not winter in the mountains, or summer in the desert. Rest between campaigns on your own land, where no one dies of hunger.</li>
+        <li><b>Pay your soldiers.</b> An army larger than your treasury can feed will desert. Raise men only when you can keep them.</li>
+        <li><b>Strike the will, not only the army.</b> A capital is worth more than a battle. Rich cities pay for your war and cost the enemy heart.</li>
+        <li><b>Bring four times the garrison</b> to a siege, and it falls twice as fast. Storm only when you are much the stronger.</li>
+        <li><b>Keep your hero alive.</b> If you fall, the war is lost, however well it was going.</li>
+        <li><b>Take peace when it is offered</b>, if peace is your goal. The enemy offers below 25 will. A peace on your terms is a victory.</li>
+      </ol>
+    </section>
+
+    <div class="rule"></div>
+    <footer class="colophon">
+      <p>Here ends the Book of Agentistan.</p>
+      <a class="go" href="/campaign/">Fight a war</a><a class="go alt" href="/">Watch the world</a>
+      <p>Built by <a href="https://umarkhatana.com" target="_blank" rel="noopener">Umar Khatana</a>. AI by Groq, automations by n8n, scrolls on Base Sepolia. Paintings made with Workers AI.</p>
+    </footer>
+  </main>
+
+  <script type="module">
+    // The book reads the game itself: its icons from the living world, its plans and tempers from the campaign engine.
+    import { symbols, KIND, esc } from '/silk/ui.js';
+    import { PLANS, COUNTERS, ERA_PLANS, TEMPERS } from '/campaign/engine.js';
+    document.getElementById('sprite').insertAdjacentHTML('beforeend', symbols());
+
+    const AGES = { ancient: 'antiquity', medieval: 'middle ages', gunpowder: 'gunpowder', napoleonic: 'Napoleon', modern: 'world wars' };
+    const ages = (id) => Object.entries(ERA_PLANS).filter(([, list]) => list.includes(id)).map(([a]) => `<span class="tag">${AGES[a]}</span>`).join('');
+    const side = { attack: ' (attacking)', defend: ' (defending)', both: '' };
+    document.querySelector('#plans tbody').innerHTML = Object.entries(PLANS).map(([id, p]) => `<tr><td><b>${esc(p.name)}</b>${esc(side[p.for])}<br><small>${esc(p.example)}</small></td><td>${esc(p.hint)}</td><td>${(COUNTERS[id] ?? []).map((c) => `<span class="tag red">${esc(PLANS[c].name)}</span>`).join('') || '—'}</td><td>${ages(id)}</td></tr>`).join('');
+
+    const plan = (id) => (PLANS[id] ? PLANS[id].name : id);
+    document.querySelector('#tempers tbody').innerHTML = Object.values(TEMPERS).map((t) => `<tr><td><b>${esc(t.name[0].toUpperCase() + t.name.slice(1))}</b></td><td>${t.odds < 1 ? `${(1 / t.odds).toFixed(1)}:1 against him` : `${t.odds.toFixed(1)}:1`}${t.odds < 1 ? ' (he attacks even when outnumbered)' : ''}</td><td>${t.lean.filter((id) => PLANS[id]).map((id) => `<span class="tag">${esc(plan(id))}</span>`).join('')}</td></tr>`).join('');
+
+    // the chronicle's signs, one of each
+    const SHOWN = { battle: 'A battle', capture: 'A city taken', revolt: 'A revolt', crowned: 'A new ruler crowned', split: 'An empire split', death: 'A death', plot: 'A plot or a coup', horde: 'A horde or a raid', plague: 'Plague', famine: 'Famine', earthquake: 'An earthquake', flood: 'A flood', slump: 'Hard times for trade', peace: 'A peace', alliance: 'An alliance', marriage: 'A marriage', built: 'A great building', invention: 'A discovery', golden: 'A golden age', charter: 'A charter or reform', commune: 'A free city', dispute: 'A dispute judged', toll: 'Winter’s toll' };
+    document.getElementById('kinds').innerHTML = Object.entries(SHOWN).map(([k, label]) => { const [ic, color] = KIND[k]; return `<div class="sign"><div class="pic"><svg viewBox="0 0 24 24" style="width:28px;height:28px;color:${color}"><use href="#i-${ic}"/></svg></div><div><b>${esc(label)}</b></div></div>`; }).join('');
+  </script>
+</body>
+</html>
