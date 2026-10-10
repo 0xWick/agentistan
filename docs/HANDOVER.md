@@ -40,28 +40,49 @@ Keep to these unless the owner changes them.
   - runs only the 1200 world, a month every 2 hours, with no players;
   - the AI counsels up to 6 realms a month, in rotation;
   - back/forward buttons (Shift jumps a year), mouse-wheel scrubbing over the timeline, and dragging the timeline;
-  - army and battle icons stay readable at any zoom.
-- **Campaigns, 7 of 25 built:** persian, sparta, alexander, hannibal, maccabees, caesar, threekingdoms.
-- **Campaign play:**
-  - a council chat with cards inside it;
-  - a crisp map: SVG land, plus an HTML layer for cities and armies that keeps their size at any zoom;
-  - the war room dashboard;
+  - army and battle icons stay readable at any zoom; a march by sea is drawn as a sea lane with a ship;
+  - **Follow the world** (server/tidings.js, web/silk/follow.js): every event is tagged (its kind, realms, famous
+    people, the steppe, "history taking another road"); followers choose tags and a channel (a Discord or Slack
+    webhook, or an ntfy.sh topic for the phone), and after each month n8n's **Tidings** workflow
+    (`nbpTidings000001`, `/webhook/tidings`) sends them cards with the event's painting;
+  - affairs at court (a consort's lover, found out or seizing the throne) exist in the engine for ages begun with
+    the v3 state; the age now running began before, so it has none (see section 9).
+- **Campaigns, 7 of 25 built:** persian, sparta, alexander, hannibal, maccabees, caesar, threekingdoms. The other 18
+  show on the menu as "Coming soon" (`SOON` in web/campaign/app.js).
+- **Campaign play** (rules version 6):
+  - a council chat with cards inside it. Questions of fact are answered from the war's data and said by the AI in
+    character; anything the rules cannot read goes to the AI with the data. The AI sees computed OPPORTUNITIES AND
+    DANGERS (prospects() in court.js) and is told to think like a general;
+  - armies work together ("join", "support", "come to the aid of any friend attacked"); a siege can be lifted, and
+    the garrison sallies; alliances can be asked for, with gold; rumours mislead the enemy; a side that never treats
+    does once its capital falls (unless `noPeace: 'always'`); a peace on your terms hands over your goal's cities;
+  - the life of the courts (life.js): feasts, quarrels, scandals, traitors, fever, feuds, failed harvests, veterans;
+  - **battles on the field** (battle.js, battleui.js): at the end of a season the commander may take command of a
+    battle, fought hour by hour on a grid of the province's ground; the record goes with the season and the engine
+    fights it again; `/api/run/<id>/battles` looks ahead with the server's own AI plans, `/battle` gives the officers
+    their voices;
+  - a crisp map: SVG land, plus an HTML layer for cities and armies that keeps their size at any zoom; ships on
+    crossings by sea;
+  - the war room dashboard (with ships and the conditions in force);
   - live watching and replays;
   - the end-of-war scroll beside history;
   - the NFT claim.
-- **n8n Campaign Herald** on Render: the workflow `nbpCampaignHrld1`, at `/webhook/campaign`.
+- **The book of rules** at /rules/: every sign, rule and plan, written as a chronicle.
+- **n8n Campaign Herald** on Render: the workflow `nbpCampaignHrld1`, at `/webhook/campaign`; **Tidings**, above.
 - **Regalia ERC-721** on Base Sepolia, at `0x265efc0a8cfde6a97e5c89fb6317c96e8b202cb2` (see `deployments/regalia-base-sepolia.json`). Campaign scroll token ids start at 1,000,000.
 
 **Checks:**
 
-- `npm test` passes: 29 tests, including "the people are real" and "the council understands plain words".
+- `npm test` passes: 30 tests, including "the people are real", "the council understands plain words", and a battle
+  commanded on the field that replays exactly.
 - `node tools/campaign/people-check.mjs` reports 0 problems over 280 simulated wars.
 
 **Not done yet** (details in section 9):
 
 - the other 18 campaigns;
-- a balance pass;
-- the owner's website write-ups.
+- Caesar and Three Kingdoms balance (they need a human playtest);
+- the rest of the paintings (the free allowance paints about 50 a day);
+- email for Tidings (no free mail service is set up).
 
 ## 4. Repository map
 
@@ -257,10 +278,21 @@ Metadata and picture are at `/nft/<token>.json` and `/nft/<token>.svg`. Testnet 
   about 50 a day, so the set fills in over several days; re-run the same commands each day and it paints only what is
   missing. Check every new picture for halos, crosses, script or symbols on flags, and delete it (raw and webp) to
   repaint it. A campaign face is painted when `web/art/people/<slug of the name>.webp` exists, otherwise drawn.
-- **Old campaigns** (rules version 1) are closed by design. Players see a friendly message.
+- **The free image allowance** does not come back at midnight UTC: on 10 Oct it was still spent at 05:00 UTC.
+  `/root/seasons-review/paint_when_ready_1010.sh` tries one picture every 30 minutes and paints the rest once it
+  returns; it lives in the session that started it, so start it again in a new session.
+- **Battles on the field** are not balanced against the reckoning a general uses: a skilled commander may do better
+  than the formula, a careless one worse. Watch what players do with it before tuning `battle.js`.
+- **Old campaigns** (rules versions before 6) are closed by design. Players see a friendly message.
 
 ## 9. What to do next, in order
 
+0. **Owner's decisions, pending:**
+   - Restart the living world to bring in the affairs at court? The age now running has none (its record must
+     replay as it was). A restart begins a new age in January 1200: `POST /internal/era/start` with the
+     `x-realm-secret` header, or wait for the age to end.
+   - Email for Tidings: add a free mail service (for example Brevo or Resend, both need an account) and a branch in
+     `n8n/workflows/tidings.json`; Discord, Slack and ntfy work now.
 1. **Caesar and Three Kingdoms:** play them by hand, then tune (see section 8). The other five are on target.
 2. **The remaining 18 campaigns** (they show on the menu as "Coming soon", from `SOON` in `web/campaign/app.js`), in this order:
    - attila
