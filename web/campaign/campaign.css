@@ -334,3 +334,8 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 700; letter-spacing: 
   .kpis { grid-template-columns: repeat(2, 1fr); }
   .replay { width: calc(100% - 24px); }
 }
+
+/* the war room: conditions in force on a side */
+.cond { margin: 4px 0 0; padding: 2px 8px; border-radius: 6px; font-size: 14px; }
+.cond.good { background: rgba(79, 122, 58, 0.12); color: #2f5a22; }
+.cond.bad { background: rgba(163, 54, 31, 0.1); color: #8a2a16; }

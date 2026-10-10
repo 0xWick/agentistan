@@ -1,6 +1,6 @@
 // The war room: every side of the war at a glance — who leads it, its men, gold, lands and will to fight, how they have
 // moved season by season, its armies and their generals — and the people of the war, living and fallen.
-import { newCampaign, resolve, armiesOf, menOf, owned, relOf, leaderOf, fmtMen, goalState, courtOf, isDead } from './engine.js';
+import { newCampaign, resolve, armiesOf, menOf, owned, relOf, leaderOf, fmtMen, goalState, courtOf, isDead, conditionsOf } from './engine.js';
 
 // Each side's strength at the start of every season, from the record.
 export function history(C, seed, turns) {
@@ -51,6 +51,7 @@ export function warRoom(C, s, snaps, { face, esc, label }) {
         <div class="will">${gauge(st.will, st.will >= 50 ? '#4f7a3a' : st.will >= 25 ? '#b3852c' : '#a3361f')}<span>will to fight</span></div>
       </div>
       ${armies.length ? `<ul class="armies">${armies.slice(0, 6).map((a) => `<li><b>${esc(a.gen ?? 'An army')}</b><span>${fmtMen(a.men)}</span><small>${esc(C.prov[a.at].name)}${a.hero ? ' · the commander' : ''}</small></li>`).join('')}${armies.length > 6 ? `<li><small>and ${armies.length - 6} more</small></li>` : ''}</ul>` : '<p class="sub">No army in the field.</p>'}
+      ${conditionsOf(s, id).map((c) => `<p class="cond ${c.kind === 'power' && c.k >= 1 ? 'good' : 'bad'}">${esc(c.why)}: ${c.kind === 'stay' ? 'will not march' : `${c.k >= 1 ? '+' : '−'}${Math.round(Math.abs(c.k - 1) * 100)}% ${c.kind === 'income' ? 'income' : c.army ? `for ${s.armies[c.army]?.gen ?? 'one army'}` : c.hero ? 'for the commander’s army' : 'in battle'}`}${c.until < 90 ? `, ${c.until - s.turn + 1} season${c.until - s.turn ? 's' : ''}` : ''}</p>`).join('')}
       ${d.persona ? `<p class="persona">${esc(d.persona)}</p>` : ''}
     </article>`;
   }).join('');
@@ -65,6 +66,6 @@ export function warRoom(C, s, snaps, { face, esc, label }) {
       <section><h4>Will to fight</h4>${chart(C, snaps, 'will', { label: 'will to fight by season' })}</section></div>
     <section class="people"><h4>The people of the war</h4>
       <ul class="living">${living.map((p) => `<li style="--c:${p.color}"><b>${esc(p.name)}</b><small>${esc(p.title)}</small></li>`).join('')}</ul>
-      ${s.dead?.length ? `<h5>The fallen</h5><ul class="fallen">${s.dead.map((n) => `<li>✝ ${esc(n)}</li>`).join('')}</ul>` : ''}
+      ${s.dead?.length ? `<h5>The fallen</h5><ul class="fallen">${s.dead.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
     </section>`;
 }

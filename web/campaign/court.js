@@ -12,9 +12,11 @@ export function orderText(C, s, id, o) {
   const a = s.armies[id];
   if (!a) return '';
   const who = `${a.gen ?? 'An army'} (${fmtMen(a.men)})`;
-  if (!o?.to || o.to === a.at) return `${who} holds ${C.prov[a.at].name}${o?.plan ? `, ready to ${PLANS[o.plan].name.toLowerCase()} if attacked` : ''}`;
+  if (!o?.to || o.to === a.at) return `${who} holds ${C.prov[a.at].name}${o?.plan ? `, ready to ${PLANS[o.plan].name.toLowerCase()} if attacked` : ''}${o?.aid ? ', and will march to the aid of any friend attacked next to it' : ''}`;
+  const friend = Object.values(s.armies).find((x) => x.id !== id && x.at === o.to && friends(s, a.side, x.side));
+  if (friend && !Object.values(s.armies).some((x) => x.at === o.to && atWar(s, a.side, x.side))) return `${who} marches to join ${friend.gen ?? 'our army'} at ${C.prov[o.to].name}`;
   const odds = oddsOf(C, s, id, o.to), P = C.prov[o.to].name;
-  if (odds.kind === 'battle') return `${who} attacks at ${P}${o.plan ? ` with ${PLANS[o.plan].name.toLowerCase()}` : ', the general choosing the plan'} (odds ${odds.ratio >= 1 ? `${odds.ratio.toFixed(1)} to 1` : `1 to ${(1 / odds.ratio).toFixed(1)} against`})`;
+  if (odds.kind === 'battle') return `${who} attacks at ${P}${o.plan ? ` with ${PLANS[o.plan].name.toLowerCase()}` : ', the general choosing the plan'} (odds ${odds.ratio >= 0.9 && odds.ratio < 1.1 ? 'about even' : odds.ratio >= 1 ? `${odds.ratio.toFixed(1)} to 1` : `1 to ${(1 / odds.ratio).toFixed(1)} against`})`;
   if (odds.kind === 'siege') return `${who} ${o.storm ? 'storms' : 'besieges'} ${P}${odds.fed ? ', a port fed from the sea' : o.storm ? '' : ` (about ${odds.turns} seasons)`}`;
   return `${who} marches to ${P}`;
 }
@@ -34,7 +36,9 @@ export function situation(C, s0, draft = null) {
   for (const id of sides) {
     const d = C.sides[id], st = s.sides[id];
     const rel = id === you ? 'THE PLAYER’S SIDE' : relOf(s, you, id) === 'war' ? 'at war with the player' : relOf(s, you, id) === 'ally' ? 'allied to the player' : 'at peace with the player';
-    L.push(`SIDE ${id} — ${d.name} (${rel}), led now by ${leaderOf(C, s, id)}; temper ${temperOf(C, s, id)}; will to fight ${Math.round(st.will)}/100; gold ${Math.round(st.gold)}; ${fmtMen(menOf(s, id))} men; ${owned(s, id).length} provinces${d.fleet !== undefined ? `; fleet ${st.fleet}` : ''}.`);
+    const wars = sides.filter((x) => x !== id && atWar(s, id, x)).map((x) => C.sides[x].short ?? C.sides[x].name);
+    L.push(`SIDE ${id} — ${d.name} (${rel}), led now by ${leaderOf(C, s, id)}; temper ${temperOf(C, s, id)}; will to fight ${Math.round(st.will)}/100; gold ${Math.round(st.gold)}; ${fmtMen(menOf(s, id))} men; ${owned(s, id).length} provinces${d.fleet !== undefined ? `; fleet ${st.fleet}` : ''}; at war with ${wars.join(', ') || 'no one'}.`);
+    if (id === you) L.push(`  ${raising(C, s)}`);
     for (const a of armiesOf(s, id)) {
       L.push(`  army ${a.id}: ${fmtMen(a.men)} under ${a.gen ?? 'no famous general'} (skill ${a.skill}/5${a.temper ? `, ${a.temper}` : ''}, morale ${a.morale}) at ${a.at} (${C.prov[a.at].name}, ${C.prov[a.at].terrain})${id === you && draft?.orders?.[a.id] ? `; current order: ${orderText(C, s, a.id, draft.orders[a.id])}` : ''}`);
       if (id !== you) continue;
@@ -67,7 +71,7 @@ export function normalize(C, s0, draft, prop = {}) {
   for (const [id, o] of Object.entries(prop.orders ?? {})) {
     const a = s.armies[id];
     if (!a || a.side !== C.you) continue;
-    if (o === null || o.to === null || o.to === a.at) { out.orders[id] = { to: null, plan: PLANS[o?.plan] ? o.plan : out.orders[id]?.plan ?? null }; delete out.aims[id]; continue; }
+    if (o === null || o.to === null || o.to === a.at) { out.orders[id] = { to: null, plan: PLANS[o?.plan] ? o.plan : out.orders[id]?.plan ?? null, ...(o?.aid ? { aid: true } : {}) }; delete out.aims[id]; continue; }
     if (!C.prov[o.to]) continue;
     const r = reach(C, s, id);
     let to = o.to;
@@ -107,7 +111,8 @@ const PLAN_WORDS = [
   ['barrage', ['barrage', 'artillery', 'shell']], ['blitz', ['tanks', 'armour', 'armor', 'blitz', 'panzer']], ['depth', ['depth', 'belts', 'mines']],
   ['wagons', ['wagon', 'wagons', 'wagenburg']], ['charge', ['charge', 'frontal', 'head']],
 ];
-const MOVE = ['march', 'go', 'move', 'attack', 'take', 'besiege', 'siege', 'storm', 'assault', 'advance', 'invade', 'strike', 'seize', 'capture', 'relieve', 'cross', 'head', 'send', 'sail', 'fall'];
+const MOVE = ['march', 'go', 'move', 'attack', 'take', 'besiege', 'siege', 'storm', 'assault', 'advance', 'invade', 'strike', 'seize', 'capture', 'relieve', 'cross', 'head', 'send', 'sail', 'fall', 'join', 'reinforce', 'rescue'];
+const SUPPORT = /\b(join|support|reinforce|help|aid|assist|back up|rescue)\b/;
 const HOLD = ['hold', 'stay', 'remain', 'wait', 'defend', 'guard', 'rest', 'stand', 'keep'];
 function findPlace(C, ws, text) {
   let best = null;
@@ -154,10 +159,13 @@ export function interpret(C, s, draft, text) {
   // the orders: clause by clause, in the world the cards make
   const answered = Object.keys(out.cards).length;
   const ps = withCards(C, s, { ...(draft.cards ?? {}), ...out.cards });
+  let last = []; // a clause that names no army speaks of the one named just before (“Leonidas, hold Sparta and come to the aid…”)
   for (const clause of t.split(/[;.\n]|,? (?:and then|then|while|but|and) /)) {
     const ws = words(clause);
     if (!ws.length) continue;
-    const ids = findArmies(C, ps, ws), place = findPlace(C, ws, clause);
+    const named = findArmies(C, ps, ws), place = findPlace(C, ws, clause);
+    const ids = named.length ? named : /\b(we|us)\b/.test(clause) ? [] : last;
+    if (named.length) last = named;
     if (answered && !ids.length) continue;
     const plan = PLAN_WORDS.find(([, kw]) => kw.some((k) => ws.includes(k)))?.[0];
     const raiseN = clause.match(/(?:raise|recruit|levy|hire|call up)\D*(\d[\d,.]*)\s*(k|thousand)?/);
@@ -170,6 +178,20 @@ export function interpret(C, s, draft, text) {
     if (/\b(peace|terms|treat|truce)\b/.test(clause)) {
       for (const side of Object.keys(C.sides)) if (side !== C.you && atWar(s, C.you, side) && (words(C.sides[side].name).some((w) => ws.includes(w) && !STOP.has(w)) || ws.includes(side))) out.peace[side] = 'offer';
       continue;
+    }
+    // “Leonidas, support Miltiades”: whoever is named first goes where the one named after the word is going
+    const sup = clause.match(SUPPORT);
+    if (sup && !/\bif\b|\bwhen\b|sound of/.test(clause)) {
+      const after = findArmies(C, ps, words(clause.slice(sup.index + sup[0].length))), before = findArmies(C, ps, words(clause.slice(0, sup.index)));
+      const target = after.find((id) => !before.includes(id)), movers = (before.length ? before : heroOf(ps)?.side === C.you ? [heroOf(ps).id] : []).filter((id) => id !== target);
+      const dest = target ? (out.orders[target]?.to ?? draft.orders?.[target]?.to ?? ps.armies[target].at) : place;
+      if (dest && movers.length) { for (const id of movers) out.orders[id] = { to: dest, plan: plan ?? null }; continue; }
+    }
+    // “come to the aid of your friends if they are attacked”: hold, and march to the sound of the guns
+    if (/\b(aid|help|support|sound of the guns)\b/.test(clause) && /\bif\b|\bwhen\b|ready|sound of/.test(clause)) {
+      const movers = ids.length ? ids : heroOf(ps)?.side === C.you ? [heroOf(ps).id] : [];
+      for (const id of movers) out.orders[id] = { to: null, plan: plan ?? null, aid: true };
+      if (movers.length) continue;
     }
     const moving = MOVE.some((w) => ws.includes(w)), holding = HOLD.some((w) => ws.includes(w));
     const who = ids.length ? ids : (moving || holding || plan) && heroOf(ps)?.side === C.you ? [heroOf(ps).id] : [];
@@ -185,30 +207,57 @@ export function interpret(C, s, draft, text) {
   for (const [id, n] of Object.entries(out.raise)) said.push({ who: advisor.id, text: `We will raise ${fmtMen(n)} men${id === '@home' ? ` at ${C.prov[homeOf(C, s, C.you)]?.name ?? 'home'}` : ''}, if the treasury allows.` });
   for (const side of Object.keys(out.peace)) said.push({ who: advisor.id, text: `An envoy will ride to ${C.sides[side].name}. They will listen only if their will to fight is low (it is ${Math.round(s.sides[side].will)}).` });
   for (const n of notes) said.push({ who: advisor.id, text: n });
-  if (!changed && !Object.keys(out.cards).length && !end) said.push({ who: advisor.id, text: answer(C, s, t) });
-  return { draft: next, replies: said, end, asking, notes, literal: out }; // literal: what the words themselves said, before any guessing
+  const known = !changed && !Object.keys(out.cards).length && !end ? answer(C, s, t) : null;
+  if (!changed && !Object.keys(out.cards).length && !end) said.push({ who: advisor.id, text: known ?? notUnderstood(C, s) });
+  return { draft: next, replies: said, end, asking, known: !!known, notes, literal: out }; // literal: what the words themselves said, before any guessing
 }
 
-// A question, answered from the war's data.
+// What the player's side can raise this season, and what it costs.
+export function raising(C, s) {
+  const you = C.you, st = s.sides[you], cost = C.raiseCost ?? 10, up = C.upkeep ?? 2, home = homeOf(C, s, you);
+  const can = Math.max(0, Math.min(C.sides[you].levy ?? 0, Math.floor(st.gold / cost) * 1000));
+  return `We can raise up to ${fmtMen(can)} men this season${home ? `, gathering at ${C.prov[home].name}` : ''}: ${cost} gold for every thousand, and ${up} a season to keep them (the treasury holds ${Math.round(st.gold)}; our ${fmtMen(menOf(s, you))} men already cost ${Math.round((menOf(s, you) / 1000) * up)} a season).`;
+}
+
+// A question, answered from the war's data; null when it is not a question these rules know (the AI takes it then).
 function answer(C, s, t) {
   const you = C.you, all = Object.keys(C.sides).filter((x) => s.sides[x].alive), foes = all.filter((x) => x !== you && atWar(s, you, x));
-  const ws = words(t), named = all.find((f) => [...words(C.sides[f].name), ...words(C.sides[f].short)].some((w) => !STOP.has(w) && w.length > 2 && ws.some((x) => x === w || (w.length > 4 && x.startsWith(w))))); // “Persians” is Persia
-  const side = named ?? foes[0];
+  const ws = words(t), named = all.filter((x) => x !== you).find((f) => [...words(C.sides[f].name), ...words(C.sides[f].short)].some((w) => !STOP.has(w) && w.length > 2 && ws.some((x) => x === w || (w.length > 4 && x.startsWith(w))))); // “Persians” is Persia
+  const self = !named && /\b(we|our|us|ours|my|mine)\b/.test(t); // “can we raise more?” is about us
+  const side = named ?? (self ? you : foes[0]), place = findPlace(C, ws, t), hero = heroOf(s)?.side === you ? heroOf(s) : armiesOf(s, you)[0];
+  const P = (id) => C.prov[id].name, list = (id) => armiesOf(s, id).sort((a, b) => b.men - a.men).slice(0, 4).map((a) => `${a.gen ?? 'an army'} with ${fmtMen(a.men)} at ${P(a.at)}`).join('; ');
+  if (/\b(raise|recruit|levy|levies|reinforce\w*|conscript|more (men|troops|soldiers|army|armies)|new (men|troops|army|levies))\b/.test(t)) return `${raising(C, s)} Say “raise 5,000 men”, and name an army if they should join it.`;
+  if (/\b(ally|allies|allied|friends?|help|aid|support)\b/.test(t) && !named) {
+    const friends_ = all.filter((x) => x !== you && friends(s, you, x)), neutral = all.filter((x) => x !== you && !friends(s, you, x) && !atWar(s, you, x));
+    const f = friends_.map((x) => `${C.sides[x].name} (${fmtMen(menOf(s, x))} men, will ${Math.round(s.sides[x].will)}${foes.some((e) => atWar(s, x, e)) ? `, at war with ${foes.filter((e) => atWar(s, x, e)).map((e) => C.sides[e].short ?? C.sides[e].name).join(' and ')}` : ', not yet in the war'})`);
+    return `${f.length ? `Our allies: ${f.join('; ')}. They fight beside us as they judge best; their armies move on their own.` : 'We have no allies in this war: we stand alone.'}${neutral.length ? ` ${neutral.map((x) => C.sides[x].name).join(', ')} ${neutral.length > 1 ? 'are' : 'is'} at peace with us, and may yet choose a side.` : ''}`;
+  }
+  if (/\b(gold|money|treasury|pay|afford|cost)\b/.test(t)) return `We have ${Math.round(s.sides[you].gold)} gold. ${raising(C, s)}`;
+  if (place && hero && /\b(odds|chance|chances|win|beat|attack|fight|battle)\b/.test(t)) {
+    const o = oddsOf(C, s, hero.id, place), r = reach(C, s, hero.id)[place];
+    if (o.kind === 'battle') return `At ${P(place)} we would fight ${o.foes.map((id) => s.armies[id]?.gen ?? 'their army').join(' and ')}: odds ${o.ratio >= 0.9 && o.ratio < 1.1 ? 'about even' : o.ratio >= 1 ? `${o.ratio.toFixed(1)} to 1 for us` : `1 to ${(1 / o.ratio).toFixed(1)} against us`}, best with ${PLANS[bestPlan(C, o.facts)].name.toLowerCase()}.${r ? '' : ' It is beyond one season’s march.'}`;
+    if (o.kind === 'siege') return `${P(place)} has walls: ${o.fed ? 'a port fed from the sea, which only a storm can take' : `a siege of about ${o.turns} seasons`}; storming it, our odds are ${o.ratio.toFixed(1)} to 1.`;
+    return `No army stands at ${P(place)}${s.prov[place].owner && atWar(s, you, s.prov[place].owner) ? ': it is ours for the taking' : ''}.${r ? '' : ' It is beyond one season’s march.'}`;
+  }
+  if (place && /\b(siege|walls|storm|take|besiege)\b/.test(t) && hero) { const o = oddsOf(C, s, hero.id, place); if (o.kind === 'siege') return `${P(place)}: ${o.fed ? 'fed from the sea, so only a storm will take it' : `about ${o.turns} seasons of siege`}; a storm at odds of ${o.ratio.toFixed(1)} to 1.`; }
   if (side && /\b(who|leads?|leader|king|rules?)\b/.test(t) && !/\b(how many|where)\b/.test(t)) {
     const fallen = (s.dead ?? []).filter((n) => [C.sides[side].leader, ...armiesOf(s, side).map((a) => a.gen)].some((x) => x && x.includes(n)) || (C.sides[side].leader ?? '').startsWith(n));
     return `${C.sides[side].name} ${side === you ? 'is yours to lead' : `is led by ${leaderOf(C, s, side)}`}.${fallen.length ? ` ${fallen.join(' and ')} ${fallen.length > 1 ? 'are' : 'is'} dead.` : ''} ${side === you ? '' : `${relOf(s, you, side) === 'war' ? 'We are at war with them' : relOf(s, you, side) === 'ally' ? 'They are our allies' : 'We are at peace with them'}; their will to fight is ${Math.round(s.sides[side].will)}.`}`.trim();
   }
-  if (side && /\b(how many|numbers|strength|strong|army|armies|where|enemy|enemies|they|them|men)\b/.test(t)) {
-    const list = armiesOf(s, side).sort((a, b) => b.men - a.men).slice(0, 4).map((a) => `${a.gen ?? 'an army'} with ${fmtMen(a.men)} at ${C.prov[a.at].name}`);
-    return `${C.sides[side].name}, led by ${leaderOf(C, s, side)}, has ${fmtMen(menOf(s, side))} men: ${list.join('; ') || 'no army in the field'}. Their will to fight is ${Math.round(s.sides[side].will)}.`;
+  if (side && /\b(how many|numbers|strength|strong|army|armies|where|enemy|enemies|they|them|men|troops|forces)\b/.test(t)) {
+    if (side === you) return `We have ${fmtMen(menOf(s, you))} men: ${list(you) || 'no army in the field'}. Our will to fight is ${Math.round(s.sides[you].will)}.`;
+    return `${C.sides[side].name}, led by ${leaderOf(C, s, side)}, has ${fmtMen(menOf(s, side))} men: ${list(side) || 'no army in the field'}. Their will to fight is ${Math.round(s.sides[side].will)}.`;
   }
-  if (/\b(gold|money|treasury|pay)\b/.test(t)) return `We have ${Math.round(s.sides[you].gold)} gold. Every thousand men costs about ${C.upkeep ?? 2} gold a season to keep, and ${C.raiseCost ?? 10} to raise.`;
   if (/\b(goal|win|victory|aim)\b/.test(t)) return `${C.goal.text}. ${goalState(C, s).text}.`;
-  // how to speak, with this war's own names
+  return null;
+}
+// Words the rules could not read: how to speak, with this war's own names.
+function notUnderstood(C, s) {
+  const you = C.you, foes = Object.keys(C.sides).filter((x) => x !== you && s.sides[x].alive && atWar(s, you, x));
   const g = goalState(C, s), other = armiesOf(s, you).find((a) => !a.hero && a.gen && isPersonName(a.gen)), foe = foes[0];
   const near = foe ? owned(s, foe).map((p) => C.prov[p].name)[0] : null;
   const eg = [other ? `“${other.gen.split(' ')[0]}, hold ${C.prov[other.at].name}”` : null, near ? `“we march on ${near}”` : null, '“raise 5,000 men”', foe && !C.sides[foe].noPeace ? `“offer peace to ${C.sides[foe].short ?? C.sides[foe].name}”` : null].filter(Boolean);
-  return `I did not take your meaning. Give your orders in plain words: ${eg.join(', ')}. Or ask what you wish to know: where the enemy is, who leads them, what we can afford. ${g.text}.`;
+  return `Forgive me, I do not follow. Tell us what to do in plain words, ${eg.join(', ')}, or ask: where the enemy is, who leads them, what we can raise, what our allies do. ${g.text}.`;
 }
 const isPersonName = (n) => /^[A-Z]/.test(n) && !/\b(levies|chiefs|garrison|officers|men|army)\b/i.test(n);
 

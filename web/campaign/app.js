@@ -385,6 +385,9 @@ function renderHud(s) {
 function onArmy(id, e) {
   const s = G.pre ?? G.s, a = s.armies[id];
   if (!a) return;
+  // with an army chosen, a tap on another army in a lit place sends it there: to join a friend, to relieve a besieged
+  // city, or to attack
+  if (G.sel && G.sel !== id && !G.watch && reach(G.C, s, G.sel)[a.at]) return onTarget(a.at, e);
   if (!G.watch && a.side === G.C.you && G.s.status === 'running') {
     G.sel = G.sel === id ? null : id;
     closePop();
@@ -402,7 +405,8 @@ function onTarget(pid) {
   const s = G.pre ?? G.s, a = s.armies[G.sel];
   if (!a) return;
   const o = oddsOf(G.C, s, a.id, pid), P = G.C.prov[pid].name, who = a.hero ? 'We' : `${(a.gen ?? 'Army').split(' ')[0]},`;
-  prefill(o.kind === 'battle' ? `${who} attack at ${P}` : o.kind === 'siege' ? `${who} besiege ${P}` : `${who} march to ${P}`);
+  const friend = Object.values(s.armies).find((x) => x.id !== a.id && x.at === pid && friends(s, a.side, x.side) && x.gen);
+  prefill(o.kind === 'battle' ? `${who} attack at ${P}` : o.kind === 'siege' ? `${who} besiege ${P}` : friend ? `${who} join ${friend.gen.split(' ')[0]} at ${P}` : `${who} march to ${P}`);
   G.sel = null;
   draw();
 }
