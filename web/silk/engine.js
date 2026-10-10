@@ -34,7 +34,8 @@ export function newAge(age = 1, ageId = '1200') {
   const pack = AGES[ageId];
   const rng = rngFor('age', age, 'setup');
   const s = {
-    v: 2, age, ageId, startYear: pack.start, months: pack.months, month: 0, nextId: 1, status: 'running', winner: null, endReason: null,
+    // v3: the court has its affairs (an age begun before keeps its own rules)
+    v: 3, age, ageId, startYear: pack.start, months: pack.months, month: 0, nextId: 1, status: 'running', winner: null, endReason: null,
     provinces: {}, realms: {}, chars: {}, armies: {}, groups: {}, wars: {}, allies: {}, truces: {}, conflicts: {}, battles: {}, treaties: {}, deeds: {}, kin: {},
     pending: [], answers: [], players: {}, roads: pack.roads, inventions: pack.inventions, names: pack.names ?? null, cultures: pack.cultures ?? null, words: pack.words ?? null, mods: pack.mods ?? null, wealth: pack.wealth ?? null, resources: resourcesFor(pack), tactics: pack.tactics ?? null, trade: {},
     record: { genghis: null, founded: 0, fallen: 0, assassinations: 0, battles: 0, captures: 0, revolts: 0, splits: 0, unions: 0 },

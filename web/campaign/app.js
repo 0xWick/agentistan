@@ -264,7 +264,7 @@ function msgHTML(m) {
     return `<div class="who">${face(who, who.color, 30, 'o')}<b>${esc(who.name)}</b></div><p>${esc(m.lead)}</p><ul class="plan">${summary(C, G.s, G.draft).map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`;
   }
   if (m.kind === 'card') {
-    const c = m.card, chosen = G.draft?.cards?.[c.id], art = artOf(c.art), adv = c.options[c.advise ?? 0]?.label;
+    const c = m.card, chosen = G.draft?.cards?.[c.id], own = `card_${C.id}_${c.id}`, art = ART.has(own) ? `/art/events/${own}.webp` : artOf(c.art), adv = c.options[c.advise ?? 0]?.label;
     return `${art ? `<img class="art" src="${art}" alt="" loading="lazy">` : ''}<h4>${esc(c.title)}</h4><p>${esc(c.text)}</p>
       <div class="opts">${c.options.map((o, i) => `<button class="opt${chosen === i ? ' chosen' : ''}" data-opt="${i}"${chosen !== undefined && chosen !== i ? ' disabled' : ''}><b>${esc(o.label)}</b>${o.hint ? `<small>${esc(o.hint)}</small>` : ''}${fxText(C, o.fx) ? `<span class="fx">${esc(fxText(C, o.fx))}</span>` : ''}</button>`).join('')}</div>
       ${c.peace ? '' : chosen === undefined ? `<p class="advice">${esc(speaker(courtOf(C, G.s)[0]?.id).name)} would choose “${esc(adv)}”. Choose, or say what you will do.</p>` : ''}

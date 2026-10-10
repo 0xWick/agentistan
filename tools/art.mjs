@@ -1,6 +1,6 @@
 // Paints the pictures of the great-event cards and the portraits of famous people, once, with Workers AI (through
 // the Worker's /internal/art), and saves them as JPEGs for tools/art.py to crop into web/art/.
-//   node --env-file=.env tools/art.mjs [events|1914|people|campaigns|all] [only-this-key]
+//   node --env-file=.env tools/art.mjs [events|1914|people|campaigns|cards|all] [only-this-key]
 // Free tier: about 58 neurons a picture, 10,000 a day. Pictures already made are skipped.
 // The look is true to the period, never a game's: oil paintings in the manner of the old masters and the academic
 // history painters, and for the age of the world wars, the photographs of the time.
@@ -109,42 +109,9 @@ export const BRIEFS = {
   threekingdoms: 'the battle of Red Cliffs in 208, a burning fleet of ancient Chinese warships on the Yangtze river at night, high cliffs lit by fire',
 };
 
-// name slug -> [description, style]. The cast of the living world, then the campaigns' heroes and councils.
+// name slug -> [description, style]. The campaigns' heroes and councils first, then the cast of the living world.
 const P = PORTRAIT, PP = PHOTO_PORTRAIT;
 export const PEOPLE = {
-  temujin: [`Temujin, a Mongol khan of forty with a braided beard and a fur-brimmed hat, stern gaze, ${Y1200}`, P],
-  'genghis-khan': [`Genghis Khan, the Great Khan of the Mongols, grey-bearded, fur hat, fierce calm eyes, ${Y1200}`, P],
-  tamar: ['Tamar, queen of Georgia, a regal woman in a jewelled crown and white veil, rich Georgian robes', P],
-  'muhammad-ii': ['Muhammad II, Khwarazmshah, a proud Turkic sultan in a white turban with a jewelled plume', P],
-  'jalal-al-din': ['Jalal al-Din, a young fierce Khwarazmian prince in mail armour and a turban', P],
-  'al-adil': ['al-Adil, an elderly Ayyubid sultan with a white beard and a large turban, shrewd eyes', P],
-  kaloyan: ['Kaloyan, tsar of Bulgaria, a fierce bearded king with a golden crown and red cloak', P],
-  'enrico-dandolo': ['Enrico Dandolo, the aged blind Doge of Venice in the horned ducal cap and gold robe', P],
-  'theodore-laskaris': ['Theodore Laskaris, a Byzantine general in lamellar armour with a dark beard', P],
-  'mu-izz-al-din-muhammad': ['Muhammad of Ghor, a warrior sultan with a black beard, turban and mail', P],
-  'ghiyath-al-din-muhammad': ['Ghiyath al-Din of Ghor, an elderly sultan with a grey beard and a jewelled turban', P],
-  'qutb-al-din-aibak': ['Qutb al-Din Aibak, a Turkic general turned sultan, helmet and mail, short beard', P],
-  toghrul: ['Toghrul, the Ong Khan of the Kereit, an old steppe khan with a white beard and fur hat', P],
-  'yelu-zhilugu': ['Yelü Zhilugu, gurkhan of the Qara Khitai, in Chinese-style robes and a fur hat', P],
-  kuchlug: ['Kuchlug, a young Naiman prince with a fur hat and a cruel smile', P],
-  zhangzong: ['Emperor Zhangzong of Jin in imperial robes and a black crown, a scholarly face', P],
-  ningzong: ['Emperor Ningzong of Song in yellow robes and an imperial hat, a gentle tired face', P],
-  'han-tuozhou': ['Han Tuozhou, chancellor of the Song, a stern man in a black official hat with long wings and a red robe', P],
-  'suleymanshah-ii': ['Suleymanshah II, Seljuk sultan of Rum, turban and armour, a bold face', P],
-  aimery: ['Aimery, a king of Outremer in mail with a golden crown and a plain surcoat', P],
-  emeric: ['Emeric, king of Hungary, crowned, with a forked beard and a fur-lined cloak', P],
-  borte: ['Borte, a Mongol khatun wearing the tall boqta headdress, wise calm face', P],
-  'terken-khatun': ['Terken Khatun, a formidable Turkic queen mother in jewels and a veil', P],
-  'david-soslan': ['David Soslan, a Georgian prince consort and warrior in a mail coat', P],
-  jebe: ['Jebe, a Mongol general and archer with a bow, fur hat, sharp eyes', P],
-  subutai: ['Subutai, a Mongol general with a weathered face and a helmet with a plume', P],
-  'lakshmana-sena': ['Lakshmana Sena, an aged king of Bengal with a jewelled turban and pearl necklaces', P],
-  'bakhtiyar-khalji': ['Bakhtiyar Khalji, a Turkic general with long arms, a turban and a sword', P],
-  'muhammad-an-nasir': ['Muhammad an-Nasir, the young Almohad ruler of the Maghreb in a white turban and burnous', P],
-  'az-zahir-ghazi': ['az-Zahir Ghazi, Ayyubid prince of Aleppo, a young bearded ruler in a turban', P],
-  frederick: ['Frederick of Sicily as a boy king, a golden crown on fair hair, a red mantle', P],
-  'euphrosyne-doukaina': ['Euphrosyne Doukaina, Byzantine empress, a jewelled crown with hanging pearls, a sharp face', P],
-  'yang-meizi': ['Empress Yang of Song, a court lady with a phoenix crown, a cunning gaze', P],
   // the campaigns
   themistocles: ['Themistocles of Athens, a clever, weathered Greek statesman of fifty with a short beard, in a plain wool cloak', P],
   aristides: ['Aristides the Just, an austere elderly Athenian with a grey beard, in a plain white cloak', P],
@@ -190,6 +157,40 @@ export const PEOPLE = {
   'wilhelm-ii': ['Kaiser Wilhelm II of Germany at fifty-five, with his upturned moustache, in a plain grey field uniform', PP],
   'winston-churchill': ['Winston Churchill at sixty-five, the British Prime Minister, a round face and a stern look, in a dark suit and bow tie', PP],
   'georgy-zhukov': ['Marshal Georgy Zhukov at forty-five, a square-jawed Soviet commander in a plain military tunic and peaked cap', PP],
+  // the living world
+  temujin: [`Temujin, a Mongol khan of forty with a braided beard and a fur-brimmed hat, stern gaze, ${Y1200}`, P],
+  'genghis-khan': [`Genghis Khan, the Great Khan of the Mongols, grey-bearded, fur hat, fierce calm eyes, ${Y1200}`, P],
+  tamar: ['Tamar, queen of Georgia, a regal woman in a jewelled crown and white veil, rich Georgian robes', P],
+  'muhammad-ii': ['Muhammad II, Khwarazmshah, a proud Turkic sultan in a white turban with a jewelled plume', P],
+  'jalal-al-din': ['Jalal al-Din, a young fierce Khwarazmian prince in mail armour and a turban', P],
+  'al-adil': ['al-Adil, an elderly Ayyubid sultan with a white beard and a large turban, shrewd eyes', P],
+  kaloyan: ['Kaloyan, tsar of Bulgaria, a fierce bearded king with a golden crown and red cloak', P],
+  'enrico-dandolo': ['Enrico Dandolo, the aged blind Doge of Venice in the horned ducal cap and gold robe', P],
+  'theodore-laskaris': ['Theodore Laskaris, a Byzantine general in lamellar armour with a dark beard', P],
+  'mu-izz-al-din-muhammad': ['Muhammad of Ghor, a warrior sultan with a black beard, turban and mail', P],
+  'ghiyath-al-din-muhammad': ['Ghiyath al-Din of Ghor, an elderly sultan with a grey beard and a jewelled turban', P],
+  'qutb-al-din-aibak': ['Qutb al-Din Aibak, a Turkic general turned sultan, helmet and mail, short beard', P],
+  toghrul: ['Toghrul, the Ong Khan of the Kereit, an old steppe khan with a white beard and fur hat', P],
+  'yelu-zhilugu': ['Yelü Zhilugu, gurkhan of the Qara Khitai, in Chinese-style robes and a fur hat', P],
+  kuchlug: ['Kuchlug, a young Naiman prince with a fur hat and a cruel smile', P],
+  zhangzong: ['Emperor Zhangzong of Jin in imperial robes and a black crown, a scholarly face', P],
+  ningzong: ['Emperor Ningzong of Song in yellow robes and an imperial hat, a gentle tired face', P],
+  'han-tuozhou': ['Han Tuozhou, chancellor of the Song, a stern man in a black official hat with long wings and a red robe', P],
+  'suleymanshah-ii': ['Suleymanshah II, Seljuk sultan of Rum, turban and armour, a bold face', P],
+  aimery: ['Aimery, a king of Outremer in mail with a golden crown and a plain surcoat', P],
+  emeric: ['Emeric, king of Hungary, crowned, with a forked beard and a fur-lined cloak', P],
+  borte: ['Borte, a Mongol khatun wearing the tall boqta headdress, wise calm face', P],
+  'terken-khatun': ['Terken Khatun, a formidable Turkic queen mother in jewels and a veil', P],
+  'david-soslan': ['David Soslan, a Georgian prince consort and warrior in a mail coat', P],
+  jebe: ['Jebe, a Mongol general and archer with a bow, fur hat, sharp eyes', P],
+  subutai: ['Subutai, a Mongol general with a weathered face and a helmet with a plume', P],
+  'lakshmana-sena': ['Lakshmana Sena, an aged king of Bengal with a jewelled turban and pearl necklaces', P],
+  'bakhtiyar-khalji': ['Bakhtiyar Khalji, a Turkic general with long arms, a turban and a sword', P],
+  'muhammad-an-nasir': ['Muhammad an-Nasir, the young Almohad ruler of the Maghreb in a white turban and burnous', P],
+  'az-zahir-ghazi': ['az-Zahir Ghazi, Ayyubid prince of Aleppo, a young bearded ruler in a turban', P],
+  frederick: ['Frederick of Sicily as a boy king, a golden crown on fair hair, a red mantle', P],
+  'euphrosyne-doukaina': ['Euphrosyne Doukaina, Byzantine empress, a jewelled crown with hanging pearls, a sharp face', P],
+  'yang-meizi': ['Empress Yang of Song, a court lady with a phoenix crown, a cunning gaze', P],
 };
 
 async function paint(kind, key, prompt) {
@@ -202,6 +203,17 @@ async function paint(kind, key, prompt) {
   return 'painted';
 }
 
+// Each campaign card's own picture: the war, the moment, the scene its text describes.
+async function cardJobs() {
+  const { CAMPAIGNS } = await import('../web/campaign/catalog.js');
+  const out = [];
+  for (const C of CAMPAIGNS) for (const c of C.cards ?? []) {
+    const scene = String(c.text ?? '').split(/(?<=[.!?])\s/)[0].replace(/\byou(r)?\b/gi, (w) => (w.toLowerCase() === 'your' ? 'the' : 'the commander'));
+    out.push(['event', `card_${C.id}_${c.id}`, `${C.title}, ${C.years}: ${c.title}. ${scene} ${C.hero.look === 'han' ? 'Han dynasty China.' : 'Classical antiquity.'} ${SCENE}`]);
+  }
+  return out;
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const [which = 'all', only] = process.argv.slice(2);
   mkdirSync(OUT, { recursive: true });
@@ -211,6 +223,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     for (const [k, p] of Object.entries(ANCIENT)) jobs.push(['event', `ancient_${k}`, `${p}. ${SCENE}`]);
     for (const [k, p] of Object.entries(HAN)) jobs.push(['event', `han_${k}`, `${p}. ${SCENE}`]);
   }
+  if (is('cards')) jobs.push(...await cardJobs());
   if (is('events')) for (const [k, p] of Object.entries(EVENTS)) jobs.push(['event', k, `${p}, ${Y1200}. ${SCENE}`]);
   if (is('1914')) for (const [k, p] of Object.entries(EVENTS_1914)) jobs.push(['event', `1914_${k}`, `${p}. ${PHOTO}`]);
   if (is('people')) for (const [k, [p, style]] of Object.entries(PEOPLE)) jobs.push(['person', k, `Portrait bust, head and shoulders, of ${p}, facing three-quarters, centred. ${style}`]);

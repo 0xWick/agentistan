@@ -376,11 +376,46 @@ function intrigue(s, rng, emit) {
         emit('reform', `${fullName(ruler)} of ${ofR(s, r.id)} ${{ tax: 'reforms the taxes: the treasury will fill, though the landlords grumble', army: 'reforms the army: soldiers come cheaper', law: 'issues a new code of laws: the people take heart' }[kind]}`, { realms: [r.id], chars: [ruler.id], reform: kind });
       }
     }
+    // A consort's lover: whispers, a scandal, an execution, or a throne (ages begun with v3 rules only)
+    if ((s.v ?? 1) >= 3) affair(s, r, ruler, rng, emit);
     // The pleasure-lover feasts.
     if (ruler.temper === 'hedonist' && chance(rng, 0.03) && r.gold > 40) {
       const spent = round1(r.gold * 0.2);
       r.gold = round1(r.gold - spent);
       emit('feast', `${ruler.name} of ${ofR(s, r.id)} spends ${Math.round(spent)} gold on feasts, hunts and pleasure gardens`, { realms: [r.id], chars: [ruler.id], minor: true });
+    }
+  }
+}
+
+// A consort takes a general of the realm as a lover. In time it cools, or is found out (banishment, or death under a
+// hard ruler), or the lover strikes first and takes the throne.
+function affair(s, r, ruler, rng, emit) {
+  const sp = s.chars[ruler.spouse];
+  if (!sp?.alive || ageOf(s, sp) > 52) return;
+  const lover = sp.lover && s.chars[sp.lover];
+  if (!lover) {
+    if (sp.lover) delete sp.lover;
+    if (!chance(rng, 0.0013)) return;
+    const men = Object.values(s.chars).filter((c) => c.alive && c.realm === r.id && c.role === 'general' && !!c.female !== !!sp.female && ageOf(s, c) < 60);
+    if (!men.length) return;
+    const l = pick(rng, men);
+    Object.assign(sp, { lover: l.id, loverSince: s.month });
+    emit('affair', `Whispers at the court of ${ofR(s, r.id)}: ${sp.name}, consort of ${ruler.name}, has taken the general ${l.name} as a lover`, { realms: [r.id], chars: [sp.id, l.id], minor: true });
+    return;
+  }
+  if (!lover.alive || lover.realm !== r.id || s.month - sp.loverSince > 36) { delete sp.lover; return; } // it cools, or he is gone
+  if (lover.temper !== 'loyal' && chance(rng, (R.temper.general[lover.temper]?.betray ?? 1) * (lover.loyalty < 60 ? 0.05 : 0.02))) { // the lover strikes first
+    delete sp.lover;
+    emit('affair', `${lover.name}, the lover of ${sp.name}, turns his soldiers on ${ruler.name} of ${ofR(s, r.id)}`, { realms: [r.id], chars: [lover.id, sp.id, ruler.id] });
+    coup(s, r, lover, emit);
+    return;
+  }
+  if (chance(rng, 0.06)) { // found out
+    delete sp.lover;
+    if (['tyrant', 'paranoid'].includes(ruler.temper) || chance(rng, 0.3)) die(s, lover.id, 'executed', emit, rng, `is put to death by ${ruler.name}, who has learned of his affair with ${sp.name}`);
+    else {
+      lover.loyalty = clamp(lover.loyalty - 30, 0, 100);
+      emit('affair', `${ruler.name} of ${ofR(s, r.id)} learns of the affair between ${sp.name} and ${lover.name}; the court talks of nothing else`, { realms: [r.id], chars: [ruler.id, sp.id, lover.id] });
     }
   }
 }
