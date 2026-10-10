@@ -22,6 +22,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/silk/view.css">
   <script type="module" src="/silk/view.js"></script>
+  <script type="module" src="/silk/follow.js"></script>
 </head>
 <body>
   <svg id="map" role="img" aria-label="A living map of the Old World in 1200, played by AI"></svg>
@@ -84,9 +85,28 @@
     <span class="yr" id="yr">1200</span>
   </footer>
   <button class="plan-link" id="plan-btn"><svg viewBox="0 0 24 24"><use href="#i-scroll"/></svg>A free plan for your business</button>
+  <button class="plan-link follow-link" id="follow-btn"><svg viewBox="0 0 24 24"><use href="#i-bell"/></svg>Follow the world</button>
   <button class="show-btn panel" id="show-btn" hidden>Show the panels</button>
 
   <dialog class="event" id="event" aria-label="A great event"><div class="panel"></div></dialog>
+  <dialog class="plan follow" id="follow" aria-labelledby="follow-title">
+    <div class="panel">
+      <button class="x" data-close aria-label="Close">×</button>
+      <div class="seal small"><svg viewBox="0 0 24 24"><use href="#i-bell"/></svg></div>
+      <h2 id="follow-title">Follow the world</h2>
+      <p class="sub">and hear of what you care about, as it happens</p>
+      <div class="follow-form">
+        <div class="tags" id="follow-topics" role="group" aria-label="What to hear of"></div>
+        <select id="follow-realm" aria-label="A realm to follow"></select>
+        <div class="picks" role="group" aria-label="Where to send it"><button type="button" class="pick" data-ch="discord">Discord</button><button type="button" class="pick" data-ch="slack">Slack</button><button type="button" class="pick" data-ch="ntfy">My phone</button></div>
+        <label class="target"><span id="follow-target-label"></span><input id="follow-target" autocomplete="off" spellcheck="false"></label>
+        <p class="fine" id="follow-help"></p>
+        <button class="btn main wide" id="follow-go" type="button">Follow</button>
+      </div>
+      <div id="follow-out" aria-live="polite"></div>
+      <p class="fine">Sent by an n8n automation · free · stop at any time</p>
+    </div>
+  </dialog>
   <dialog class="dash" id="dash" aria-label="The world"></dialog>
 
   <dialog class="plan" id="plan" aria-labelledby="plan-title">

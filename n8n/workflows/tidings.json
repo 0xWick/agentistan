@@ -1,0 +1,143 @@
+{
+  "id": "nbpTidings000001",
+  "name": "Tidings",
+  "active": true,
+  "versionId": "0c1f3a9e-6d2b-4f1a-8e7c-5b9d2a7e1001",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {},
+  "tags": [],
+  "nodes": [
+    {
+      "id": "a3c1f9e2-1b7d-4c55-9f2a-7e0d1c3b5a01",
+      "name": "News for a follower",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "parameters": { "httpMethod": "POST", "path": "tidings", "responseMode": "onReceived", "options": {} },
+      "webhookId": "5e2d7c1a-9b3f-4e6d-8a1c-2f7b9e4d1001"
+    },
+    {
+      "id": "a3c1f9e2-1b7d-4c55-9f2a-7e0d1c3b5a02",
+      "name": "From the world?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [240, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "secret", "leftValue": "={{ $json.headers['x-realm-secret'] }}", "rightValue": "={{ $env.REALM_SECRET }}", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a3c1f9e2-1b7d-4c55-9f2a-7e0d1c3b5a03",
+      "name": "To Discord?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 120],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "discord", "leftValue": "={{ $json.body.channel === 'discord' && /^https:\\/\\/(discord|discordapp)\\.com\\/api\\/webhooks\\/\\d+\\/[\\w-]+$/.test($json.body.target ?? '') }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a3c1f9e2-1b7d-4c55-9f2a-7e0d1c3b5a04",
+      "name": "To Slack?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "slack", "leftValue": "={{ $json.body.channel === 'slack' && /^https:\\/\\/hooks\\.slack\\.com\\/services\\/[\\w/]+$/.test($json.body.target ?? '') }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a3c1f9e2-1b7d-4c55-9f2a-7e0d1c3b5a05",
+      "name": "To a phone (ntfy)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 480],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "ntfy", "leftValue": "={{ $json.body.channel === 'ntfy' && /^[A-Za-z0-9_-]{8,64}$/.test($json.body.target ?? '') }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a3c1f9e2-1b7d-4c55-9f2a-7e0d1c3b5a06",
+      "name": "A card on Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 120],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.body.target }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ username: 'Agentistan', embeds: [{ title: $json.body.title, description: $json.body.text, color: 11765036, url: $json.body.url, ...($json.body.image ? { image: { url: $json.body.image } } : {}), ...(($json.body.tags ?? []).length ? { fields: [{ name: 'You follow', value: $json.body.tags.join(' · ') }] } : {}), footer: { text: 'Agentistan, through an n8n automation' } }], components: [], content: $json.body.leave ? '-# Stop these: ' + $json.body.leave : undefined }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a3c1f9e2-1b7d-4c55-9f2a-7e0d1c3b5a07",
+      "name": "A card on Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.body.target }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.body.title, blocks: [{ type: 'header', text: { type: 'plain_text', text: String($json.body.title).slice(0, 150) } }, { type: 'section', text: { type: 'mrkdwn', text: $json.body.text + '\\n<' + $json.body.url + '|Watch the world>' } }, ...($json.body.image ? [{ type: 'image', image_url: $json.body.image, alt_text: 'A painting of the event' }] : []), { type: 'context', elements: [{ type: 'mrkdwn', text: (($json.body.tags ?? []).length ? 'You follow: ' + $json.body.tags.join(' · ') + ' · ' : '') + (($json.body.leave) ? '<' + $json.body.leave + '|stop these>' : '') + ' · Agentistan, through n8n' }] }] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a3c1f9e2-1b7d-4c55-9f2a-7e0d1c3b5a08",
+      "name": "A note on the phone (ntfy.sh)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 480],
+      "parameters": {
+        "method": "POST",
+        "url": "https://ntfy.sh/",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic: $json.body.target, title: String($json.body.title).slice(0, 120), message: $json.body.text, click: $json.body.url, ...($json.body.image ? { attach: $json.body.image } : {}), tags: ['scroll'], actions: $json.body.leave ? [{ action: 'view', label: 'Stop these', url: $json.body.leave }] : [] }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "News for a follower": { "main": [[{ "node": "From the world?", "type": "main", "index": 0 }]] },
+    "From the world?": { "main": [[{ "node": "To Discord?", "type": "main", "index": 0 }, { "node": "To Slack?", "type": "main", "index": 0 }, { "node": "To a phone (ntfy)?", "type": "main", "index": 0 }], []] },
+    "To Discord?": { "main": [[{ "node": "A card on Discord", "type": "main", "index": 0 }], []] },
+    "To Slack?": { "main": [[{ "node": "A card on Slack", "type": "main", "index": 0 }], []] },
+    "To a phone (ntfy)?": { "main": [[{ "node": "A note on the phone (ntfy.sh)", "type": "main", "index": 0 }], []] }
+  }
+}

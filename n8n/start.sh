@@ -18,5 +18,5 @@ N8N=node_modules/.bin/n8n
 [ -x "$N8N" ] || N8N=$(command -v n8n | grep -v '^/mnt/' || true)
 [ -n "$N8N" ] || { npm install --no-audit --no-fund; N8N=node_modules/.bin/n8n; }
 "$N8N" import:workflow --separate --input=workflows
-for id in nbpTurnRouter001 nbpMarketSync001 nbpWeatherSync01 nbpWarCorresp01 nbpLivingSkies01 nbpReminders0001 nbpDailyDigest01 nbpCampaignHrld1; do "$N8N" publish:workflow --id="$id"; done
+for id in nbpTurnRouter001 nbpMarketSync001 nbpWeatherSync01 nbpWarCorresp01 nbpLivingSkies01 nbpReminders0001 nbpDailyDigest01 nbpCampaignHrld1 nbpTidings000001; do "$N8N" publish:workflow --id="$id"; done
 exec "$N8N" start

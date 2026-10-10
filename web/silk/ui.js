@@ -7,6 +7,7 @@ export const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 // ---------- ink glyphs: every icon on the page, drawn once ----------
 export const ICON = {
   castle: { f: 'M3 21V10h2V7h3v3h2V7h4v3h2V7h3v3h2v11h-7v-5a2 2 0 0 0-4 0v5z' },
+  bell: { s: 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20.5a2 2 0 0 0 4 0' },
   ship: { f: 'M2.5 15.5h19l-3.2 5h-12.6zM11.2 2.5h1.6v12h-1.6zM12.8 3.6l6.6 10h-6.6zM11.2 5.8l-5.4 7.8h5.4z' },
   crown: { f: 'M3 18 4.5 7 9 11.5 12 4l3 7.5L19.5 7 21 18zM3 19.6h18v1.8H3z' },
   swords: { s: 'M4 4l11 11M20 4 9 15M7 13l4 4M17 13l-4 4M5 19l3-3M19 19l-3-3' },

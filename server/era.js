@@ -10,6 +10,7 @@ import { makeCast } from './cast.js';
 import { makeSealer, DEPLOYED, EXPLORER } from './seal.js';
 import { play, makeHeralds, flushCouncil, councilOpen, tidySeats, penReplies } from './play.js';
 import { setupRegalia, makeMinter, awardsFor, metadata, picture } from './regalia.js';
+import { setupTidings, makeTidings, tidingsRoute } from './tidings.js';
 
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' };
 const json = (status, body, cache = 'no-store') => new Response(JSON.stringify(body), { status, headers: { ...HEADERS, 'content-type': 'application/json', 'cache-control': cache } });
@@ -40,6 +41,8 @@ export class Era extends DurableObject {
       if (heralds) this.hooks.push(heralds);
       const minter = makeMinter(env, this);
       if (minter) this.hooks.push(minter);
+      const tidings = makeTidings(env, this); // what each follower asked to hear of, through n8n
+      if (tidings) this.hooks.push(tidings);
     });
   }
 
@@ -50,6 +53,7 @@ export class Era extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS queue (id INTEGER PRIMARY KEY AUTOINCREMENT, m INTEGER, kind TEXT, k TEXT, json TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS ledger (age INTEGER, m INTEGER, rows TEXT, PRIMARY KEY (age, m))');
     setupRegalia(this); // each year: every realm's land, strength, gold, prosperity
+    setupTidings(this); // who follows what, and where it is sent
     this.meta = this.get('meta');
     this.s = null;
   }
@@ -243,6 +247,7 @@ export class Era extends DurableObject {
       if (!this.meta && req.headers.get('x-era-game')) return json(404, { error: 'no such game' });
       if (!this.meta) this.begin();
       if (p === '/api/era') return json(200, this.public());
+      if (p === '/api/era/follow' || p === '/api/era/unfollow' || p === '/api/era/topics') return tidingsRoute(this, req, p, ip);
       if (p === '/api/era/live') {
         if (req.headers.get('upgrade') !== 'websocket') return json(426, { error: 'a WebSocket, please' });
         if (this.ctx.getWebSockets().length > 2000) return json(503, { error: 'too many watchers' });

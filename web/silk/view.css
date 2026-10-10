@@ -754,3 +754,18 @@ body.bare .title, body.bare .tools, body.bare .glance, body.bare .feed, body.bar
 /* a march by sea: the lane in sea blue, and the fleet on it */
 .arrow.sea { stroke-dasharray: 3 7; stroke-width: 3.6; }
 .ship { pointer-events: none; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45)); }
+
+/* following the world: what to hear of, and where */
+.follow-link { bottom: 56px; }
+.follow .tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 4px 0 10px; }
+.tag-pick { cursor: pointer; }
+.tag-pick input { position: absolute; opacity: 0; pointer-events: none; }
+.tag-pick span { display: inline-block; padding: 5px 12px; border-radius: 16px; border: 1px solid var(--sepia); background: rgba(255, 250, 235, 0.6); font: 600 14px var(--kufi); }
+.tag-pick input:checked + span { background: var(--lapis); color: #f8efd8; border-color: #1b3150; }
+.tag-pick input:focus-visible + span { outline: 2px solid var(--gold); }
+.follow select, .follow .target input { width: 100%; padding: 9px 12px; border: 1px solid var(--sepia); border-radius: 5px; background: rgba(255, 252, 242, 0.7); font: 16px var(--body); color: var(--ink); }
+.follow .picks { margin: 12px 0 8px; display: flex; gap: 6px; justify-content: center; }
+.follow .pick.on { background: var(--lapis); color: #f8efd8; border-color: #1b3150; }
+.follow .target { display: grid; gap: 4px; text-align: left; font: 600 13px var(--kufi); color: var(--ink-soft); }
+.follow .good { color: #2f5a22; } .follow .bad { color: var(--vermilion); }
+@media (max-width: 760px) { .follow-link { bottom: auto; top: 98px; left: auto; right: 10px; } }
