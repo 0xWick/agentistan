@@ -47,6 +47,7 @@ export function warRoom(C, s, snaps, { face, esc, label }) {
       <div class="kpis">
         <div><b>${fmtMen(men)}</b><span>men</span><i class="bar"><i style="width:${Math.round((men / maxMen) * 100)}%"></i></i>${spark(snaps.map((x) => x.sides[id]?.men ?? 0), d.color)}</div>
         <div><b>${Math.round(st.gold)}</b><span>gold</span>${spark(snaps.map((x) => x.sides[id]?.gold ?? 0), d.color)}</div>
+        ${C.sides[id].fleet !== undefined || st.fleet ? `<div><b>${st.fleet ?? 0}</b><span>ships</span></div>` : ''}
         <div><b>${owned(s, id).length}</b><span>provinces</span>${spark(snaps.map((x) => x.sides[id]?.provs ?? 0), d.color)}</div>
         <div class="will">${gauge(st.will, st.will >= 50 ? '#4f7a3a' : st.will >= 25 ? '#b3852c' : '#a3361f')}<span>will to fight</span></div>
       </div>

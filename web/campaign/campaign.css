@@ -339,3 +339,9 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 700; letter-spacing: 
 .cond { margin: 4px 0 0; padding: 2px 8px; border-radius: 6px; font-size: 14px; }
 .cond.good { background: rgba(79, 122, 58, 0.12); color: #2f5a22; }
 .cond.bad { background: rgba(163, 54, 31, 0.1); color: #8a2a16; }
+
+/* fleets: a crossing by sea, and an army that came by sea */
+.arrow.sea { stroke-dasharray: 2 6; }
+.shipmark { width: 26px; height: 26px; margin: -13px 0 0 -13px; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4)); }
+.shipmark svg, .tk .ship-ic svg { width: 100%; height: 100%; display: block; }
+.tk .ship-ic { width: 20px; height: 20px; margin-bottom: -4px; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45)); }

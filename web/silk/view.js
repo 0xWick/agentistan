@@ -470,7 +470,7 @@ function paintArmies() {
       g.classList.toggle('side-a', side === 'a');
       g.classList.toggle('side-d', side === 'd');
       g.querySelector('text').textContent = men(a.size);
-      if (a.path[0] && a.mode === 'march') arrow(PROV[pid].xy, PROV[a.path[0]].xy, colorOf(a.realm));
+      if (a.path[0] && a.mode === 'march') arrow(PROV[pid].xy, PROV[a.path[0]].xy, colorOf(a.realm), !!PROV[pid].ways?.[a.path[0]]?.sea);
     });
   }
   layer.armies.querySelectorAll('.army').forEach((g) => {
@@ -481,11 +481,15 @@ function paintArmies() {
   });
 }
 
-function arrow([x1, y1], [x2, y2], color) {
+function arrow([x1, y1], [x2, y2], color, sea = false) {
   const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, nx = -(y2 - y1) * 0.12, ny = (x2 - x1) * 0.12;
   const len = Math.hypot(x2 - x1, y2 - y1), k = Math.max(0, (len - 22) / len);
   const ex = x1 + (x2 - x1) * k, ey = y1 + (y2 - y1) * k;
-  layer.arrows.append(el('path', { class: 'arrow', d: `M${x1} ${y1}Q${mx + nx} ${my + ny} ${ex} ${ey}`, stroke: ink(color, 0.8) }));
+  layer.arrows.append(el('path', { class: `arrow${sea ? ' sea' : ''}`, d: `M${x1} ${y1}Q${mx + nx} ${my + ny} ${ex} ${ey}`, stroke: sea ? '#2f5f86' : ink(color, 0.8) }));
+  if (sea) { // the fleet that carries them, halfway over
+    const sx = (x1 + 2 * (mx + nx) + ex) / 4, sy = (y1 + 2 * (my + ny) + ey) / 4;
+    layer.arrows.append(el('use', { href: '#i-ship', x: sx - 13, y: sy - 15, width: 26, height: 26, class: 'ship', style: `color:${ink(color, 0.75)}` }));
+  }
   const ang = Math.atan2(ey - (my + ny), ex - (mx + nx));
   const head = [[0, 0], [-16, -8], [-16, 8]].map(([px, py]) => [ex + px * Math.cos(ang) - py * Math.sin(ang), ey + px * Math.sin(ang) + py * Math.cos(ang)]);
   layer.arrows.append(el('path', { class: 'arrow-head', d: `M${head.map((p) => p.join(' ')).join('L')}Z`, fill: ink(color, 0.8) }));

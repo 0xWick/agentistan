@@ -750,3 +750,7 @@ body.bare .title, body.bare .tools, body.bare .glance, body.bare .feed, body.bar
   .glance li button { font-size: 14px; grid-template-columns: 16px 1fr 40px 28px; }
   .tool span { display: none; }
 }
+
+/* a march by sea: the lane in sea blue, and the fleet on it */
+.arrow.sea { stroke-dasharray: 3 7; stroke-width: 3.6; }
+.ship { pointer-events: none; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45)); }

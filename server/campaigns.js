@@ -144,7 +144,7 @@ export class Campaigns extends DurableObject {
     const court = courtOf(C, s), adv = court[0] ?? { id: 'adviser', name: 'your adviser' };
     const system = `You play, in a historical war game, the leaders of every side except the player's, and the player's chief adviser, ${adv.name}${adv.title ? ` (${adv.title})` : ''}. Answer with JSON only:
 {"sides": {"<side id>": {"stance": "attack" | "defend" | "delay", "target": "<province id they march on, or null>", "peace": true | false, "say": "<one sentence in character, at most 25 words, what this leader declares this season>"}},
- "advice": ["<one or two short sentences from ${adv.name} to the commander, in character: what to do this season and why>"],
+ "advice": ["<two or three sentences from ${adv.name} to the commander, in character: WHY these orders, the danger or the opening he sees (a bare capital, a landing by sea, an ally to win, a rumour to spread); never name a move that is not in your orders>"],
  "orders": {"<id of one of the player's armies>": {"to": "<province id from its 'can reach this season' list, or null to hold>", "plan": "<plan id or null>", "storm": false}}}
 The orders are the adviser's proposal for each of the player's armies. Rules of the game: armies march about two provinces a season; battles turn on numbers, ground, the generals' skill and the plan; walled cities need a siege or a costly storm; a side whose will falls below 25 asks for peace. Plans: ${plansFor(C, false).map((p) => `${p} (${PLANS[p].hint})`).join('; ')}.
 STRICT: use only the people, armies, places and numbers in the data. The dead cannot act or speak. Never invent battles, deaths or events. Each leader acts in character and in their own interest. Never mock any faith or people; no slurs; nothing graphic. Plain words.`;
@@ -157,8 +157,10 @@ STRICT: use only the people, armies, places and numbers in the data. The dead ca
         if (!p) continue;
         ai[id] = { stance: ['attack', 'defend', 'delay'].includes(p.stance) ? p.stance : rulesPlan(C, s, id).stance, target: C.prov[p.target] ? p.target : null, peace: p.peace === true, say: clean(p.say, 26), by: 'ai' };
       }
-      const advice = (Array.isArray(out.advice) ? out.advice : [out.advice]).filter((x) => typeof x === 'string').map((x) => clean(x, 45)).filter(Boolean).slice(0, 2);
       const prop = out.orders && typeof out.orders === 'object' ? normalize(C, s, base, { orders: out.orders }).draft : base;
+      // the adviser's words must match the orders that stand: a move the rules refused may not be spoken of
+      const refused = Object.entries(out.orders ?? {}).filter(([id, o]) => o?.to && prop.orders?.[id]?.to !== o.to && C.prov[o.to]).map(([, o]) => C.prov[o.to].name.toLowerCase());
+      const advice = (Array.isArray(out.advice) ? out.advice : [out.advice]).filter((x) => typeof x === 'string').map((x) => clean(x, 70)).filter((x) => x && !refused.some((n) => x.toLowerCase().includes(n))).slice(0, 2);
       return { ai, advice: advice.length ? advice : null, proposal: prop, by: 'ai' };
     })();
     this.pending.set(key, job);

@@ -19,6 +19,7 @@ const GLYPH = {
   forest: '<svg viewBox="0 0 24 14"><path d="M6 13V9M4 9l2-7 2 7zM14 13V9M12 9l2-7 2 7z" fill="#4f6b3a" stroke="#3d5530" stroke-width=".8"/></svg>',
   desert: '<svg viewBox="0 0 24 10"><path d="M1 8c4-4 7-4 11 0s7 4 11 0" fill="none" stroke="#b08a4a" stroke-width="1.4"/></svg>',
   marsh: '<svg viewBox="0 0 24 10"><path d="M2 8h20M5 5h14M8 2v6M16 2v6" stroke="#5d7f86" stroke-width="1.3"/></svg>',
+  ship: '<svg viewBox="0 0 24 24"><path d="M2.5 15.5h19l-3.2 5h-12.6zM11.2 2.5h1.6v12h-1.6zM12.8 3.6l6.6 10h-6.6zM11.2 5.8l-5.4 7.8h5.4z" fill="#27466e" stroke="#f3e7c8" stroke-width=".8"/></svg>',
   swords: '<svg viewBox="0 0 24 24"><path d="M4 4l11 11M20 4 9 15M7 13l4 4M17 13l-4 4M5 19l3-3M19 19l-3-3" fill="none" stroke="#fbf3dd" stroke-width="2.4" stroke-linecap="round"/></svg>',
 };
 
@@ -49,7 +50,7 @@ export function makeMap(svg, data, C, handlers) {
   const marks = div('marks');
   host.querySelector('.marks')?.remove();
   host.insertBefore(marks, svg.nextSibling);
-  const cities = {}, ground = [], tokens = {}, badges = [], bursts = [];
+  const cities = {}, ground = [], tokens = {}, badges = [], bursts = [], ships = [];
   for (const p of Object.values(C.prov)) {
     const m = div(`city${p.wealth >= 3 ? ' major' : ''}`, `<i class="dot"></i><span class="nm">${p.name}</span><span class="ic"></span>`);
     m.dataset.city = p.id;
@@ -73,6 +74,7 @@ export function makeMap(svg, data, C, handlers) {
     for (const [id, tk] of Object.entries(tokens)) { const [x, y] = toScreen(tk._x, tk._y); tk.style.transform = `translate(${x}px, ${y}px)`; }
     for (const [b, mx, my] of badges) { const [x, y] = toScreen(mx, my); b.style.transform = `translate(${x}px, ${y}px)`; }
     for (const [b, mx, my] of bursts) { const [x, y] = toScreen(mx, my); b.style.transform = `translate(${x}px, ${y}px)`; }
+    for (const [b, mx, my] of ships) { const [x, y] = toScreen(mx, my); b.style.transform = `translate(${x}px, ${y}px)`; }
   }
   const later = () => { if (!frame) frame = requestAnimationFrame(place); };
 
@@ -185,13 +187,17 @@ export function makeMap(svg, data, C, handlers) {
         badges.push([b, P[id].city[0], P[id].city[1]]);
       }
     }
-    // the orders, as arrows
+    // the orders, as arrows; a crossing by sea in sea blue, with the fleet on it
     layer.arrows.innerHTML = '';
+    for (const [b] of ships) b.remove();
+    ships.length = 0;
     for (const [id, o] of Object.entries(orders)) {
       const a = s.armies[id];
       if (!a || !o?.to || o.to === a.at) continue;
+      const path = reach(C, s, id)[o.to]?.path ?? [a.at, o.to], sea = path.some((p, i) => i && C.prov[path[i - 1]].sea.includes(p));
       const [x1, y1] = P[a.at].city, [x2, y2] = P[o.to].city, mx = (x1 + x2) / 2, my = (y1 + y2) / 2 - Math.hypot(x2 - x1, y2 - y1) * 0.15;
-      layer.arrows.append(el('path', { class: 'arrow', d: `M${x1} ${y1}Q${mx} ${my} ${x2} ${y2}`, stroke: C.sides[a.side].color, 'vector-effect': 'non-scaling-stroke' }));
+      layer.arrows.append(el('path', { class: `arrow${sea ? ' sea' : ''}`, d: `M${x1} ${y1}Q${mx} ${my} ${x2} ${y2}`, stroke: sea ? '#2f5f86' : C.sides[a.side].color, 'vector-effect': 'non-scaling-stroke' }));
+      if (sea) { const b = div('shipmark', GLYPH.ship); marks.append(b); ships.push([b, (x1 + 2 * mx + x2) / 4, (y1 + 2 * my + y2) / 4]); }
       const ang = Math.atan2(y2 - my, x2 - mx), h = 9 * (view.w / svg.clientWidth);
       layer.arrows.append(el('path', { d: `M${x2} ${y2}l${-h * Math.cos(ang - 0.45)} ${-h * Math.sin(ang - 0.45)}l${h * 0.4 * Math.cos(ang + 1.57)} ${h * 0.4 * Math.sin(ang + 1.57)}z`, fill: C.sides[a.side].color }));
     }
@@ -228,6 +234,8 @@ export function makeMap(svg, data, C, handlers) {
         tk.classList.toggle('mine', a.side === you);
         tk.classList.toggle('sel', a.id === sel);
         tk.classList.toggle('hero', !!a.hero);
+        const bySea = !!(a.from && a.from !== a.at && C.prov[a.from]?.sea.includes(a.at)); // it came over the sea last season
+        if (bySea !== tk.classList.contains('sea')) { tk.classList.toggle('sea', bySea); tk.querySelector('.ship-ic')?.remove(); if (bySea) tk.insertAdjacentHTML('afterbegin', `<span class="ship-ic">${GLYPH.ship}</span>`); }
         tk.querySelector('b').textContent = fmtMen(a.men);
         tk.querySelector('small').textContent = a.gen ? a.gen.split(' ').slice(-1)[0] : '';
         tk.title = `${a.gen ?? 'An army'} · ${fmtMen(a.men)} · ${C.sides[a.side].name}`;
