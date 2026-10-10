@@ -4,9 +4,9 @@
 //
 // A turn: the cards → the AI's plans → orders → marching → battles → sieges → money → attrition → will to fight →
 // history's own moves → the life of the courts → the goal. Inputs for a turn: { orders: { army: { to, plan, storm } }, raise: { army: men },
-// cards: { card: option }, peace: { side: 'offer' | 'accept' | 'refuse' }, ai: { side: { stance, target, peace, say } } }.
+// cards: { card: option }, peace: { side: 'offer' }, ally: { side: gold }, feint: province, ai: { side: { stance, target, peace, say } } }.
 import { DECK } from './life.js';
-export const ENGINE = 4; // bump when a change would make an old record replay differently: older runs are then closed
+export const ENGINE = 5; // bump when a change would make an old record replay differently: older runs are then closed
 
 // ---------- randomness: a seeded stream per (seed, turn, step) ----------
 function seedOf(str) {
@@ -114,6 +114,8 @@ export const isPerson = (n) => !!n && !GENERIC.test(n);
 // Conditions that last some seasons (from the life of the courts, or a wound): an army fights stronger or weaker, a
 // side's treasury takes more or less, an army will not march.
 const active = (s) => (s.conds ?? []).filter((c) => c.until >= s.turn);
+// Some never treat (the Great King, while he lives), until their capital falls.
+const stubborn = (C, s, side) => C.sides[side].noPeace === "always" || (!!C.sides[side].noPeace && (!C.sides[side].capital || s.prov[C.sides[side].capital]?.owner === side));
 export const condK = (s, a) => active(s).filter((c) => c.kind === 'power' && c.side === a.side && (c.army ? c.army === a.id : c.hero ? !!a.hero : true)).reduce((k, c) => k * c.k, 1);
 const incomeK = (s, side) => active(s).filter((c) => c.kind === 'income' && c.side === side).reduce((k, c) => k * c.k, 1);
 const held = (s, a) => active(s).some((c) => c.kind === 'stay' && c.army === a.id);
@@ -541,10 +543,24 @@ export function resolve(s0, C0, inputs = {}) {
   if (s.status !== 'running') return wrap(C, s, log);
   // the player's own offer of peace
   for (const [side, how] of Object.entries(inputs.peace ?? {})) {
-    if (how !== 'offer' || !atWar(s, C.you, side) || C.sides[side].noPeace) continue;
+    if (how !== 'offer' || !atWar(s, C.you, side) || stubborn(C, s, side)) continue;
     const at = C.sides[side].peaceAt ?? 40, yes = s.sides[side].will < at || (s.sides[side].will < at + 15 && menOf(s, side) < menOf(s, C.you) * 0.6);
     if (yes) makePeace(C, s, side, emit);
     else emit({ type: 'peace.refused', text: `${C.sides[side].name} refuses your offer of peace`, sides: [side] });
+  }
+  // the commander's envoys ask for alliances: a people threatened by the same enemy listens, and gold helps
+  for (const [side, offered] of Object.entries(inputs.ally ?? {})) {
+    if (!C.sides[side] || side === C.you || !s.sides[side]?.alive || atWar(s, side, C.you) || friends(s, side, C.you)) continue;
+    const gift = clamp(Math.round(+offered || 0), 0, Math.floor(s.sides[C.you].gold)), foes = living(s).filter((x) => atWar(s, C.you, x));
+    s.sides[C.you].gold -= gift;
+    if (C.sides[side].neutral || foes.some((f) => friends(s, side, f))) { emit({ type: 'ally.refused', text: `${C.sides[side].name} will not hear of an alliance${C.sides[side].neutral ? '' : ': they stand with your enemy'}`, sides: [side] }); continue; }
+    const pressed = foes.some((f) => armiesOf(s, f).some((a) => s.prov[a.at].owner === side || C.prov[a.at].neighbors.some((n) => s.prov[n].owner === side)));
+    const p = clamp(0.12 + (foes.some((f) => atWar(s, side, f)) ? 0.4 : 0) + (pressed ? 0.25 : 0) + (menOf(s, C.you) > menOf(s, side) ? 0.1 : 0) + gift / 250 - (temperOf(C, s, side) === 'cautious' ? 0.1 : 0), 0.05, 0.9);
+    if (rng(`ally:${side}`)() < p) {
+      setRel(s, side, C.you, 'ally', emit, C);
+      for (const f of foes) if (!friends(s, side, f)) setRel(s, side, f, 'war', emit, C);
+      emit({ type: 'joined', text: `${C.sides[side].name} ${gift ? 'takes your gifts and ' : ''}joins the war at your side`, sides: [side, C.you] });
+    } else emit({ type: 'ally.refused', text: `${C.sides[side].name} hears your envoys${gift ? ', keeps the gifts,' : ''} and will not join the war, for now`, sides: [side] });
   }
   if (s.status !== 'running') return wrap(C, s, log);
 
@@ -556,7 +572,7 @@ export function resolve(s0, C0, inputs = {}) {
     s.plans[side] = plan;
     if (ai?.say) s.said[side] = String(ai.say).slice(0, 200);
     Object.assign(orders, aiOrders(C, s, side, plan, rng(`ai:${side}`)));
-    if (plan.peace && !C.sides[side].noPeace && atWar(s, side, C.you) && !s.offers[side] && s.sides[side].will < (C.sides[side].peaceAt ?? 40) + 5) s.offers[side] = { turn: s.turn + 1, to: C.you };
+    if (plan.peace && !stubborn(C, s, side) && atWar(s, side, C.you) && !s.offers[side] && s.sides[side].will < (C.sides[side].peaceAt ?? 40) + 5) s.offers[side] = { turn: s.turn + 1, to: C.you };
     const r = aiRaise(C, s, side);
     if (r) {
       const there = armiesAt(s, r.at).find((a) => a.side === side);
@@ -566,11 +582,22 @@ export function resolve(s0, C0, inputs = {}) {
       emit({ type: 'raised', text: `${C.sides[side].name} raises ${fmtMen(r.men)} at ${C.prov[r.at].name}`, at: r.at, sides: [side], minor: true });
     }
   }
+  // a rumour the commander spreads: an enemy who believes it sends an army to guard the place, away from the real blow
+  const feint = typeof inputs.feint === 'string' && C.prov[inputs.feint] ? inputs.feint : null, holder = feint && s.prov[feint].owner;
+  if (feint && holder) for (const side of living(s)) {
+    if (side === C.you || !atWar(s, side, C.you) || !friends(s, side, holder)) continue;
+    const by = armiesOf(s, side).filter((a) => !a.stay && a.at !== feint && reach(C, s, a.id)[feint]).sort((a, b) => reach(C, s, a.id)[feint].cost - reach(C, s, b.id)[feint].cost)[0];
+    const belief = { cautious: 0.75, delaying: 0.65, steady: 0.55, bold: 0.4, rash: 0.35, cunning: 0.2 }[temperOf(C, s, side)] ?? 0.5;
+    if (by && rng(`feint:${side}`)() < belief) {
+      orders[by.id] = { to: feint, plan: null };
+      emit({ type: 'feint', text: `${C.sides[side].name} believes the rumour: ${by.gen ?? 'an army'} marches to guard ${C.prov[feint].name}`, at: feint, sides: [side, C.you] });
+    } else if (side === holder) emit({ type: 'feint', text: `The rumour of a march on ${C.prov[feint].name} fools no one in ${C.sides[side].short ?? C.sides[side].name}`, at: feint, sides: [side, C.you] });
+  }
   for (const [id, o] of Object.entries(inputs.orders ?? {})) {
     const a = s.armies[id];
     if (!a || a.side !== C.you) continue;
     const r = o.to ? reach(C, s, id)[o.to] : null;
-    orders[id] = { to: r ? o.to : null, plan: o.plan && PLANS[o.plan] ? o.plan : null, storm: !!o.storm };
+    orders[id] = { to: r ? o.to : null, plan: o.plan && PLANS[o.plan] ? o.plan : null, storm: !!o.storm, ...(o.aid ? { aid: true } : {}) };
   }
   for (const [id, men] of Object.entries(inputs.raise ?? {})) raise(C, s, id, men, emit);
 
@@ -637,7 +664,7 @@ export function resolve(s0, C0, inputs = {}) {
       s.sides[side].alive = false;
       emit({ type: 'fallen', text: `${C.sides[side].name} is no more`, sides: [side] });
     }
-    if (C.sides[side].noPeace) continue; // some never treat: the Great King did not, while he lived
+    if (stubborn(C, s, side)) continue; // some never treat: the Great King did not, while he lived and held his capital
     if (submits(C, s, side, emit)) continue;
     if (side !== C.you && atWar(s, side, C.you) && s.sides[side].will < Math.min(25, C.sides[side].peaceAt ?? 25) && !s.offers[side]) s.offers[side] = { turn: s.turn + 1, to: C.you };
     if (side !== C.you && atWar(s, side, C.you) && s.sides[side].will <= 0) { emit({ type: 'yield', text: `${C.sides[side].name} can fight no more and yields`, sides: [side] }); makePeace(C, s, side, emit); }
@@ -654,6 +681,7 @@ export function resolve(s0, C0, inputs = {}) {
   for (const side of living(s)) submits(C, s, side, emit); // history's moves may have broken a people's will
   // 9b. the life of the courts: a feast, a quarrel, a scandal, a traitor, a feud
   if (s.status === 'running') for (const side of living(s)) life(C, s, side, rng(`life:${side}`), emit);
+  if (s.status === 'running' && rng('diplomacy')() < (C.diplomacy ?? 0.06)) takeSides(C, s, rng('diplomacy:who'), emit);
   s.stats.peak = Math.max(s.stats.peak, menOf(s, C.you));
 
   // 10. the goal, and the next turn
@@ -824,6 +852,26 @@ function battleAt(C, s, at, orders, start, rng, emit) {
   }
 }
 
+// A people that stood aside picks a side: the one it fears less, against the one it fears more.
+function takeSides(C, s, rng, emit) {
+  const you = C.you, foes = living(s).filter((x) => atWar(s, you, x));
+  const free = living(s).filter((x) => x !== you && !C.sides[x].neutral && !living(s).some((y) => y !== x && (atWar(s, x, y) || relOf(s, x, y) === 'ally')));
+  if (!free.length || !foes.length) return;
+  const side = free[Math.floor(rng() * free.length)], lands = owned(s, side);
+  const fear = (sides) => Object.values(s.armies).filter((a) => sides.includes(a.side) && lands.some((p) => p === a.at || C.prov[p].neighbors.includes(a.at))).reduce((t, a) => t + a.men, 0);
+  const fromYou = fear([you]), fromFoes = fear(foes), withYou = fromFoes > fromYou || (fromFoes === fromYou && rng() < 0.5);
+  if (withYou) {
+    setRel(s, side, you, 'ally', emit, C);
+    for (const f of foes) setRel(s, side, f, 'war', emit, C);
+    emit({ type: 'joined', text: `${C.sides[side].name} fears your enemies more than you, and joins the war at your side`, sides: [side, you] });
+  } else {
+    const f = foes.sort((a, b) => menOf(s, b) - menOf(s, a))[0];
+    setRel(s, side, f, 'ally', emit, C);
+    setRel(s, side, you, 'war', emit, C);
+    emit({ type: 'joined', text: `${C.sides[side].name} throws in its lot with ${C.sides[f].name}, and declares war on you`, sides: [side, f, you] });
+  }
+}
+
 // One season of a court's life: perhaps nothing, perhaps a card from the deck in life.js, with this war's names.
 function life(C, s, side, rng, emit) {
   const mine = side === C.you;
@@ -956,6 +1004,10 @@ function makePeace(C, s, side, emit) {
   if (!atWar(s, side, C.you)) return;
   setRel(s, side, C.you, 'peace', emit, C);
   delete s.offers[side];
+  // a peace on the victor's terms: the beaten side gives up the cities the commander's goal names
+  const ceded = (C.goal.provs ?? []).filter((p) => s.prov[p]?.owner === side);
+  for (const p of ceded) Object.assign(s.prov[p], { owner: C.you, siege: 0, by: null });
+  if (ceded.length) emit({ type: 'ceded', text: `${C.sides[side].name} gives up ${ceded.map((p) => C.prov[p].name).join(', ')} as the price of peace`, sides: [side, C.you] });
   // at peace, its armies leave your lands and your friends': home to their capital, or they disband
   const home = C.sides[side].capital && s.prov[C.sides[side].capital]?.owner === side ? C.sides[side].capital : null;
   for (const a of armiesOf(s, side)) {

@@ -25,6 +25,8 @@ export function summary(C, s0, draft) {
   const out = armiesOf(s, C.you).sort((a, b) => (b.hero ? 1 : 0) - (a.hero ? 1 : 0) || b.men - a.men).map((a) => orderText(C, s, a.id, draft.orders?.[a.id]));
   for (const [id, n] of Object.entries(draft.raise ?? {})) out.push(id === '@home' ? `${fmtMen(n)} new men raised at ${C.prov[homeOf(C, s, C.you)]?.name ?? 'home'}` : `${fmtMen(n)} new men join ${s.armies[id]?.gen ?? 'an army'}`);
   for (const [side, how] of Object.entries(draft.peace ?? {})) if (how) out.push(`an envoy offers peace to ${C.sides[side].name}`);
+  for (const [side, gold] of Object.entries(draft.ally ?? {})) out.push(`envoys ask ${C.sides[side].name} for an alliance${gold ? `, with ${gold} gold in gifts` : ''}`);
+  if (draft.feint && C.prov[draft.feint]) out.push(`rumours spread that we march on ${C.prov[draft.feint].name}`);
   return out;
 }
 
@@ -52,16 +54,47 @@ export function situation(C, s0, draft = null) {
     }
   }
   L.push(`Provinces (id: name, holder, walls): ${C.ids.map((p) => `${p}: ${C.prov[p].name}, ${s.prov[p].owner ?? 'free'}${s.prov[p].walls ? `, walls ${s.prov[p].walls}` : ''}`).join(' | ')}`);
+  const pr = prospects(C, s);
+  if (pr.length) L.push(`OPPORTUNITIES AND DANGERS (computed from the data; a good adviser points them out):\n${pr.map((x) => `  - ${x}`).join('\n')}`);
   if (s.dead?.length) L.push(`DEAD (they cannot act or speak; never mention them as alive): ${s.dead.join(', ')}.`);
   const cards = cardsDue(C, s0);
   if (cards.length) L.push(`DECISIONS before the commander this season: ${cards.map((c) => `card ${c.id} "${c.title}": ${c.text} Options: ${c.options.map((o, i) => `${i} = ${o.label}`).join('; ')}${draft?.cards?.[c.id] !== undefined ? ` (already chosen: ${draft.cards[c.id]})` : ''}`).join(' || ')}`);
   return L.join('\n');
 }
+// What a general who thinks ahead would see: enemy capitals left bare, landings by sea, undefended land within reach,
+// enemies that can strike us this season, and peoples who might be won over.
+export function prospects(C, s) {
+  const you = C.you, out = [], mine = armiesOf(s, you), alive = Object.keys(C.sides).filter((x) => s.sides[x].alive);
+  const foes = alive.filter((x) => x !== you && atWar(s, you, x)), P = (id) => C.prov[id].name;
+  for (const f of foes) {
+    const cap = C.sides[f].capital;
+    if (!cap || s.prov[cap]?.owner !== f) continue;
+    const guard = armiesAt(s, cap).filter((a) => friends(s, f, a.side)).reduce((t, a) => t + a.men, 0), main = armiesOf(s, f).sort((a, b) => b.men - a.men)[0];
+    const away = main ? (wayTo(C, s, f, main.at, cap)?.length ?? 99) - 1 : 0, near = mine.map((a) => [a, wayTo(C, s, you, a.at, cap)]).filter(([, w]) => w).sort((x, y) => x[1].length - y[1].length)[0];
+    if (near) out.push(`${C.sides[f].name}'s capital ${P(cap)} (walls ${s.prov[cap].walls}, garrison ${fmtMen(s.prov[cap].garrison)}${guard ? `, ${fmtMen(guard)} in the field there` : ', no field army there'}) is ${near[1].length - 1} provinces from ${near[0].gen ?? 'one of our armies'}${main && away >= 2 ? `, while their main army under ${main.gen ?? 'its general'} is ${away} provinces away at ${P(main.at)}` : ''}. Taking a capital breaks a people's will${C.sides[f].noPeace ? ', and is the only way to make them treat' : ''}.`);
+  }
+  for (const a of mine) {
+    const r = reach(C, s, a.id);
+    const landing = Object.keys(r).filter((p) => C.prov[a.at].sea.includes(p) && s.prov[p].owner && atWar(s, you, s.prov[p].owner) && !armiesAt(s, p).some((o) => atWar(s, you, o.side)));
+    if (landing.length) out.push(`${a.gen ?? 'An army'} at ${P(a.at)} can sail and land this season at ${landing.slice(0, 3).map(P).join(', ')}, undefended.`);
+    const bare = Object.keys(r).filter((p) => !C.prov[a.at].sea.includes(p) && s.prov[p].owner && atWar(s, you, s.prov[p].owner) && !armiesAt(s, p).length && C.prov[p].wealth >= 2);
+    if (bare.length) out.push(`${a.gen ?? 'An army'} can reach rich enemy land with no army in it: ${bare.slice(0, 3).map((p) => `${P(p)}${s.prov[p].walls ? ` (walls ${s.prov[p].walls})` : ''}`).join(', ')}.`);
+  }
+  for (const f of foes) for (const e of armiesOf(s, f)) {
+    const r = reach(C, s, e.id), hit = Object.keys(r).filter((p) => s.prov[p].owner === you && (p === C.sides[you].capital || C.prov[p].wealth >= 2));
+    if (hit.length && e.men >= 3000) out.push(`DANGER: ${e.gen ?? `an army of ${C.sides[f].name}`} (${fmtMen(e.men)}) at ${P(e.at)} can strike ${hit.slice(0, 2).map(P).join(' or ')} this season.`);
+  }
+  for (const x of alive.filter((x) => x !== you && !atWar(s, you, x) && !friends(s, you, x) && !C.sides[x].neutral)) {
+    const sharing = foes.filter((f) => atWar(s, x, f)), pressed = foes.filter((f) => armiesOf(s, f).some((a) => owned(s, x).some((p) => p === a.at || C.prov[p].neighbors.includes(a.at))));
+    if (sharing.length || pressed.length) out.push(`${C.sides[x].name} (${fmtMen(menOf(s, x))} men) ${sharing.length ? `is already at war with ${C.sides[sharing[0]].short ?? C.sides[sharing[0]].name}` : `has ${C.sides[pressed[0]].short ?? C.sides[pressed[0]].name}'s armies on its border`}: envoys, perhaps with gold, might win it as an ally.`);
+  }
+  return out.slice(0, 12);
+}
 export const bestPlan = (C, facts) => plansFor(C, facts.defending).map((p) => [p, fitOf(facts, p)]).sort((x, y) => y[1] - x[1])[0][0];
 
 // ---------- checking a proposal: whatever the AI (or anyone) proposes passes through here ----------
 export function normalize(C, s0, draft, prop = {}) {
-  const out = { orders: { ...(draft.orders ?? {}) }, raise: { ...(draft.raise ?? {}) }, cards: { ...(draft.cards ?? {}) }, peace: { ...(draft.peace ?? {}) }, aims: { ...(draft.aims ?? {}) } }, notes = [];
+  const out = { orders: { ...(draft.orders ?? {}) }, raise: { ...(draft.raise ?? {}) }, cards: { ...(draft.cards ?? {}) }, peace: { ...(draft.peace ?? {}) }, ally: { ...(draft.ally ?? {}) }, feint: draft.feint ?? null, aims: { ...(draft.aims ?? {}) } }, notes = [];
   for (const [id, n] of Object.entries(prop.cards ?? {})) {
     const c = cardsDue(C, s0).find((x) => x.id === id);
     if (c && Number.isInteger(+n) && c.options[+n]) out.cards[id] = +n;
@@ -88,6 +121,8 @@ export function normalize(C, s0, draft, prop = {}) {
   }
   for (const [id, n] of Object.entries(prop.raise ?? {})) if ((id === '@home' || s.armies[id]?.side === C.you) && +n > 0) out.raise[id] = Math.round(+n);
   for (const [side, how] of Object.entries(prop.peace ?? {})) if (C.sides[side] && atWar(s, C.you, side) && !C.sides[side].noPeace) out.peace[side] = how ? 'offer' : undefined;
+  for (const [side, gold] of Object.entries(prop.ally ?? {})) if (C.sides[side] && side !== C.you && s.sides[side]?.alive && !atWar(s, C.you, side) && !friends(s, C.you, side)) out.ally[side] = Math.max(0, Math.min(Math.floor(s.sides[C.you].gold), Math.round(+gold || 0)));
+  if (prop.feint !== undefined) out.feint = typeof prop.feint === 'string' && C.prov[prop.feint] ? prop.feint : null;
   return { draft: out, notes, state: s };
 }
 
@@ -138,7 +173,7 @@ function findArmies(C, s, ws) {
   return hits;
 }
 export function interpret(C, s, draft, text) {
-  const t = fold(text), out = { orders: {}, raise: {}, cards: {}, peace: {} }, said = [], court = courtOf(C, s), advisor = court[0] ?? { id: 'advisor', name: 'Your adviser' };
+  const t = fold(text), out = { orders: {}, raise: {}, cards: {}, peace: {}, ally: {}, feint: null }, said = [], court = courtOf(C, s), advisor = court[0] ?? { id: 'advisor', name: 'Your adviser' };
   let end = /\b(end (the )?turn|make it so|so be it|proceed|carry on|go ahead|let it be done)\b/.test(t);
   const asking = /\?|^\s*(how|what|where|who|when|why|which|should|can|could|is|are|do|does|tell me)\b/.test(t);
   const sideWords = new Set(Object.values(C.sides).flatMap((d) => [...words(d.name), ...words(d.short)]));
@@ -175,6 +210,13 @@ export function interpret(C, s, draft, text) {
       out.raise[where ?? '@home'] = n < 100 ? n * 1000 : n;
       continue;
     }
+    if (/\b(feint|bluff|rumou?rs?|spread (the )?word|make a show|demonstrat\w*|pretend|deceive)\b/.test(clause) && place) { out.feint = place; continue; }
+    if (/\b(alliance|ally|allies|join us|our side|win over|befriend|gifts?)\b/.test(clause)) {
+      const gold = +((clause.match(/(\d[\d,]*)\s*(gold|talents|coins)/) ?? t.match(/(\d[\d,]*)\s*(gold|talents|coins)/))?.[1] ?? '0').replace(/,/g, ''); // the gift may be named in another clause
+      const asked = Object.keys(C.sides).filter((side) => side !== C.you && !atWar(s, C.you, side) && !friends(s, C.you, side) && (words(C.sides[side].name).some((w) => ws.includes(w) && !STOP.has(w)) || words(C.sides[side].short).some((w) => ws.includes(w) && !STOP.has(w)) || ws.includes(side)));
+      for (const side of asked) out.ally[side] = gold;
+      if (asked.length) continue;
+    }
     if (/\b(peace|terms|treat|truce)\b/.test(clause)) {
       for (const side of Object.keys(C.sides)) if (side !== C.you && atWar(s, C.you, side) && (words(C.sides[side].name).some((w) => ws.includes(w) && !STOP.has(w)) || ws.includes(side))) out.peace[side] = 'offer';
       continue;
@@ -202,10 +244,12 @@ export function interpret(C, s, draft, text) {
     }
   }
   const { draft: next, notes, state: after } = normalize(C, s, draft, out);
-  const changed = Object.keys(out.orders).length + Object.keys(out.raise).length + Object.keys(out.peace).length;
+  const changed = Object.keys(out.orders).length + Object.keys(out.raise).length + Object.keys(out.peace).length + Object.keys(out.ally).length + (out.feint ? 1 : 0);
   for (const id of Object.keys(out.orders)) if (next.orders[id]) said.push({ who: after.armies[id]?.hero ? advisor.id : `army:${id}`, text: `${orderText(C, after, id, next.orders[id])}. It will be done.` });
   for (const [id, n] of Object.entries(out.raise)) said.push({ who: advisor.id, text: `We will raise ${fmtMen(n)} men${id === '@home' ? ` at ${C.prov[homeOf(C, s, C.you)]?.name ?? 'home'}` : ''}, if the treasury allows.` });
   for (const side of Object.keys(out.peace)) said.push({ who: advisor.id, text: `An envoy will ride to ${C.sides[side].name}. They will listen only if their will to fight is low (it is ${Math.round(s.sides[side].will)}).` });
+  for (const [side, gold] of Object.entries(next.ally ?? {})) if (side in out.ally) said.push({ who: advisor.id, text: `Envoys will ride to ${C.sides[side].name}${gold ? ` with ${gold} gold in gifts` : ''} to ask for an alliance. A people that fears our enemy listens; gold helps.` });
+  if (out.feint && next.feint) said.push({ who: advisor.id, text: `We will let it be known that we march on ${C.prov[next.feint].name}. A cautious enemy may believe it and send an army there; a cunning one will not.` });
   for (const n of notes) said.push({ who: advisor.id, text: n });
   const known = !changed && !Object.keys(out.cards).length && !end ? answer(C, s, t) : null;
   if (!changed && !Object.keys(out.cards).length && !end) said.push({ who: advisor.id, text: known ?? notUnderstood(C, s) });

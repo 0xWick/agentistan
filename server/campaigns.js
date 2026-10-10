@@ -30,11 +30,14 @@ function cleanInputs(raw = {}) {
   const out = { orders: {}, raise: {}, cards: {}, peace: {} };
   for (const [id, o] of Object.entries(raw.orders ?? {}).slice(0, 40)) {
     if (!/^[\w-]{1,24}$/.test(id) || !o || typeof o !== 'object') continue;
-    out.orders[id] = { to: typeof o.to === 'string' && /^[\w-]{1,32}$/.test(o.to) ? o.to : null, plan: PLANS[o.plan] ? o.plan : null, storm: !!o.storm };
+    out.orders[id] = { to: typeof o.to === 'string' && /^[\w-]{1,32}$/.test(o.to) ? o.to : null, plan: PLANS[o.plan] ? o.plan : null, storm: !!o.storm, ...(o.aid ? { aid: true } : {}) };
   }
   for (const [id, n] of Object.entries(raw.raise ?? {}).slice(0, 20)) if (/^(@home|[\w-]{1,24})$/.test(id) && Number.isFinite(+n)) out.raise[id] = Math.max(0, Math.min(2000000, Math.round(+n)));
   for (const [id, n] of Object.entries(raw.cards ?? {}).slice(0, 20)) if (/^[\w:-]{1,40}$/.test(id) && Number.isInteger(n) && n >= 0 && n < 6) out.cards[id] = n;
   for (const [id, v] of Object.entries(raw.peace ?? {}).slice(0, 10)) if (/^[\w-]{1,24}$/.test(id) && v === 'offer') out.peace[id] = 'offer';
+  out.ally = {};
+  for (const [id, g] of Object.entries(raw.ally ?? {}).slice(0, 10)) if (/^[\w-]{1,24}$/.test(id) && Number.isFinite(+g)) out.ally[id] = Math.max(0, Math.min(100000, Math.round(+g)));
+  if (typeof raw.feint === 'string' && /^[\w-]{1,32}$/.test(raw.feint)) out.feint = raw.feint;
   return out;
 }
 
@@ -56,13 +59,13 @@ export class Campaigns extends DurableObject {
     const usage = this.get('usage') ?? {}, usage2 = this.get('usage2') ?? {};
     this.llms = env.LLM_API_KEY ? [
       makeLLM({ ...env, LLM_MODEL: env.CAMPAIGN_MODEL || 'openai/gpt-oss-20b', MAX_LLM_TOKENS_PER_DAY: env.CAMPAIGN_TOKENS || '185000', MAX_LLM_CALLS_PER_DAY: '950', LLM_EXTRA: '{"reasoning_effort":"low"}' }, usage),
-      makeLLM({ ...env, LLM_MODEL: env.CAMPAIGN_MODEL_2 || 'qwen/qwen3.8-27b', MAX_LLM_TOKENS_PER_DAY: env.CAMPAIGN_TOKENS_2 || '45000', MAX_LLM_CALLS_PER_DAY: '300', LLM_EXTRA: '{}' }, usage2),
+      makeLLM({ ...env, LLM_MODEL: env.CAMPAIGN_MODEL_2 || 'qwen/qwen3.8-27b', MAX_LLM_TOKENS_PER_DAY: env.CAMPAIGN_TOKENS_2 || '150000', MAX_LLM_CALLS_PER_DAY: '900', LLM_EXTRA: '{}' }, usage2),
     ] : [];
     this.usage = usage;
     this.usage2 = usage2;
     // the council's voice: the larger model, on a small budget of its own (the Watch's cast has the rest of its day)
     this.usage3 = this.get('usage3') ?? {};
-    this.voice = env.LLM_API_KEY ? makeLLM({ ...env, LLM_MODEL: env.COUNCIL_MODEL || 'openai/gpt-oss-120b', MAX_LLM_TOKENS_PER_DAY: env.COUNCIL_TOKENS || '60000', MAX_LLM_CALLS_PER_DAY: '200', LLM_EXTRA: '{"reasoning_effort":"low"}' }, this.usage3) : null;
+    this.voice = env.LLM_API_KEY ? makeLLM({ ...env, LLM_MODEL: env.COUNCIL_MODEL || 'openai/gpt-oss-120b', MAX_LLM_TOKENS_PER_DAY: env.COUNCIL_TOKENS || '80000', MAX_LLM_CALLS_PER_DAY: '400', LLM_EXTRA: '{"reasoning_effort":"low"}' }, this.usage3) : null;
   }
   get llm() { return this.llms.find((l) => l.status().mode === 'live') ?? null; }
   saveUsage() { this.put('usage', this.usage); this.put('usage2', this.usage2); this.put('usage3', this.usage3); }
@@ -180,26 +183,26 @@ STRICT: use only the people, armies, places and numbers in the data. The dead ca
     // A question of fact: the war's data answers it, and the AI says it in character. A question the rules cannot read
     // goes to the AI with the data; without the AI, the rules say so plainly.
     const fact = rules.asking && !heard && rules.known && !/\b(should|shall|would|could|advise|think|suggest|best|wise)\b/i.test(text);
-    if (!live || used >= +(this.env.COUNCIL_PER_SEASON || 8)) return viaRules();
+    if (!live || used >= +(this.env.COUNCIL_PER_SEASON || 40)) return viaRules();
     this.put(`talk:${run.id}:${s.turn}`, used + 1);
     const court = courtOf(C, s), ids = new Set(court.map((p) => p.id));
     const chat = (Array.isArray(body.chat) ? body.chat : []).slice(-8).map((m) => `${m.who === 'you' ? 'COMMANDER' : String(m.name ?? m.who).slice(0, 40)}: ${clean(String(m.text ?? ''), 80)}`).join('\n');
     const system = `You are the council of ${s.armies && Object.values(s.armies).find((a) => a.hero)?.gen || C.hero.name} in a historical war game (${C.title}, ${C.years}). Its members, by id: ${court.map((p) => `${p.id} = ${p.name}${p.title ? `, ${p.title}` : ''}`).join('; ')}.
-The commander speaks to you. A general given an order answers for his own army (his id begins with army:); the first member speaks for the rest. Reply only to the commander's LAST words (the earlier conversation is context; never repeat an earlier answer). Answer in character, briefly: one to three plain sentences from each member who would speak (usually one or two members), as people of that time would talk: loyal, frank, sometimes disagreeing. Then turn the commander's words into orders. Answer questions from the data alone.
+The commander speaks to you. A general given an order answers for his own army (his id begins with army:); the first member speaks for the rest. Reply only to the commander's LAST words (the earlier conversation is context; never repeat an earlier answer). Answer in character: two to four plain sentences from each member who would speak (usually one or two members), as seasoned officers of that time would talk: loyal, frank, sometimes disagreeing, never servile. Think like a general: weigh the odds, the ground, the season and the enemy's temper, and when the OPPORTUNITIES AND DANGERS in the data show a bold stroke (a capital left bare, a landing by sea, an ally to be won, a rumour to mislead the enemy) or a danger, say so plainly, even unasked. This is a game of what might have been: bold plans that history never tried are welcome. Then turn the commander's words into orders. Answer questions from the data alone.
 STRICT RULES: use only the people, armies, places, numbers and decisions in the data. The dead cannot speak or act. Never invent events, battles or deaths. An army may be ordered to any province; if it is not under "can reach this season", the army goes as far as it can and the rest next season, and you should say so. Keep any order the commander did not change. Your replies must match the orders you return exactly: never say an army will go somewhere unless that order is in your JSON, and if the commander's words change nothing, say so. The commander's own army is the one led by the commander. Never mock any faith or people; no slurs; nothing graphic.
-Reply with JSON only: {"replies": [{"who": "<member id>", "text": "..."}], "orders": {"<army id>": {"to": "<province id, or null to hold>", "plan": "<plan id or null>", "storm": false, "aid": false}}, "raise": {"<army id, or @home>": <number of men>}, "peace": {"<side id>": true}, "cards": {"<card id>": <option number>}, "end": false}
+Reply with JSON only: {"replies": [{"who": "<member id>", "text": "..."}], "orders": {"<army id>": {"to": "<province id, or null to hold>", "plan": "<plan id or null>", "storm": false, "aid": false}}, "raise": {"<army id, or @home>": <number of men>}, "peace": {"<side id>": true}, "ally": {"<side id at peace with the player>": <gold to send as gifts, 0 or more>}, "feint": "<province id where a rumour says we march, or null>", "cards": {"<card id>": <option number>}, "end": false}
 An army that holds with "aid": true marches to help any friendly army attacked next to it; to join or support another army, order it to the same province. Include in orders, raise, peace and cards only what the commander's words change. "end": true only when the commander clearly ends the season ("make it so", "end the turn"). Plans: ${plansFor(C, false).map((p) => `${p} = ${PLANS[p].name}`).join('; ')}.`;
     const facts = fact ? `\nTHE TRUE ANSWER, from the war's data (say it in character and in your own words; keep every number and name; add nothing it does not say; change no orders): ${rules.replies.map((r) => r.text).join(' ')}` : '';
     const understood = heard ? `\nALREADY UNDERSTOOD from these words (fixed; do not contradict or repeat them in orders): ${[...Object.entries(rules.draft.cards).filter(([id]) => id in lit.cards).map(([id, n]) => `card ${id} = ${n}`), ...summary(C, s, { ...rules.draft, orders: Object.fromEntries(Object.entries(rules.draft.orders).filter(([id]) => id in lit.orders)), raise: lit.raise, peace: lit.peace })].join('; ')}.` : '';
-    const out = await this.askAI(system, `${situation(C, s, rules.draft)}\n\nThis season so far:\n${chat || '(nothing yet)'}\n\nCOMMANDER: ${text}${understood}${facts}`, 700, 6, { voice: true });
+    const out = await this.askAI(system, `${situation(C, s, rules.draft)}\n\nThis season so far:\n${chat || '(nothing yet)'}\n\nCOMMANDER: ${text}${understood}${facts}`, 1100, 10, { voice: true });
     if (!out) return viaRules();
     const mine = (o, taken) => Object.fromEntries(Object.entries(o ?? {}).filter(([k]) => !(k in taken)));
-    const { draft: next, notes } = normalize(C, s, rules.draft, { orders: mine(out.orders, lit.orders), raise: Object.keys(lit.raise).length ? {} : out.raise ?? {}, peace: mine(Object.fromEntries(Object.entries(out.peace ?? {}).filter(([, v]) => v)), lit.peace), cards: mine(out.cards, lit.cards) });
+    const { draft: next, notes } = normalize(C, s, rules.draft, { orders: mine(out.orders, lit.orders), raise: Object.keys(lit.raise).length ? {} : out.raise ?? {}, peace: mine(Object.fromEntries(Object.entries(out.peace ?? {}).filter(([, v]) => v)), lit.peace), cards: mine(out.cards, lit.cards), ally: mine(out.ally, lit.ally ?? {}), ...(lit.feint || out.feint === undefined ? {} : { feint: out.feint }) });
     const before = new Set((Array.isArray(body.chat) ? body.chat : []).map((m) => clean(String(m.text ?? ''), 70)));
     const replies = (Array.isArray(out.replies) ? out.replies : []).slice(0, 4).map((r) => ({ who: ids.has(r?.who) ? r.who : court[0]?.id ?? 'adviser', text: clean(String(r?.text ?? ''), 70) })).filter((r) => r.text && !before.has(r.text)); // nothing said twice
     for (const n of [...rules.notes, ...notes]) replies.push({ who: court[0]?.id ?? 'adviser', text: n });
     if (!replies.length) replies.push(...rules.replies.filter((r) => !rules.notes.includes(r.text))); // the AI said nothing new: the rules' plain answer
-    return { replies, draft: next, end: out.end === true, by: 'ai', left: Math.max(0, +(this.env.COUNCIL_PER_SEASON || 8) - used - 1) };
+    return { replies, draft: next, end: out.end === true, by: 'ai', left: Math.max(0, +(this.env.COUNCIL_PER_SEASON || 40) - used - 1) };
   }
   async planFor(run, s) {
     const have = this.sql.exec('SELECT ai, advice, by, proposal FROM plans WHERE run = ? AND n = ?', run.id, s.turn).toArray()[0];

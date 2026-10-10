@@ -447,7 +447,7 @@ async function endTurn() {
   $('#end-turn').disabled = true;
   $('#end-turn').textContent = 'The season unfolds…';
   const C = G.C, before = G.s;
-  const inputs = { orders: G.draft.orders, raise: G.draft.raise, cards: G.draft.cards, peace: Object.fromEntries(Object.entries(G.draft.peace ?? {}).filter(([, v]) => v)) };
+  const inputs = { orders: G.draft.orders, raise: G.draft.raise, cards: G.draft.cards, peace: Object.fromEntries(Object.entries(G.draft.peace ?? {}).filter(([, v]) => v)), ally: G.draft.ally ?? {}, ...(G.draft.feint ? { feint: G.draft.feint } : {}) };
   let final = inputs, chk = null;
   if (!G.run.local) {
     try {
