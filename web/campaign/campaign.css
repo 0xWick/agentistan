@@ -345,3 +345,32 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 700; letter-spacing: 
 .shipmark { width: 26px; height: 26px; margin: -13px 0 0 -13px; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4)); }
 .shipmark svg, .tk .ship-ic svg { width: 100%; height: 100%; display: block; }
 .tk .ship-ic { width: 20px; height: 20px; margin-bottom: -4px; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45)); }
+
+/* the field of battle: the ground as a board, the units as counters, the officers beside it */
+.sheet.wide .panel:has(.field) { max-width: min(1240px, 96vw); }
+.field .f-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.field .f-body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; margin-top: 8px; }
+.field .f-board svg { width: 100%; height: auto; display: block; border-radius: 8px; border: 2px solid #6a5032; box-shadow: 0 4px 14px var(--shadow); background: #e6d7a9; touch-action: manipulation; }
+.field .f-help { font-size: 13px; color: var(--ink-soft); font-style: italic; margin: 6px 0 0; }
+.f-tile { stroke: rgba(58, 40, 22, 0.12); stroke-width: 1; cursor: pointer; }
+.f-reach { fill: rgba(243, 210, 122, 0.45); stroke: #b3852c; stroke-width: 2; cursor: pointer; }
+.f-order { stroke: #27466e; stroke-width: 3; stroke-dasharray: 6 5; stroke-linecap: round; pointer-events: none; }
+.f-order.attack { stroke: #a3361f; }
+.f-unit { cursor: pointer; }
+.f-unit .f-chip { stroke: #2a1c0e; stroke-width: 2; }
+.f-unit.mine .f-chip { stroke: #f3e7c8; stroke-width: 2.5; }
+.f-unit.sel .f-chip { stroke: #f3d27a; stroke-width: 4; }
+.f-unit.hold .f-chip { stroke-dasharray: 5 3; }
+.f-men { font: 700 12px var(--kufi); fill: #fbf3dd; text-anchor: middle; paint-order: stroke; stroke: #2a1c0e; stroke-width: 3px; }
+.f-morale { fill: #f3d27a; }
+.f-talk { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.f-talk ol { list-style: none; margin: 0; padding: 8px; flex: 1; max-height: 360px; overflow: auto; border-radius: 8px; background: rgba(245, 234, 208, 0.85); border: 1px solid rgba(140, 107, 63, 0.4); font-size: 15px; }
+.f-talk li { padding: 4px 0; border-bottom: 1px dotted rgba(140, 107, 63, 0.35); }
+.f-talk li.you { color: var(--lapis); font-style: italic; }
+.f-talk li.herald { color: var(--sepia); font-size: 14px; }
+.f-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.f-chips .pick { font: 600 12.5px var(--kufi); padding: 4px 9px; border-radius: 99px; border: 1px solid #b89a63; background: #f5ead0; cursor: pointer; word-spacing: 0.16em; }
+.f-say { display: flex; gap: 6px; }
+.f-say input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid #b89a63; background: #fbf3dd; font: 15px var(--body); }
+.f-act { display: flex; flex-wrap: wrap; gap: 6px; }
+@media (max-width: 860px) { .field .f-body { grid-template-columns: 1fr; } .f-talk ol { max-height: 200px; } }

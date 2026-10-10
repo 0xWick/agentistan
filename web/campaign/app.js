@@ -3,7 +3,9 @@
 // answer in character and turn your words into orders (the AI when it can, the rules otherwise), and the map shows
 // what will happen. The big decisions arrive as cards in the same conversation.
 import { CAMPAIGNS, CAMPAIGN } from './catalog.js';
-import { newCampaign, resolve, cardsDue, withCards, PLANS, armiesOf, menOf, heroOf, goalState, atWar, fmtMen, checksum, VERDICT, incomeOf, upkeepOf, friends, courtOf, leaderOf, ENGINE, oddsOf, reach } from './engine.js';
+import { newCampaign, resolve, cardsDue, withCards, PLANS, armiesOf, menOf, heroOf, goalState, atWar, fmtMen, checksum, VERDICT, incomeOf, upkeepOf, friends, courtOf, leaderOf, ENGINE, oddsOf, reach, battlesAhead } from './engine.js';
+import { commandBattle } from './battleui.js';
+import { label as unitName, GROUND } from './battle.js';
 import { proposal, interpret, summary, suggestions, normalize } from './court.js';
 import { makeMap } from './map.js';
 import { history as pastOf, snapOf, warRoom } from './warroom.js';
@@ -36,6 +38,8 @@ const api = {
   get: (id) => fetch(`/api/run/${encodeURIComponent(id)}`).then((r) => (r.ok ? r.json() : null)),
   runs: () => fetch('/api/runs').then((r) => (r.ok ? r.json() : { live: [], recent: [] })).catch(() => ({ live: [], recent: [] })),
   claim: (run, body) => post(`/api/run/${run.id}/claim`, { token: run.token, ...body }),
+  battles: (run, t, inputs) => post(`/api/run/${run.id}/battles`, { token: run.token, t, inputs }),
+  battleTalk: (run, body) => post(`/api/run/${run.id}/battle`, { token: run.token, ...body }),
 };
 const ART = new Set(), PAINTED = new Set();
 const arts = fetch('/art/manifest.json').then((r) => r.json()).then((m) => { (m.events ?? []).forEach((k) => ART.add(k)); (m.people ?? []).forEach((k) => PAINTED.add(k)); }).catch(() => {});
@@ -448,6 +452,14 @@ async function endTurn() {
   $('#end-turn').textContent = 'The season unfolds…';
   const C = G.C, before = G.s;
   const inputs = { orders: G.draft.orders, raise: G.draft.raise, cards: G.draft.cards, peace: Object.fromEntries(Object.entries(G.draft.peace ?? {}).filter(([, v]) => v)), ally: G.draft.ally ?? {}, ...(G.draft.feint ? { feint: G.draft.feint } : {}) };
+  // the battles this season: the commander may take command of each on the field, hour by hour
+  $('#end-turn').textContent = 'The armies draw up…';
+  const ahead = G.run.local ? battlesAhead(C, before, inputs) : await api.battles(G.run, before.turn, inputs).then((r) => r.battles ?? []).catch(() => []);
+  for (const b of ahead) {
+    const rec = await commandBattle(b, battleKit(b, before));
+    if (rec) (inputs.battles ??= {})[b.at] = rec;
+  }
+  $('#end-turn').textContent = 'The season unfolds…';
   let final = inputs, chk = null;
   if (!G.run.local) {
     try {
@@ -481,6 +493,15 @@ async function endTurn() {
   dispatch(r.events, r.state, before.turn);
   if (G.s.status !== 'running') { showChips(); return setTimeout(scroll, 900); }
   newTurn();
+}
+
+// What the battlefield needs from the page: the sheet, the words, and the officers' voices (the AI, on the server).
+function battleKit(b, s) {
+  const S = b.setup, officers = [...new Set([...S.armies.filter((a) => a.camp === S.you && a.gen).map((a) => a.gen), ...courtOf(G.C, s).filter((p) => !p.army).map((p) => p.name)])];
+  const fieldText = (f) => `The field of ${S.place} (${S.ground}), ${12} columns (x 0 to 11) by 8 rows (y 0 to 7); we are camp ${S.you}, ${S.you === 'a' ? 'starting on the west, x 0 to 4' : 'starting on the east, x 7 to 11'}. Hour ${f.hour + 1} of 6. Our plan: ${PLANS[S.plans[S.you]]?.name ?? S.plans[S.you]}.\n`
+    + f.units.filter((u) => !u.gone).map((u) => `${u.camp === S.you ? 'OUR' : 'ENEMY'} unit ${u.id} = ${unitName(u)} (${u.type}), ${u.men} men, spirits ${Math.round(u.morale)}, at (${u.x},${u.y}) on ${GROUND[f.ground[u.y][u.x]].name}`).join('\n')
+    + `\nGround that matters: ${f.ground.flatMap((row, y) => row.map((g, x) => (g !== 'open' ? `${g} (${x},${y})` : null))).filter(Boolean).slice(0, 40).join(', ')}`;
+  return { openSheet, esc, fmtMen, planName: (id) => PLANS[id]?.name ?? id, ask: G.run.local ? null : (f, message) => api.battleTalk(G.run, { t: s.turn, field: fieldText(f), message, officers }) };
 }
 
 const GOOD = new Set(['victory', 'submits']), BAD = new Set(['defeat', 'hero', 'unpaid']);

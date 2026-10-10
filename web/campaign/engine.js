@@ -4,9 +4,11 @@
 //
 // A turn: the cards → the AI's plans → orders → marching → battles → sieges → money → attrition → will to fight →
 // history's own moves → the life of the courts → the goal. Inputs for a turn: { orders: { army: { to, plan, storm } }, raise: { army: men },
-// cards: { card: option }, peace: { side: 'offer' }, ally: { side: gold }, feint: province, ai: { side: { stance, target, peace, say } } }.
+// cards: { card: option }, peace: { side: 'offer' }, ally: { side: gold }, feint: province, battles: { province: record },
+// ai: { side: { stance, target, peace, say } } }. A battle with a record was commanded on the field (battle.js).
 import { DECK } from './life.js';
-export const ENGINE = 5; // bump when a change would make an old record replay differently: older runs are then closed
+import { play as fieldBattle } from './battle.js';
+export const ENGINE = 6; // bump when a change would make an old record replay differently: older runs are then closed
 
 // ---------- randomness: a seeded stream per (seed, turn, step) ----------
 function seedOf(str) {
@@ -528,7 +530,7 @@ export function withCards(C0, s0, cards) {
 }
 
 // ---------- the turn ----------
-export function resolve(s0, C0, inputs = {}) {
+export function resolve(s0, C0, inputs = {}, opts = {}) {
   const C = READY.get(C0) ?? C0, s = clone(s0), rng = (step) => rngFor(s.seed, s.turn, step);
   if (s.status !== 'running') return { state: s, events: [] };
   const log = [];
@@ -648,9 +650,10 @@ export function resolve(s0, C0, inputs = {}) {
     emit({ type: 'aid', text: `${a.gen ?? C.sides[a.side].name} marches to the sound of the guns at ${C.prov[fight].name}`, at: fight, sides: [a.side] });
   }
   for (const [id, at] of Object.entries(dug)) if (s.armies[id] && s.armies[id].at !== at) delete s.armies[id].fort; // siege lines stay behind when an army marches
-  // 4. battles, wherever enemies stand together
+  if (opts.stopBefore === 'battles') return { state: s, orders, start, events: log };
+  // 4. battles, wherever enemies stand together (on the field, if the commander took command of it)
   const places = [...new Set(Object.values(s.armies).map((a) => a.at))];
-  for (const at of places) battleAt(C, s, at, orders, start, rng(`battle:${at}`), emit);
+  for (const at of places) battleAt(C, s, at, orders, start, rng(`battle:${at}`), emit, inputs.battles?.[at]);
 
   // 5. sieges and captures
   for (const at of Object.keys(s.prov)) siegeAt(C, s, at, orders, rng(`siege:${at}`), emit);
@@ -734,18 +737,19 @@ function raise(C, s, id, men, emit) {
   emit({ type: 'raised', text: `${fmtMen(n)} new men join ${a.gen ?? 'your army'} at ${C.prov[a.at].name}`, at: a.at, sides: [side] });
 }
 
-function battleAt(C, s, at, orders, start, rng, emit) {
+// Who fights at a place, with which plans: the two camps, their leaders, the plans, how well they fit, and whether the
+// defender slips away. Shared by the battle and by the page that offers the commander the field (battlesAhead).
+function battlePrep(C, s, at, orders, start, rng) {
   const here = armiesAt(s, at);
-  if (here.length < 2) return;
+  if (here.length < 2) return null;
   const sides = [...new Set(here.map((a) => a.side))];
-  const hostile = sides.some((x) => sides.some((y) => atWar(s, x, y)));
-  if (!hostile) return;
+  if (!sides.some((x) => sides.some((y) => atWar(s, x, y)))) return null;
   // two camps: the strongest army that stood here first defends, with its friends; its enemies attack
   const stood = here.filter((a) => start[a.id] === at), came = here.filter((a) => start[a.id] !== at);
   const ds = [...(stood.length ? stood : came)].sort((x, y) => y.men - x.men)[0].side;
   const d = here.filter((a) => friends(s, a.side, ds));
   const att = here.filter((a) => atWar(s, a.side, ds));
-  if (!att.length) return;
+  if (!att.length) return null;
   const as = [...att].sort((x, y) => y.men - x.men)[0].side;
   const fa = battleFacts(C, s, at, att, d, false), fd = battleFacts(C, s, at, d, att, true);
   const lead = (list) => [...list].sort((x, y) => y.men - x.men)[0];
@@ -757,37 +761,84 @@ function battleAt(C, s, at, orders, start, rng, emit) {
     return { id: generalsPlan(C, f, { temper: g.temper ?? temperOf(C, s, g.side), skill: g.skill }, rng), by: 'general' };
   };
   const pa = choose(att, fa, as), pd = choose(d, fd, ds);
-  // refusing battle: the defender slips away, whole, if there is somewhere to go
-  if (pd.id === 'refuse') {
+  let refused = null;
+  if (pd.id === 'refuse') { // refusing battle: the defender slips away, whole, if there is somewhere to go
     const back = C.prov[at].neighbors.find((p) => (s.prov[p].owner === ds || friends(s, ds, s.prov[p].owner)) && !armiesAt(s, p).some((o) => atWar(s, ds, o.side)) && !C.prov[at].sea.includes(p));
-    if (back && fd.ratio < 1.2) {
-      for (const a of d) { a.at = back; a.morale = clamp(a.morale - 3, 10, 100); }
-      emit({ type: 'refused', text: `${ld.gen ?? C.sides[ds].name} refuses battle at ${C.prov[at].name} and falls back to ${C.prov[back].name}`, at, sides: [ds, as], plans: { a: pa, d: pd } });
-      if (ds === C.you || as === C.you) s.sides[as].will = clamp(s.sides[as].will - 1, 0, 100);
-      return;
-    }
-    pd.id = generalsPlan(C, fd, { temper: 'steady', skill: ld.skill }, rng, ['refuse']);
+    if (back && fd.ratio < 1.2) refused = back;
+    else pd.id = generalsPlan(C, fd, { temper: 'steady', skill: ld.skill }, rng, ['refuse']);
   }
   const fitA = clamp(fitOf(fa, pa.id) - (countered(pa.id, pd.id) ? 0.8 : 0), -1, 1), fitD = clamp(fitOf(fd, pd.id) - (countered(pd.id, pa.id) ? 0.8 : 0), -1, 1);
-  const pow = (list, fit, defending) => list.reduce((t, a) => t + a.men * (C.sides[a.side].quality ?? 1) * (1 + 0.08 * (a.skill - 3)) * (0.6 + a.morale / 250) * condK(s, a) * (defending ? a.fort ?? 1 : 1), 0)
-    * planFactor(fit, lead(list).skill) * (defending ? groundOf(C, s, at) : 1) * (0.85 + 0.3 * rng());
-  let PA = pow(att, fitA, false), PD = pow(d, fitD, true);
   const city = s.prov[at], holder = city.owner, inCamp = (list) => list.some((a) => friends(s, a.side, holder));
   const sallyCamp = city.walls && city.by && city.garrison >= 500 && holder && atWar(s, holder, city.by) ? (inCamp(att) ? 'a' : inCamp(d) ? 'd' : null) : null;
   const sally = sallyCamp ? Math.round(city.garrison * 0.5) : 0; // half the garrison comes out; the rest keep the walls
-  if (sally) {
-    const campMen = Math.max(1, (sallyCamp === 'a' ? att : d).reduce((t, a) => t + a.men, 0)), boost = 1 + (sally * (C.sides[holder]?.quality ?? 1)) / campMen;
-    if (sallyCamp === 'a') PA *= boost; else PD *= boost;
-    emit({ type: 'sally', text: `The garrison of ${C.prov[at].name} sallies out to fight beside its relief`, at, sides: [holder, city.by], minor: true });
+  const mine = here.some((a) => a.side === C.you);
+  return { att, d, as, ds, la, ld, pa, pd, fa, fd, fitA, fitD, refused, holder, sallyCamp, sally, mine, lead };
+}
+// The battle as the field engine sees it (battle.js): the ground, the plans, the armies, and which camp is the commander's.
+function setupOf(C, s, at, b) {
+  const arm = (a, camp) => ({ id: a.id, side: a.side, camp, men: a.men, horse: C.sides[a.side].horse ?? 0.15, q: (C.sides[a.side].quality ?? 1) * (1 + 0.08 * (a.skill - 3)) * condK(s, a) * (a.fort ?? 1), morale: a.morale, gen: a.gen ?? null, hero: !!a.hero, tech: C.sides[a.side].tech ?? [] });
+  const armies = [...b.att.map((a) => arm(a, 'a')), ...b.d.map((a) => arm(a, 'd'))];
+  if (b.sally) armies.push({ id: '@garrison', side: b.holder, camp: b.sallyCamp, men: b.sally, horse: 0, q: C.sides[b.holder]?.quality ?? 1, morale: 60, gen: null, hero: false, tech: [] });
+  return {
+    at, place: C.prov[at].name, ground: C.prov[at].terrain, narrows: !!C.prov[at].narrows, river: C.prov[at].terrain === 'river', seed: seedOf(`field:${s.seed}:${s.turn}:${at}`),
+    you: b.att.some((a) => a.side === C.you) ? 'a' : 'd', plans: { a: b.pa.id, d: b.pd.id }, fit: { a: b.fitA, d: b.fitD }, armies,
+    tempers: { a: temperOf(C, s, b.as), d: temperOf(C, s, b.ds) }, names: { a: C.sides[b.as].name, d: C.sides[b.ds].name }, colors: { a: C.sides[b.as].color, d: C.sides[b.ds].color },
+  };
+}
+// The battles the commander's armies will fight this season, with what the field engine needs to let him command them.
+export function battlesAhead(C0, s0, inputs = {}) {
+  const C = READY.get(C0) ?? C0, pre = resolve(s0, C0, inputs, { stopBefore: 'battles' });
+  if (!pre.orders) return [];
+  const s = pre.state, out = [];
+  for (const at of [...new Set(Object.values(s.armies).map((a) => a.at))]) {
+    const b = battlePrep(C, s, at, pre.orders, pre.start, rngFor(s.seed, s.turn, `battle:${at}`));
+    if (b?.mine && !b.refused) out.push({ at, setup: setupOf(C, s, at, b) });
   }
-  const aWins = PA > PD, win = aWins ? att : d, lose = aWins ? d : att, r = Math.max(PA, PD) / Math.max(1, Math.min(PA, PD));
-  const horseOf = (list) => list.reduce((t, a) => t + a.men * (C.sides[a.side].horse ?? 0.15), 0) / Math.max(1, list.reduce((t, a) => t + a.men, 0));
-  const pursuit = clamp(1 + (horseOf(win) - horseOf(lose)) * 0.4, 0.9, 1.15) * (ROUGH.includes(C.prov[at].terrain) ? 0.9 : 1); // horsemen ride down the fleeing; hills and woods hide them
-  const loseFrac = clamp((0.15 + 0.2 * r) * pursuit, 0.2, 0.8), winFrac = clamp(0.2 / r, 0.03, 0.22);
-  const tally = (list, frac) => list.reduce((t, a) => { const k = Math.round(a.men * frac); a.men -= k; return t + k; }, 0);
-  const lostW = tally(win, winFrac), lostL = tally(lose, loseFrac);
-  if (sally) city.garrison = Math.max(0, city.garrison - Math.round(sally * ((sallyCamp === 'a') === aWins ? winFrac : loseFrac)));
-  const ws = lead(win).side, ls = lead(lose).side, decisive = loseFrac >= 0.5;
+  return out;
+}
+
+function battleAt(C, s, at, orders, start, rng, emit, record = null) {
+  const b = battlePrep(C, s, at, orders, start, rng);
+  if (!b) return;
+  const { att, d, as, ds, la, ld, pa, pd, fitA, fitD, holder, sallyCamp, sally, lead } = b, city = s.prov[at];
+  if (b.refused) {
+    for (const a of d) { a.at = b.refused; a.morale = clamp(a.morale - 3, 10, 100); }
+    emit({ type: 'refused', text: `${ld.gen ?? C.sides[ds].name} refuses battle at ${C.prov[at].name} and falls back to ${C.prov[b.refused].name}`, at, sides: [ds, as], plans: { a: pa, d: pd } });
+    if (ds === C.you || as === C.you) s.sides[as].will = clamp(s.sides[as].will - 1, 0, 100);
+    return;
+  }
+  let aWins, lostW, lostL, decisive, commanded = null;
+  if (record && b.mine) { // fought on the field, as the commander ordered it hour by hour
+    const setup = setupOf(C, s, at, b), res = fieldBattle(setup, record, setup.tempers);
+    aWins = res.aWins;
+    for (const a of [...att, ...d]) a.men = Math.max(0, a.men - (res.lost[a.id] ?? 0));
+    if (sally) city.garrison = Math.max(0, city.garrison - (res.lost['@garrison'] ?? 0));
+    const sum = (list) => list.reduce((t, a) => t + (res.lost[a.id] ?? 0), 0);
+    lostW = sum(aWins ? att : d); lostL = sum(aWins ? d : att);
+    decisive = res.decisive;
+    commanded = { hours: res.field.hour, withdrew: res.withdrew };
+  } else {
+    const pow = (list, fit, defending) => list.reduce((t, a) => t + a.men * (C.sides[a.side].quality ?? 1) * (1 + 0.08 * (a.skill - 3)) * (0.6 + a.morale / 250) * condK(s, a) * (defending ? a.fort ?? 1 : 1), 0)
+      * planFactor(fit, lead(list).skill) * (defending ? groundOf(C, s, at) : 1) * (0.85 + 0.3 * rng());
+    let PA = pow(att, fitA, false), PD = pow(d, fitD, true);
+    if (sally) {
+      const campMen = Math.max(1, (sallyCamp === 'a' ? att : d).reduce((t, a) => t + a.men, 0)), boost = 1 + (sally * (C.sides[holder]?.quality ?? 1)) / campMen;
+      if (sallyCamp === 'a') PA *= boost; else PD *= boost;
+    }
+    aWins = PA > PD;
+    const win = aWins ? att : d, lose = aWins ? d : att, r = Math.max(PA, PD) / Math.max(1, Math.min(PA, PD));
+    const horseOf = (list) => list.reduce((t, a) => t + a.men * (C.sides[a.side].horse ?? 0.15), 0) / Math.max(1, list.reduce((t, a) => t + a.men, 0));
+    const pursuit = clamp(1 + (horseOf(win) - horseOf(lose)) * 0.4, 0.9, 1.15) * (ROUGH.includes(C.prov[at].terrain) ? 0.9 : 1); // horsemen ride down the fleeing; hills and woods hide them
+    const loseFrac = clamp((0.15 + 0.2 * r) * pursuit, 0.2, 0.8), winFrac = clamp(0.2 / r, 0.03, 0.22);
+    const tally = (list, frac) => list.reduce((t, a) => { const k = Math.round(a.men * frac); a.men -= k; return t + k; }, 0);
+    lostW = tally(win, winFrac); lostL = tally(lose, loseFrac);
+    if (sally) city.garrison = Math.max(0, city.garrison - Math.round(sally * ((sallyCamp === 'a') === aWins ? winFrac : loseFrac)));
+    decisive = loseFrac >= 0.5;
+  }
+  if (sally) emit({ type: 'sally', text: `The garrison of ${C.prov[at].name} sallies out to fight beside its relief`, at, sides: [holder, city.by], minor: true });
+  const win = aWins ? att : d, lose = aWins ? d : att;
+  for (const a of win) if (a.men < 200) delete s.armies[a.id]; // a victor's army spent to the last man
+  const ws = lead(win).side, ls = lead(lose).side;
   for (const a of win) a.morale = clamp(a.morale + (decisive ? 15 : 8), 10, 100);
   for (const a of lose) a.morale = clamp(a.morale - (decisive ? 25 : 12), 10, 100);
   s.sides[ws].will = clamp(s.sides[ws].will + (decisive ? 8 : 4), 0, 100);
@@ -818,7 +869,7 @@ function battleAt(C, s, at, orders, start, rng, emit) {
   }
   const P = C.prov[at].name, wn = C.sides[ws].name, ln = C.sides[ls].name;
   emit({
-    type: 'battle', at, sides: [as, ds], winner: ws, loser: ls, decisive,
+    type: 'battle', at, sides: [as, ds], winner: ws, loser: ls, decisive, ...(commanded ? { commanded } : {}),
     text: `${decisive ? 'A great victory' : 'Victory'} for ${wn} at ${P}: ${lead(win).gen ?? wn} beats ${lead(lose).gen ?? ln}${gone.length ? `, whose army is destroyed` : ''}`,
     men: [Math.round(att.reduce((t, a) => t + a.men, 0) + (aWins ? lostW : lostL)), Math.round(d.reduce((t, a) => t + a.men, 0) + (aWins ? lostL : lostW))],
     lost: aWins ? [lostW, lostL] : [lostL, lostW], plans: { a: { ...pa, fit: round(fitA, 0.01) }, d: { ...pd, fit: round(fitD, 0.01) } }, gens: [la.gen, ld.gen],

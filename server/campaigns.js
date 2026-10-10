@@ -10,7 +10,7 @@ import { createPublicClient, createWalletClient, http, isAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia } from 'viem/chains';
 import { CAMPAIGN } from '../web/campaign/catalog.js';
-import { newCampaign, resolve, checksum, rulesPlan, armiesOf, PLANS, VERDICT, ENGINE, courtOf, cardsDue, plansFor, withCards } from '../web/campaign/engine.js';
+import { newCampaign, resolve, checksum, rulesPlan, armiesOf, PLANS, VERDICT, ENGINE, courtOf, cardsDue, plansFor, withCards, battlesAhead } from '../web/campaign/engine.js';
 import { situation, normalize, proposal, interpret, summary } from '../web/campaign/court.js';
 import { makeLLM, clean } from './agent.js';
 import REGALIA from './Regalia.json' with { type: 'json' };
@@ -38,6 +38,16 @@ function cleanInputs(raw = {}) {
   out.ally = {};
   for (const [id, g] of Object.entries(raw.ally ?? {}).slice(0, 10)) if (/^[\w-]{1,24}$/.test(id) && Number.isFinite(+g)) out.ally[id] = Math.max(0, Math.min(100000, Math.round(+g)));
   if (typeof raw.feint === 'string' && /^[\w-]{1,32}$/.test(raw.feint)) out.feint = raw.feint;
+  // battles the commander fought on the field: each hour's orders for his units (the engine checks them again)
+  const unit = (id) => typeof id === 'string' && /^[ad]\d{1,2}$/.test(id);
+  for (const [at, rec] of Object.entries(raw.battles ?? {}).slice(0, 6)) {
+    if (!/^[\w-]{1,32}$/.test(at) || !rec || typeof rec !== 'object') continue;
+    const rounds = (Array.isArray(rec.rounds) ? rec.rounds : []).slice(0, 6).map((r) => ({
+      orders: Object.fromEntries(Object.entries(r?.orders ?? {}).slice(0, 12).filter(([id]) => unit(id)).map(([id, o]) => [id, o?.hold ? { hold: true } : unit(o?.attack) ? { attack: o.attack } : Array.isArray(o?.to) ? { to: [o.to[0] | 0, o.to[1] | 0] } : null]).filter(([, o]) => o)),
+      ...(r?.retreat ? { retreat: true } : {}),
+    }));
+    (out.battles ??= {})[at] = { rounds, ...(rec.auto ? { auto: true } : {}) };
+  }
   return out;
 }
 
@@ -205,6 +215,18 @@ An army that holds with "aid": true marches to help any friendly army attacked n
     for (const n of [...rules.notes, ...notes]) replies.push({ who: court[0]?.id ?? 'adviser', text: n });
     if (!replies.length) replies.push(...rules.replies.filter((r) => !rules.notes.includes(r.text))); // the AI said nothing new: the rules' plain answer
     return { replies, draft: next, end: out.end === true, by: 'ai', left: Math.max(0, +(this.env.COUNCIL_PER_SEASON || 40) - used - 1) };
+  }
+  async battleTalk(run, body) {
+    const C = CAMPAIGN[run.cid], live = this.llm ?? (this.voice?.status().mode === 'live' ? this.voice : null), key = `bt:${run.id}:${run.turn}`, used = this.get(key) ?? 0;
+    if (!live || used >= 80) return { replies: [], orders: {} };
+    this.put(key, used + 1);
+    const field = clean(String(body.field ?? ''), 600).slice(0, 4000), words = body.message ? clean(String(body.message), 60).slice(0, 300) : null;
+    const officers = (Array.isArray(body.officers) ? body.officers : []).slice(0, 8).map((x) => clean(String(x), 6).slice(0, 40)).filter(Boolean);
+    const system = `You are the officers of ${C.hero.name}'s army on the field of battle, in a historical war game (${C.title}, ${C.years}): ${officers.join(', ') || 'the officers'}. ${words ? 'The commander has just spoken: answer him' : 'An hour of the battle has passed: report to the commander'}, in character, one or two of you, one to three short sentences each, as soldiers of that time would speak: what you see, what you will do, what you advise. If his words ask for it, turn them into orders for OUR units. Speak of left and right, the centre, the front and the rear, the hill, the woods, the river, never of squares, rows or coordinates (they are for the orders only). STRICT: use only the units, men and ground in the field report; never invent units, people or events; nothing graphic. JSON only: {"replies": [{"who": "<officer>", "text": "..."}], "orders": {"<our unit id>": {"to": [x, y]} or {"attack": "<enemy unit id>"} or {"hold": true}}}`;
+    const out = await this.askAI(system, `${field}${words ? `\nCOMMANDER: ${words}` : ''}`, 600, 8, { voice: true });
+    if (!out) return { replies: [], orders: {} };
+    const replies = (Array.isArray(out.replies) ? out.replies : []).slice(0, 3).map((r) => ({ who: officers.includes(r?.who) ? r.who : officers[0] ?? 'An officer', text: clean(String(r?.text ?? ''), 60) })).filter((r) => r.text);
+    return { replies, orders: out.orders && typeof out.orders === 'object' ? out.orders : {} };
   }
   async planFor(run, s) {
     const have = this.sql.exec('SELECT ai, advice, by, proposal FROM plans WHERE run = ? AND n = ?', run.id, s.turn).toArray()[0];
@@ -382,6 +404,17 @@ ${lines.map((l, i) => `<text x="240" y="${448 + i * 24}" text-anchor="middle" fo
         if (body.t !== s.turn) return json(409, { error: 'not this turn', turn: s.turn });
         const plan = await this.planFor(run, s);
         return json(200, { t: s.turn, advice: plan.advice, by: plan.by, proposal: plan.proposal });
+      }
+      if (action === '/battles') { // the battles the commander's armies will fight this season, with the AI's own plans
+        if (run.status !== 'running') return json(409, { error: 'the war is over' });
+        const s = this.stateOf(run);
+        if (body.t !== s.turn) return json(409, { error: 'not this turn', turn: s.turn });
+        const plan = await this.planFor(run, s); // stored: the season will be resolved with the same plans
+        return json(200, { battles: battlesAhead(C, s, { ...cleanInputs(body.inputs), ai: plan.ai ?? {} }) });
+      }
+      if (action === '/battle') { // the officers on the field: they answer the commander and report each hour
+        if (!this.allow(ip, 'talk', 240)) return json(429, { error: 'Your officers need a moment.' });
+        return json(200, await this.battleTalk(run, body));
       }
       if (action === '/council') {
         if (run.status !== 'running') return json(409, { error: 'the war is over' });
