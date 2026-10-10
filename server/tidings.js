@@ -63,8 +63,8 @@ const CHANNELS = {
 const site = (env) => env.PUBLIC_URL || 'https://agentistan.umarkhatana.com';
 const post = (env, item) => {
   const n8n = (env.N8N_URL || '').replace(/\/$/, '');
-  if (!n8n) return Promise.resolve();
-  return fetch(`${n8n}/webhook/tidings`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-realm-secret': env.REALM_SECRET ?? '' }, body: JSON.stringify(item), signal: AbortSignal.timeout(8000) }).catch(() => null);
+  if (!n8n) return Promise.resolve(false);
+  return fetch(`${n8n}/webhook/tidings`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-realm-secret': env.REALM_SECRET ?? '' }, body: JSON.stringify(item), signal: AbortSignal.timeout(15000) }).then((r) => r.ok, (err) => { console.error('tidings: n8n post failed:', err.message); return false; });
 };
 const labels = (tags, s) => tags.map((t) => TOPICS[t] ?? (t.startsWith('realm:') ? s?.realms?.[t.slice(6)]?.name ?? t.slice(6) : null)).filter(Boolean);
 
@@ -89,8 +89,8 @@ export async function tidingsRoute(era, req, p, ip) {
   const id = crypto.randomUUID().slice(0, 12), key = crypto.randomUUID().replace(/-/g, '');
   era.sql.exec('INSERT INTO followers (id, key, channel, target, tags, created, day, sent, ip) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)', id, key, channel, target, JSON.stringify(tags), Date.now(), today, ip);
   const leave = `${site(era.env)}/?unfollow=${id}.${key}`;
-  await post(era.env, { channel, target, title: 'You follow the living world of Agentistan', text: `You will hear of: ${labels(tags, era.state()).join('; ')}. A month passes every two hours.`, url: site(era.env), image: `${site(era.env)}/art/events/golden.webp`, tags: [], leave });
-  return json(200, { id, key, leave });
+  const sent = await post(era.env, { channel, target, title: 'You follow the living world of Agentistan', text: `You will hear of: ${labels(tags, era.state()).join('; ')}. A month passes every two hours.`, url: site(era.env), image: `${site(era.env)}/art/events/golden.webp`, tags: [], leave });
+  return json(200, { id, key, leave, sent });
 }
 
 // After each month: every follower gets the events that match what they follow, a few at a time, at most twelve a day.
